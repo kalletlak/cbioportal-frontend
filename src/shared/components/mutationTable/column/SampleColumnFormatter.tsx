@@ -1,6 +1,7 @@
 import * as React from 'react';
 import {MolecularProfile, Mutation} from "shared/api/generated/CBioPortalAPI";
 import TruncatedText from "shared/components/TruncatedText";
+import HarvestButton from "../../HarvestButton"
 
 /**
  * @author Selcuk Onur Sumer
@@ -51,9 +52,12 @@ export default class SampleColumnFormatter
 
 
                 content = (
-                    <a href={linkToPatientView} target='_blank'>
-                        {content}
-                    </a>
+                    <div>
+                        <a href={linkToPatientView} target='_blank'>
+                            {content}
+                        </a>
+                        <HarvestButton sampleId={sampleId}></HarvestButton>
+                    </div>
                 );
             }
         }

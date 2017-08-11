@@ -54,6 +54,8 @@ export type GeneticProfile = {
 
         'name': string
 
+        'normalsTissueReferenceId': string
+
         'showProfileInAnalysisTab': boolean
 
         'study': CancerStudy
@@ -125,6 +127,8 @@ export type CancerStudy = {
         'groups': string
 
         'importDate': string
+
+        'isAdultCancer': boolean
 
         'methylationHm27SampleCount': number
 

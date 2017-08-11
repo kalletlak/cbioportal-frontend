@@ -119,12 +119,12 @@ export default class RightBar extends React.Component<{}, {}> {
                 <div className="rightBarSection">
                     <h3>
                         What's New
-                        <a href="http://www.twitter.com/cbioportal" className="pull-right">
+                        <a href="http://www.twitter.com/pedcbioportal" className="pull-right">
                             @cbioportal <i className="fa fa-twitter" aria-hidden="true"></i>
                         </a>
                     </h3>
                     <p>Sign up for low-volume email news alerts:</p>
-                    <a target="_blank" className="btn btn-default btn-sm" href="http://groups.google.com/group/cbioportal-news/boxsubscribe" style={{width: "100%"}}>Subscribe</a>
+                    <a target="_blank" className="btn btn-default btn-sm" href="http://groups.google.com/group/pediatric-cbioportal-news/boxsubscribe" style={{width: "100%"}}>Subscribe</a>
                 </div>
                 {datasets}
                 {examples}

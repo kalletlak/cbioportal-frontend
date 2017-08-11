@@ -43,6 +43,7 @@ const styles = styles_any as {
 	cancerTypeListItemLabel: string,
 	cancerTypeListItemCount: string,
 	cancerStudyListContainer: string,
+	StudyTypeSelector:string
 };
 
 export interface ICancerStudySelectorProps
@@ -163,6 +164,47 @@ export default class CancerStudySelector extends QueryStoreComponent<ICancerStud
 						</Observer>
 					)}
 					</div>
+
+					{ (!!(!this.store.forDownloadTab) && !!(!this.store.cancerTypes.isPending && !this.store.cancerStudies.isPending)) && (
+					<Observer>
+						{() => {
+							let selectAllChecked = expr(() => this.logic.mainView.getCheckboxProps(this.store.treeData.rootCancerType).checked);
+							let clearable = false;
+							var divStyle = {
+								"align-items": "center"
+								};
+
+							let listOptions = [{
+												label: 'All',
+												value: 'all'
+												},{
+												label: 'Pediatric',
+												value: 'pediatric'
+												},{
+												label: 'Adult',
+												value: 'adult'
+											   }];
+							return (
+								<FlexRow style={divStyle} padded overflow>
+									<FlexCol overflow>
+										<span>
+											<b>Studies Type : </b>
+										</span>
+										</FlexCol>
+									<FlexCol overflow>
+										<ReactSelect
+											className={styles.StudyTypeSelector}
+											value={this.store.filterType}
+											clearable={clearable}
+											options={listOptions}
+											onChange={option => this.store.setStudyFilter(option ? option.value : 'all')}
+										/>
+									</FlexCol>
+								</FlexRow>
+							);
+						}}
+					</Observer>
+						)}
 
 					<Observer>
 						{() => {

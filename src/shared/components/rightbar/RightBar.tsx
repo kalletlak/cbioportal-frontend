@@ -120,7 +120,7 @@ export default class RightBar extends React.Component<{}, {}> {
                     <h3>
                         What's New
                         <a href="http://www.twitter.com/pedcbioportal" className="pull-right">
-                            @cbioportal <i className="fa fa-twitter" aria-hidden="true"></i>
+                            @pedcbioportal <i className="fa fa-twitter" aria-hidden="true"></i>
                         </a>
                     </h3>
                     <p>Sign up for low-volume email news alerts:</p>

@@ -77,6 +77,7 @@ export function normalizeQuery(geneQuery:string)
 export type CancerStudyQueryParams = Pick<
 	QueryStore,
 	'searchText' |
+	'filterType' |
 	'selectedStudyIds' |
 	'dataTypePriority' |
 	'selectedProfileIds' |
@@ -90,6 +91,7 @@ export type CancerStudyQueryParams = Pick<
 >;
 export const QueryParamsKeys:(keyof CancerStudyQueryParams)[] = [
 	'searchText',
+	'filterType',
 	'selectedStudyIds',
 	'dataTypePriority',
 	'selectedProfileIds',
@@ -253,6 +255,8 @@ export class QueryStore
 	@observable transposeDataMatrix = false;
 
 	@observable searchText:string = '';
+
+	@observable filterType:string = 'all';
 
 	@observable private _selectedStudyIds:ObservableMap<boolean> = observable.map<boolean>();
 
@@ -1529,6 +1533,15 @@ export class QueryStore
 
 	@action clearSelectedCancerType(){
 		this.selectedCancerTypeIds = [];
+	}
+
+	@action clearSelectedStudies(){
+		this.selectedStudyIds = [];
+	}
+
+	@action setStudyFilter(filterType:string) {
+		this.clearSelectedStudies();
+		this.filterType = filterType;
 	}
 
 	@action selectMolecularProfile(profile:MolecularProfile, checked:boolean)

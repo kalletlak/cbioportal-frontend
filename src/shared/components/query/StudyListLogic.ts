@@ -66,6 +66,53 @@ export default class StudyListLogic
 		return map_node_filter;
 	}
 
+	@cached get map_node_filterByStudyType()
+	{
+		let map_node_searchResult = new Map<CancerTreeNode, SearchResult>();
+		let filterType = this.store.filterType;
+		let map_node_filter = new Map<CancerTreeNode, boolean>();
+		if(filterType && filterType == 'all') {
+			for (let node of this.store.treeData.map_node_meta.keys())
+				map_node_filter.set(node, true);
+		} else {
+			let filterPediatric = (filterType == 'pediatric') ? true : false;
+			for (let [node, meta] of this.store.treeData.map_node_meta.entries()) {
+				if(node['isAdultCancer'] !== undefined && (node['isAdultCancer'] != filterPediatric)) {
+					map_node_searchResult.set(node, {match: true, forced: false} as SearchResult);
+				} else {
+					map_node_searchResult.set(node, {match: false, forced: false} as SearchResult);
+				}
+			}
+
+			for (let [node, meta] of this.store.treeData.map_node_meta.entries())
+			{
+				if (map_node_filter.has(node))
+					continue;
+
+				let filter = false;
+				for (let item of [node, ...meta.ancestors, ...meta.priorityCategories])
+				{
+					let result = map_node_searchResult.get(item) as SearchResult;
+					if (!result.match && result.forced)
+					{
+						filter = false;
+						break;
+					}
+					filter = filter || result.match;
+				}
+				map_node_filter.set(node, filter);
+
+				// include ancestors of matching studies
+				if (filter && !meta.isCancerType)
+					for (let cancerTypes of [meta.ancestors, meta.priorityCategories])
+						for (let cancerType of cancerTypes)
+							map_node_filter.set(cancerType, true);
+			}
+		}
+
+		return map_node_filter;
+	}
+
 	@cached get map_node_filterBySelectedCancerTypes()
 	{
 		let map_node_filter = new Map<CancerTreeNode, boolean>();
@@ -122,7 +169,8 @@ export default class StudyListLogic
 			[
 				this.map_node_filterByDepth,
 				this.map_node_filterBySearchText,
-				this.map_node_filterBySelectedCancerTypes
+				this.map_node_filterBySelectedCancerTypes,
+				this.map_node_filterByStudyType
 			]
 		);
 	}
@@ -133,7 +181,8 @@ export default class StudyListLogic
 			this.store,
 			[
 				this.map_node_filterByDepth,
-				this.map_node_filterBySearchText
+				this.map_node_filterBySearchText,
+				this.map_node_filterByStudyType
 			]
 		);
 	}

@@ -20,6 +20,8 @@ export type CancerStudy = {
 
         'importDate': string
 
+        'isAdultCancer': boolean
+
         'methylationHm27SampleCount': number
 
         'miRnaSampleCount': number
@@ -281,6 +283,8 @@ export type MolecularProfile = {
         'molecularProfileId': string
 
         'name': string
+
+        'normalsTissueReferenceId': string
 
         'showProfileInAnalysisTab': boolean
 

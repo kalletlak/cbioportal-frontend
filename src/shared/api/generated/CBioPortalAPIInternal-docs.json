@@ -72,6 +72,10 @@
       "description": " "
     },
     {
+      "name": "Tumor vs Normals Data",
+      "description": " "
+    },
+    {
       "name": "Variant Counts",
       "description": " "
     },
@@ -119,6 +123,67 @@
               "type": "array",
               "items": {
                 "$ref": "#/definitions/CosmicMutation"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/gene-symbol/{geneSymbol}/normals-reference/{normalsReferenceId}/data/{zScore}": {
+      "post": {
+        "tags": [
+          "Tumor vs Normals Data"
+        ],
+        "summary": "Get tumor vs normals data",
+        "operationId": "getTumorVsNormalsDataUsingPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "geneSymbol",
+            "in": "path",
+            "description": "Gene Symbol e.g. MYC",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "normalsReferenceId",
+            "in": "path",
+            "description": "Normals Tissue reference id e.g. gtex",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "name": "zScore",
+            "in": "path",
+            "description": "z-Score e.g. true/false",
+            "required": false,
+            "type": "boolean"
+          },
+          {
+            "in": "body",
+            "name": "tvnDataIdentifiers",
+            "description": "List of identifiers",
+            "required": true,
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/TumorVsNormalsDataIdentifiers"
+              }
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/TumorVsNormalsData"
               }
             }
           }
@@ -1712,6 +1777,62 @@
         }
       },
       "title": "MutationSpectrumFilter"
+    },
+    "TumorVsNormalsData": {
+      "type": "object",
+      "properties": {
+        "color": {
+          "type": "string"
+        },
+        "data": {
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/TumorVsNormalsDataSampleDataObject"
+          }
+        },
+        "isTumorData": {
+          "type": "boolean"
+        },
+        "name": {
+          "type": "string"
+        },
+        "pValue": {
+          "type": "number",
+          "format": "double"
+        },
+        "studyId": {
+          "type": "string"
+        }
+      },
+      "title": "TumorVsNormalsData"
+    },
+    "TumorVsNormalsDataIdentifiers": {
+      "type": "object",
+      "properties": {
+        "geneticProfileId": {
+          "type": "string"
+        },
+        "sampleIds": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "title": "TumorVsNormalsDataIdentifiers"
+    },
+    "TumorVsNormalsDataSampleDataObject": {
+      "type": "object",
+      "properties": {
+        "sampleId": {
+          "type": "string"
+        },
+        "value": {
+          "type": "number",
+          "format": "double"
+        }
+      },
+      "title": "TumorVsNormalsDataSampleDataObject"
     },
     "VariantCount": {
       "type": "object",

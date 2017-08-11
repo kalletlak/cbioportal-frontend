@@ -77,10 +77,24 @@ export default class StudyListLogic
 		} else {
 			let filterPediatric = (filterType == 'pediatric') ? true : false;
 			for (let [node, meta] of this.store.treeData.map_node_meta.entries()) {
-				if(node['isAdultCancer'] !== undefined && (node['isAdultCancer'] != filterPediatric)) {
-					map_node_searchResult.set(node, {match: true, forced: false} as SearchResult);
-				} else {
+
+				if (meta.isCancerType) {
 					map_node_searchResult.set(node, {match: false, forced: false} as SearchResult);
+				} else {
+					let study = node as CancerStudy;
+					if(study.isAdultCancer != filterPediatric) {
+						map_node_searchResult.set(node, {
+							match: true,
+							forced: false
+						} as SearchResult);
+					}
+					else {
+
+						map_node_searchResult.set(node, {
+							match: false,
+							forced: false
+						} as SearchResult);
+					}
 				}
 			}
 

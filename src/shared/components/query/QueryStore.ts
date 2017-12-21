@@ -237,8 +237,28 @@ export class QueryStore
 	{
 		let ids:string[] = this._selectedStudyIds.keys();
 		const selectableStudies = this.selectableStudiesSet;
-		ids = ids.filter(id=>!!selectableStudies[id]);
-		return this.forDownloadTab ? ids.slice(-1) : ids;
+		let selectableIds = ids.filter(id=>!!selectableStudies[id]);
+
+		if(ids.length !== selectableIds.length) {
+			let entities = this.caseIds.trim().split(/\s+/g);
+			let normStudies:string [] = entities
+			.map(entity=>{
+				let splitEntity = entity.split(':');
+				if (splitEntity.length === 2) {
+					const study = splitEntity[0];
+					const id = splitEntity[1];
+					return study;
+				}
+			})
+			.filter(element => element !== undefined) as string[];
+
+			normStudies = _.uniq(normStudies);
+
+			selectableIds = normStudies.filter(id=>!!selectableStudies[id]);
+		}
+		
+
+		return this.forDownloadTab ? selectableIds.slice(-1) : selectableIds;
 	}
 
 	set selectedStudyIds(val:string[]) {
@@ -261,6 +281,8 @@ export class QueryStore
 			}
 		}
 	}
+
+	//TODO: never used, to be cleaned
 	private isStudyIdSelected(studyId:string):boolean {
 		return !!this._selectedStudyIds.get(studyId);
 	}
@@ -747,7 +769,7 @@ export class QueryStore
 
 	@computed get unknownStudyIds()
 	{
-		let ids:string[] = this._selectedStudyIds.keys();
+		let ids:string[] = this.selectedStudyIds;
 		const selectableStudies = this.selectableStudiesSet;
 		ids = ids.filter(id=>!(id in selectableStudies));
 		return ids;

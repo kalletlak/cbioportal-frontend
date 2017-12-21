@@ -43,7 +43,7 @@ export default class QuerySummary extends React.Component<{ queryStore:QueryStor
 
     private get singleStudyUI() {
         return <div>
-            <h4><StudyLink study={this.props.store.studies.result[0]}/></h4>
+            <h4><StudyLink study={this.props.queryStore.treeData.map_studyId_cancerStudy.get(this.cohortsList[0]) as CancerStudy}/></h4>
             <span>
                 {(window as any).serverVars.caseSetProperties.case_set_name}&nbsp;
                 (<strong>{this.props.store.samples.result.length}</strong> samples)
@@ -86,6 +86,15 @@ export default class QuerySummary extends React.Component<{ queryStore:QueryStor
 
 
             const loadingComplete = this.props.store.totalAlterationStats.isComplete && this.props.store.studies.isComplete;
+            const selectableStudies = this.props.queryStore.selectableStudiesSet;
+            let selectableIds = this.cohortsList.filter(id=>!!selectableStudies[id]);
+            let isSingleCohortQuery = (this.props.store.studies.result.length === 1);
+
+
+            if(selectableIds.length === this.cohortsList.length){
+                isSingleCohortQuery = (selectableIds.length === 1);
+
+            }
 
             let alterationPercentage = (loadingComplete) ?
                 (this.props.store.totalAlterationStats.result!.alteredSampleCount / this.props.store.totalAlterationStats.result!.sampleCount * 100) : 0;
@@ -105,7 +114,7 @@ export default class QuerySummary extends React.Component<{ queryStore:QueryStor
 
 
                             {
-                                (loadingComplete) && ((this.props.store.studies.result.length === 1) ? this.singleStudyUI : this.multipleStudyUI)
+                                (loadingComplete) && (isSingleCohortQuery ? this.singleStudyUI : this.multipleStudyUI)
                             }
                         </div>
                         {

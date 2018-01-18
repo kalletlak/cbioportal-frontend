@@ -86,7 +86,7 @@ export default class CancerStudyTreeData
 			});
 		}
 		cancerTypes = [virtualCohortsCategory].concat(this.priorityCategories).concat(this.rootCancerType, cancerTypes);
-		studies = virtualCohortStudies.concat(studies);
+		studies = CancerStudyTreeData.sortNodes(virtualCohortStudies).concat(studies);
 		cancerTypes = this.priorityCategories.concat(this.rootCancerType, cancerTypes);
 
 		// initialize lookups and metadata entries

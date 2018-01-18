@@ -459,7 +459,7 @@ export class QueryStore
 	readonly molecularProfilesInSelectedStudies = remoteData<MolecularProfile[]>({
 		invoke: async()=>{
 			const profiles:CacheData<MolecularProfile[], string>[] =
-				await this.molecularProfilesInStudyCache.getPromise(this.selectedStudyIds, true);
+				await this.molecularProfilesInStudyCache.getPromise(this.studyIdsInSelection, true);
 			return _.flatten(profiles.map(d=>(d.data ? d.data : [])));
 		}
 	});

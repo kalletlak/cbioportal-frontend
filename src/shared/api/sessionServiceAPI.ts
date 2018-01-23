@@ -7,7 +7,6 @@ type VirtualStudyData = {
     name: string;
     description: string;
     studies:{ id:string, samples: string[] }[];
-    owner: string;
     origin: string;
     filters:{ patients: Map<string, string[]>;
               samples:  Map<string, string[]>};
@@ -47,11 +46,6 @@ export default class sessionSeriveAPI {
     }
 
     deleteVirtualStudy(id:string){
-        return request
-                .delete(`${getSessionServiceApiUrl()}/${id}`)
-                             
-    }
-    deleteVirtualStudy1(id:string) {
         return request
                 .delete(`${getSessionServiceApiUrl()}/${id}`)
                              

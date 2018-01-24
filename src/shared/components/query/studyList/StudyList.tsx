@@ -192,33 +192,12 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
 
                 <Observer>
                     {() => {
-                        if (this.store.isDeletedVirtualStudy(study.studyId)) {
-                            return(
-                                <DefaultTooltip
-                                    mouseEnterDelay={0}
-                                    placement="top"
-                                    overlay={
-                                        <div className={styles.tooltip}>Restore study</div>
-                                    }
-                                    children={
-                                        <button 
-                                            className={`btn btn-default btn-xs`} 
-                                            onClick={()=>this.store.addVirtualCohort(study.studyId)}
-                                            style={{
-                                                lineHeight: '80%',
-                                            }}>
-                                            Restore
-                                        </button>
-                                    }/>
-                            );
-                        } else {
-                            return(
-                                <div className={styles.StudyMeta}>
-                                    {this.renderSamples(study)}
-                                    {this.renderStudyLinks(study)}
-                                </div>
-                            );
-                        }
+						return(
+							<div className={styles.StudyMeta}>
+								{!this.store.isDeletedVirtualStudy(study.studyId) && this.renderSamples(study)}
+								{this.renderStudyLinks(study)}
+							</div>
+						);
                     }}
                 </Observer>
 			</li>
@@ -247,27 +226,35 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
 
 	renderStudyLinks = (study:CancerStudy) =>
 	{
-		let links:{icon:string, onClick?:string|(()=>void), tooltip?:string}[] = [
-			{
-				icon: 'info-circle',
-				tooltip: study.description,
+		let links:{icon:string, onClick?:string|(()=>void), tooltip?:string}[] = [];
+		if (this.store.isDeletedVirtualStudy(study.studyId)) {
+			links.push({
+				icon: 'undo',
+				tooltip: "Restore study",
+				onClick: ()=>this.store.addVirtualCohort(study.studyId)
+			})
+		} else {
+			links.push(
+				{
+					icon: 'info-circle',
+					tooltip: study.description,
+				}
+			);
+			if (!this.store.isVirtualCohort(study.studyId)) {
+				links.push({
+					icon: 'book',
+					onClick: study.pmid && getPubMedUrl(study.pmid),
+					tooltip: study.pmid && "PubMed",
+				});
 			}
-		];
-
-		if (!this.store.isVirtualCohort(study.studyId)) {
-			links.push({
-				icon: 'book',
-				onClick: study.pmid && getPubMedUrl(study.pmid),
-				tooltip: study.pmid && "PubMed",
-			});
-		}
-
-		if (this.store.isVirtualCohort(study.studyId)) {
-			links.push({
-				icon: 'trash',
-				tooltip: "Delete this virtual study.",
-				onClick: ()=>this.store.deleteVirtualCohort(study.studyId),
-			});
+	
+			if (this.store.isVirtualCohort(study.studyId)) {
+				links.push({
+					icon: 'trash',
+					tooltip: "Delete this virtual study.",
+					onClick: ()=>this.store.deleteVirtualCohort(study.studyId),
+				});
+			}
 		}
 		return (
 			<span className={styles.StudyLinks}>
@@ -319,7 +306,7 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
 
 					return content;
 				})}
-				{study.studyId && (
+				{!this.store.isDeletedVirtualStudy(study.studyId) && study.studyId && (
 					<DefaultTooltip
 						mouseEnterDelay={0}
 						placement="top"

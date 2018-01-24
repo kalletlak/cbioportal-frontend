@@ -4,7 +4,7 @@ import * as styles_any from "./styles.module.scss";
 import classNames from "classnames";
 import FontAwesome from "react-fontawesome";
 import LabeledCheckbox from "../../labeledCheckbox/LabeledCheckbox";
-import {observer} from "mobx-react";
+import {observer, Observer} from "mobx-react";
 import {computed} from "mobx";
 import _ from "lodash";
 import {getPubMedUrl, openStudySummaryFormSubmit} from "../../../api/urls";
@@ -24,6 +24,7 @@ const styles = {
 
 		Study: string,
 		StudyName: string,
+		DeletedStudy: string,
 		StudyMeta: string,
 		StudySamples: string,
 		StudyLinks: string,
@@ -163,8 +164,7 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
 		);
 
 		const isOverlap = study.studyId in this.store.getOverlappingStudiesMap;
-		const classes = classNames({ [styles.StudyName]:true, 'overlappingStudy':isOverlap  });
-        const overlapWarning = isOverlap ?
+		const overlapWarning = isOverlap ?
             <DefaultTooltip
                 mouseEnterDelay={0}
                 placement="top"
@@ -176,20 +176,51 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
 
 		return (
 			<li key={arrayIndex} className={liClassName} data-test='StudySelect'>
+                <Observer>
+                {() => {
+                    const classes = classNames({ [styles.StudyName]:true, 'overlappingStudy':isOverlap ,   [styles.DeletedStudy]: this.store.isDeletedVirtualStudy(study.studyId)});
+                    return(
+                        <CancerTreeCheckbox view={this.view} node={study}>
+                            <span className={classes}>
+                                {study.name}
+                                {overlapWarning}
+                            </span>
+                       </CancerTreeCheckbox>
+                    )
+                }}
+                </Observer>
 
-                <CancerTreeCheckbox view={this.view} node={study}>
-                    <span className={classes}>
-                        {study.name}
-                        {overlapWarning}
-                    </span>
-
-                </CancerTreeCheckbox>
-
-
-				<div className={styles.StudyMeta}>
-					{this.renderSamples(study)}
-					{this.renderStudyLinks(study)}
-				</div>
+                <Observer>
+                    {() => {
+                        if (this.store.isDeletedVirtualStudy(study.studyId)) {
+                            return(
+                                <DefaultTooltip
+                                    mouseEnterDelay={0}
+                                    placement="top"
+                                    overlay={
+                                        <div className={styles.tooltip}>Restore study</div>
+                                    }
+                                    children={
+                                        <button 
+                                            className={`btn btn-default btn-xs`} 
+                                            onClick={()=>this.store.addVirtualCohort(study.studyId)}
+                                            style={{
+                                                lineHeight: '80%',
+                                            }}>
+                                            Restore
+                                        </button>
+                                    }/>
+                            );
+                        } else {
+                            return(
+                                <div className={styles.StudyMeta}>
+                                    {this.renderSamples(study)}
+                                    {this.renderStudyLinks(study)}
+                                </div>
+                            );
+                        }
+                    }}
+                </Observer>
 			</li>
 		);
 	}
@@ -321,11 +352,18 @@ export class CancerTreeCheckbox extends QueryStoreComponent<ICancerTreeCheckboxP
 		return this.props.view.getCheckboxProps(this.props.node);
 	}
 
+	@computed get isCheckBoxDisabled()
+	{
+		return this.props.view.isCheckBoxDisabled(this.props.node)
+	} 
+
 	render()
 	{
+		const inputProps = {disabled:this.isCheckBoxDisabled} as React.HTMLProps<HTMLInputElement>;
 		return (
 			<LabeledCheckbox
 				{...this.checkboxProps}
+				inputProps={inputProps}
 				onChange={event => {
 					this.props.view.onCheck(this.props.node, (event.target as HTMLInputElement).checked);
 				}}

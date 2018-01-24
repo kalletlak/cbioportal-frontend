@@ -227,6 +227,23 @@ export class FilteredCancerTreeView
 		}
 	}
 
+	isCheckBoxDisabled(node: CancerTreeNode):boolean {
+		let meta = this.getMetadata(node);
+		if (meta.isCancerType)
+		{
+			return false;
+		}
+		else
+		{
+			let study = node as CancerStudy;
+			if(this.store.isDeletedVirtualStudy(study.studyId)) {
+				return true;
+			}
+			return false;
+		}
+
+	}
+
 	@action clearAllSelection(): void
 	{
         this.store.selectedStudyIds = []

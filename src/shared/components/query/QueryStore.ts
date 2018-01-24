@@ -146,13 +146,22 @@ export class QueryStore
 
 	@observable studiesHaveChangedSinceInitialization:boolean = false;
 	@observable userVirtualStudies:IVirtualStudy[] = [];
+	@observable deletedVirtualStudies:string[] = [];
 
 	@action public deleteVirtualCohort(id:string) {
 		sessionServiceClient.deleteVirtualStudy(id)
 		.then(() => {
-			this.loadSavedVirtualCohorts();
+			this.deletedVirtualStudies.push(id)
 		});
 	}
+
+	@action public addVirtualCohort(id:string) {
+		sessionServiceClient.addVirtualStudy(id)
+		.then(() => {
+			this.deletedVirtualStudies = this.deletedVirtualStudies.filter(x => (x !== id));
+		});
+	}
+
 	@action private loadSavedVirtualCohorts() {
 		sessionServiceClient.getUserVirtualStudies().then((response) => {
 			this.userVirtualStudies = response;
@@ -780,6 +789,13 @@ export class QueryStore
 	public isVirtualCohort(studyId:string):boolean {
 		// if the study id doesn't correspond to one in this.cancerStudies, then its a virtual cohort
 		return !this.cancerStudyIdsSet.result[studyId];
+	}
+
+	public isDeletedVirtualStudy(studyId:string):boolean {
+		if(this.isVirtualCohort(studyId) && this.deletedVirtualStudies.indexOf(studyId) > -1){
+			return true;
+		}
+		return false;
 	}
 
 	private isSingleStudySelected(shouldBeVirtualCohort:boolean) {

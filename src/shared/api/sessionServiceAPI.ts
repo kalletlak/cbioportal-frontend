@@ -50,4 +50,10 @@ export default class sessionSeriveAPI {
                 .delete(`${getSessionServiceApiUrl()}/${id}`)
                              
     }
+
+    addVirtualStudy(id:string){
+        return request
+                .put(`${getSessionServiceApiUrl()}/${id}`)
+                             
+    }
 }

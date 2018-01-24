@@ -192,12 +192,12 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
 
                 <Observer>
                     {() => {
-						return(
-							<div className={styles.StudyMeta}>
-								{!this.store.isDeletedVirtualStudy(study.studyId) && this.renderSamples(study)}
-								{this.renderStudyLinks(study)}
-							</div>
-						);
+                        return(
+                            <div className={styles.StudyMeta}>
+                                {!this.store.isDeletedVirtualStudy(study.studyId) && this.renderSamples(study)}
+                                {this.renderStudyLinks(study)}
+                            </div>
+                        );
                     }}
                 </Observer>
 			</li>
@@ -226,102 +226,118 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
 
 	renderStudyLinks = (study:CancerStudy) =>
 	{
-		let links:{icon:string, onClick?:string|(()=>void), tooltip?:string}[] = [];
-		if (this.store.isDeletedVirtualStudy(study.studyId)) {
-			links.push({
-				icon: 'undo',
-				tooltip: "Restore study",
-				onClick: ()=>this.store.addVirtualCohort(study.studyId)
-			})
-		} else {
-			links.push(
-				{
-					icon: 'info-circle',
-					tooltip: study.description,
-				}
-			);
-			if (!this.store.isVirtualCohort(study.studyId)) {
-				links.push({
-					icon: 'book',
-					onClick: study.pmid && getPubMedUrl(study.pmid),
-					tooltip: study.pmid && "PubMed",
-				});
-			}
-	
-			if (this.store.isVirtualCohort(study.studyId)) {
-				links.push({
-					icon: 'trash',
-					tooltip: "Delete this virtual study.",
-					onClick: ()=>this.store.deleteVirtualCohort(study.studyId),
-				});
-			}
-		}
-		return (
-			<span className={styles.StudyLinks}>
-				{links.map((link, i) => {
-					let content = (
-						<FontAwesome
-							key={i}
-							name={link.icon}
-							className={classNames({
-								[styles.icon]: true,
-								[styles.iconWithTooltip]: !!link.tooltip,
-								[styles.trashIcon]: (link.icon === "trash")
-							})}
-						/>
-					);
-
-					if (link.onClick) {
-						let anchorProps:any = {
-							key: i
-						};
-						if (typeof link.onClick === "string") {
-							anchorProps.href = link.onClick;
-							anchorProps.target = "_blank";
-						} else {
-							anchorProps.onClick = link.onClick;
-						}
-						content = (
-							<a {...anchorProps}>
-								{content}
-							</a>
-						);
-					}
-
-					if (link.tooltip)
-					{
-						let overlay = (
-							<div className={styles.tooltip} dangerouslySetInnerHTML={{__html: link.tooltip}}/>
-						);
-						content = (
-							<DefaultTooltip
-								key={i}
-								mouseEnterDelay={0}
-								placement="top"
-								overlay={overlay}
-								children={content}
-							/>
-						);
-					}
-
-					return content;
-				})}
-				{!this.store.isDeletedVirtualStudy(study.studyId) && study.studyId && (
-					<DefaultTooltip
-						mouseEnterDelay={0}
-						placement="top"
-						overlay={
-							<div className={styles.tooltip}
-							>View study summary</div>
-						}
-						children={
-							<span onClick={()=>openStudySummaryFormSubmit(study.studyId)}
-							  className={ classNames(styles.summaryIcon, 'ci ci-pie-chart')}></span>
-						}
-					/>
-				)}
-			</span>
-		);
+        if(this.store.isDeletedVirtualStudy(study.studyId)){
+            return(
+                <DefaultTooltip
+                    mouseEnterDelay={0}
+                    placement="top"
+                    overlay={
+                        <div className={styles.tooltip}
+                        >Restore study</div>
+                    }
+                    children={
+                        <button 
+                            className={`btn btn-default btn-xs`} 
+                            onClick={()=>this.store.addVirtualCohort(study.studyId)}
+                            style={{
+                                lineHeight: '80%',
+                            }}>
+                            Restore
+                        </button>
+                    }
+                />
+            )
+        } else {
+            let links:{icon:string, onClick?:string|(()=>void), tooltip?:string}[] = [
+                {
+                    icon: 'info-circle',
+                    tooltip: study.description,
+                }
+            ];
+    
+            if (this.store.isVirtualCohort(study.studyId)) {
+                links.push({
+                    icon: 'book',
+                    onClick: study.pmid && getPubMedUrl(study.pmid),
+                    tooltip: study.pmid && "PubMed",
+                });
+            }
+    
+            if (this.store.isVirtualCohort(study.studyId)) {
+                links.push({
+                    icon: 'trash',
+                    tooltip: "Delete this virtual study.",
+                    onClick: ()=>this.store.deleteVirtualCohort(study.studyId),
+                });
+            }
+    
+            return (
+                <span className={styles.StudyLinks}>
+                    {links.map((link, i) => {
+                        let content = (
+                            <FontAwesome
+                                key={i}
+                                name={link.icon}
+                                className={classNames({
+                                    [styles.icon]: true,
+                                    [styles.iconWithTooltip]: !!link.tooltip,
+                                    [styles.trashIcon]: (link.icon === "trash")
+                                })}
+                            />
+                        );
+    
+                        if (link.onClick) {
+                            let anchorProps:any = {
+                                key: i
+                            };
+                            if (typeof link.onClick === "string") {
+                                anchorProps.href = link.onClick;
+                                anchorProps.target = "_blank";
+                            } else {
+                                anchorProps.onClick = link.onClick;
+                            }
+                            content = (
+                                <a {...anchorProps}>
+                                    {content}
+                                </a>
+                            );
+                        }
+    
+                        if (link.tooltip)
+                        {
+                            let overlay = (
+                                <div className={styles.tooltip} dangerouslySetInnerHTML={{__html: link.tooltip}}/>
+                            );
+                            content = (
+                                <DefaultTooltip
+                                    key={i}
+                                    mouseEnterDelay={0}
+                                    placement="top"
+                                    overlay={overlay}
+                                    children={content}
+                                />
+                            );
+                        }
+    
+                        return content;
+                    })}
+                    {study.studyId && (
+                        <DefaultTooltip
+                            mouseEnterDelay={0}
+                            placement="top"
+                            overlay={
+                                <div className={styles.tooltip}
+                                >View study summary</div>
+                            }
+                            children={
+                                <span onClick={()=>openStudySummaryFormSubmit(study.studyId)}
+                                  className={ classNames(styles.summaryIcon, 'ci ci-pie-chart')}></span>
+                            }
+                        />
+                    )}
+                </span>
+            );
+        }
 	}
 }
 

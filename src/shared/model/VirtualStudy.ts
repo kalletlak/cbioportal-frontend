@@ -1,7 +1,13 @@
-export interface IVirtualStudy {
-    id: string;
+export interface VirtualStudyData {
     name: string;
     description: string;
-    samples:{ sampleId: string, studyId:string }[];
-    constituentStudyIds:string[];
+    studies:{ id:string, samples: string[] }[];
+    origin: string[];
+    filters:{ patients: Map<string, string[]>;
+              samples:  Map<string, string[]>};
+};
+
+export interface VirtualStudy {
+    id: string;
+    data: VirtualStudyData;
 };

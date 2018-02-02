@@ -172,10 +172,12 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
             >
                 <i className="fa fa-exclamation-triangle"></i>
             </DefaultTooltip>
-            : null;
+			: null;
 
 		return (
-			<li key={arrayIndex} className={liClassName} data-test='StudySelect'>
+			<li key={arrayIndex} 
+			    className={liClassName} 
+			    data-test={this.store.isVirtualCohort(study.studyId) ? 'VirtualStudySelect' : 'StudySelect'}>
                 <Observer>
                 {() => {
                     const classes = classNames({ [styles.StudyName]:true, 'overlappingStudy':isOverlap ,   [styles.DeletedStudy]: this.store.isDeletedVirtualStudy(study.studyId)});
@@ -241,7 +243,8 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
                             onClick={()=>this.store.addVirtualCohort(study.studyId)}
                             style={{
                                 lineHeight: '80%',
-                            }}>
+                            }}
+							data-test='virtualStudyRestore'>
                             Restore
                         </button>
                     }
@@ -257,19 +260,17 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
     
             if (this.store.isVirtualCohort(study.studyId)) {
                 links.push({
-                    icon: 'book',
-                    onClick: study.pmid && getPubMedUrl(study.pmid),
-                    tooltip: study.pmid && "PubMed",
-                });
-            }
-    
-            if (this.store.isVirtualCohort(study.studyId)) {
-                links.push({
                     icon: 'trash',
                     tooltip: "Delete this virtual study.",
                     onClick: ()=>this.store.deleteVirtualCohort(study.studyId),
                 });
-            }
+            } else {
+                links.push({
+                    icon: 'book',
+                    onClick: study.pmid && getPubMedUrl(study.pmid),
+                    tooltip: study.pmid && "PubMed",
+                });
+			}
     
             return (
                 <span className={styles.StudyLinks}>

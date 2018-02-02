@@ -36,7 +36,7 @@ import getOverlappingStudies from "../../lib/getOverlappingStudies";
 import MolecularProfilesInStudyCache from "../../cache/MolecularProfilesInStudyCache";
 import {CacheData} from "../../lib/LazyMobXCache";
 import sessionServiceClient from "shared/api//sessionServiceInstance";
-import {IVirtualStudy} from "shared/model/VirtualStudy";
+import {VirtualStudy} from "shared/model/VirtualStudy";
 
 // interface for communicating
 export type CancerStudyQueryUrlParams = {
@@ -145,7 +145,7 @@ export class QueryStore
 	}
 
 	@observable studiesHaveChangedSinceInitialization:boolean = false;
-	@observable userVirtualStudies:IVirtualStudy[] = [];
+	@observable userVirtualStudies:VirtualStudy[] = [];
 	@observable deletedVirtualStudies:string[] = [];
 
 	@action public deleteVirtualCohort(id:string) {
@@ -168,12 +168,12 @@ export class QueryStore
 		});
 	}
 
-	@computed get virtualCohorts():IVirtualStudy[] {
+	@computed get virtualCohorts():VirtualStudy[] {
 		return this.userVirtualStudies;
 	}
 
-	@computed get virtualCohortsSet():{[id:string]:IVirtualStudy} {
-		return this.virtualCohorts.reduce((acc:{[id:string]:IVirtualStudy}, next:IVirtualStudy)=>{
+	@computed get virtualCohortsSet():{[id:string]:VirtualStudy} {
+		return this.virtualCohorts.reduce((acc:{[id:string]:VirtualStudy}, next:VirtualStudy)=>{
 			acc[next.id] = next;
 			return acc;
 		}, {});
@@ -186,7 +186,7 @@ export class QueryStore
 		for (const studyId of this.selectedStudyIds) {
 			const vc = virtualCohortsSet[studyId];
 			if (vc) {
-				for (const constStudyId of vc.constituentStudyIds) {
+				for (const constStudyId of vc.data.studies.map(study => study.id)) {
 					ret[constStudyId] = true;
 				}
 			} else {
@@ -195,19 +195,6 @@ export class QueryStore
 		}
 		return Object.keys(ret);
 	}
-
-	getUserVirtualStudies = remoteData<IVirtualStudy[]|undefined>({
-		invoke: async ()=>{
-			try {
-				const rs: IVirtualStudy[] = await sessionServiceClient.getUserVirtualStudies();
-				return rs;
-				
-			} catch (e) {
-				// In case anything related to fetching this data fails
-				return undefined;
-			}
-		}
-	});
 
 	copyFrom(other:CancerStudyQueryParams)
 	{

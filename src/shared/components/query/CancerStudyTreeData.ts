@@ -1,7 +1,7 @@
 import {CancerStudy, TypeOfCancer as CancerType} from "../../api/generated/CBioPortalAPI";
 import * as _ from 'lodash';
 import {PriorityStudies} from "config/IAppConfig";
-import {IVirtualStudy} from "shared/model/VirtualStudy";
+import {VirtualStudy} from "shared/model/VirtualStudy";
 
 export const CANCER_TYPE_ROOT = 'tissue';
 
@@ -40,7 +40,7 @@ export default class CancerStudyTreeData
 	map_cancerTypeId_cancerType = new Map<string, CancerType>();
 	map_studyId_cancerStudy = new Map<string, CancerStudy>();
 
-	constructor({cancerTypes = [], studies = [], priorityStudies = {}, virtualCohorts=[]}: {cancerTypes: CancerType[], studies: CancerStudy[], priorityStudies?:PriorityStudies, virtualCohorts?:IVirtualStudy[]})
+	constructor({cancerTypes = [], studies = [], priorityStudies = {}, virtualCohorts=[]}: {cancerTypes: CancerType[], studies: CancerStudy[], priorityStudies?:PriorityStudies, virtualCohorts?:VirtualStudy[]})
 	{
 		let nodes:CancerTreeNode[];
 		let node:CancerTreeNode;
@@ -64,10 +64,16 @@ export default class CancerStudyTreeData
 		const virtualCohortStudies = [];
 		for (let virtualCohort of virtualCohorts) {
 			let study = {
-				allSampleCount: virtualCohort.samples.length,
+				//allSampleCount: [].concat.apply([], virtualCohort.data.studies.map(study => study.samples)).length,
+				allSampleCount:virtualCohort.data.studies
+													.map(study => study.samples)
+													.reduce(function(prev, curr) {
+														return prev.concat(curr);
+													})
+													.length,
 				studyId: virtualCohort.id,
-				name: virtualCohort.name,
-				description: virtualCohort.description,
+				name: virtualCohort.data.name,
+				description: virtualCohort.data.description,
 				cancerTypeId: virtualCohortsName
 			} as CancerStudy;
 			virtualCohortStudies.push(study);
@@ -87,7 +93,6 @@ export default class CancerStudyTreeData
 		}
 		cancerTypes = [virtualCohortsCategory].concat(this.priorityCategories).concat(this.rootCancerType, cancerTypes);
 		studies = CancerStudyTreeData.sortNodes(virtualCohortStudies).concat(studies);
-		cancerTypes = this.priorityCategories.concat(this.rootCancerType, cancerTypes);
 
 		// initialize lookups and metadata entries
 		for (nodes of [cancerTypes, studies])

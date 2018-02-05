@@ -961,7 +961,15 @@ export class QueryStore
 	@computed get defaultSelectedSampleListId()
 	{
 		if (this.isVirtualCohortQuery) {
-			return ALL_CASES_LIST_ID;
+			let toReturn = ALL_CASES_LIST_ID;
+			let {mutation, cna} = this.dataTypePriority;
+			if (mutation && cna)
+			    toReturn = '0';
+			else if (mutation)
+			    toReturn = '1';
+			else if (cna)
+			    toReturn = '2';
+			return toReturn;
 		}
 
 		let studyId = this.singleSelectedStudyId;
@@ -1153,6 +1161,9 @@ export class QueryStore
 			if (haveExpInQuery && !expProfileSelected)
 				return "Expression specified in the list of genes, but not selected in the Molecular Profile Checkboxes.";
 
+		}
+		if(this.isVirtualCohortQuery && !(this.dataTypePriority.mutation || this.dataTypePriority.cna)){
+			return "Please select one or more molecular profiles.";
 		}
 		if (this.selectedStudyIds.length && this.selectedSampleListId === CUSTOM_CASE_LIST_ID)
 		{

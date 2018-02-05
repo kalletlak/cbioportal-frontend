@@ -53,7 +53,7 @@ function initStore(queryStore: QueryStore) {
     // ultimate we will phase this out and this information will be stored in router etc.
     //const qSession:any = (window as any).QuerySession;
     var samplesSpecification:any = [];
-    if (["-1", "all"].indexOf(serverVars.caseSetProperties.case_set_id) > -1) {
+    if (["-1", "0", "1", "2", "all"].indexOf(serverVars.caseSetProperties.case_set_id) > -1) {
         // "-1" means custom case id, "all" means all cases in the queried stud(y/ies). Neither is an actual case set that could eg be queried
         var studyToSampleMap = serverVars.studySampleObj;
         var studies = Object.keys(studyToSampleMap);

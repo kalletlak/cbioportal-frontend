@@ -25,57 +25,58 @@ export function filterCaseSetOptions(opt: ReactSelectOptionWithName, filter: str
 	return _.includes(opt.textLabel.toLowerCase(), filter.toLowerCase());
 }
 
+type CustomCaseSet = {
+	name: string,
+	description:string,
+	value: '-1'| '0'| '1'| '2'| 'all',
+	isdefault: boolean
+};
+
+const CustomCaseSets: CustomCaseSet[] = [ 
+	{name: 'All', description: 'All cases in the selected cohorts', value: ALL_CASES_LIST_ID, isdefault : false} ,
+	{name: 'Cases with both mutations and copy number alterations data', description: 'All cases with both mutations and copy number alterations data', value: '0', isdefault : false},
+	{name: 'Cases with mutations data', description: 'All cases with mutations data', value: '1', isdefault : false},
+	{name: 'Cases with copy number alterations data', description: 'All cases with copy number alterations data', value: '2', isdefault : false},
+	{name: 'User-defined Case List', description: 'Specify your own case list', value: CUSTOM_CASE_LIST_ID, isdefault : true}
+]
+
 @observer
 export default class CaseSetSelector extends QueryStoreComponent<{}, {}>
 {
 	@computed get caseSetOptions() : ReactSelectOptionWithName[]
 	{
-		let ret = [
-			...this.store.sampleLists.result.map(sampleList => {
-				return {
-					label: (
-						<DefaultTooltip
-							placement="right"
-							mouseEnterDelay={0}
-							overlay={<div className={styles.tooltip}>{sampleList.description}</div>}
-						>
-							<span>{`${sampleList.name} (${sampleList.sampleCount})`}</span>
-						</DefaultTooltip>
-					),
-					value: sampleList.sampleListId,
-					textLabel:sampleList.name
-				};
-			}),
-			{
+		let ret = this.store.sampleLists.result.map(sampleList => {
+			return {
 				label: (
 					<DefaultTooltip
 						placement="right"
 						mouseEnterDelay={0}
-						overlay={<div className={styles.tooltip}>Specify your own case list</div>}
+						overlay={<div className={styles.tooltip}>{sampleList.description}</div>}
 					>
-						<span>User-defined Case List</span>
+						<span>{`${sampleList.name} (${sampleList.sampleCount})`}</span>
 					</DefaultTooltip>
 				),
-				value: CUSTOM_CASE_LIST_ID,
-				textLabel:'User-defined Case List'
+				value: sampleList.sampleListId,
+				textLabel:sampleList.name
+			};
+		});
+
+		let customCaseSets = (this.store.isVirtualCohortQuery ? CustomCaseSets : CustomCaseSets.filter(s=>s.isdefault)).map(s => {
+			return {
+				value: s.value,
+				label: (
+					<DefaultTooltip
+						placement="right"
+						mouseEnterDelay={0}
+						overlay={<div className={styles.tooltip}>{s.description}</div>}
+					>
+						<span>{s.name}</span>
+					</DefaultTooltip>
+				),
+				textLabel: s.name
 			}
-		];
-		if (this.store.isVirtualCohortQuery) {
-			ret = [{
-				value: ALL_CASES_LIST_ID,
-				label: (
-					<DefaultTooltip
-						placement="right"
-						mouseEnterDelay={0}
-						overlay={<div className={styles.tooltip}>All cases in the selected cohorts</div>}
-					>
-						<span>All</span>
-					</DefaultTooltip>
-				),
-				textLabel:'All'
-			}].concat(ret);
-		}
-		return ret;
+		});
+		return ret.concat(customCaseSets);
 	}
 
 	render()

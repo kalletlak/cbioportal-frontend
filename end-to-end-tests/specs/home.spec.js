@@ -813,7 +813,7 @@ describe('case set selection in front page query form', ()=>{
         browser.waitForExist(selectedCaseSet_sel);
         assert.equal(
             browser.getText(selectedCaseSet_sel),
-            "All",
+            "Cases with both mutations and copy number alterations data",
             "Default case set for multiple"
         );
 
@@ -863,7 +863,7 @@ describe('case set selection in front page query form', ()=>{
         browser.waitForExist(selectedCaseSet_sel, 10000);
         assert.equal(
             browser.getText(selectedCaseSet_sel),
-            "All",
+            "Cases with both mutations and copy number alterations data",
             "Default selected case set with multiple studies should be 'All'"
         );
 
@@ -885,7 +885,7 @@ describe('case set selection in front page query form', ()=>{
         browser.waitForExist(selectedCaseSet_sel);
         assert.equal(
             browser.getText(selectedCaseSet_sel),
-            "All",
+            "Cases with both mutations and copy number alterations data",
             "Default case set for multiple"
         );
 
@@ -945,8 +945,8 @@ describe('case set selection in modify query form', ()=>{
         browser.waitForExist(selectedCaseSet_sel, 10000);
         assert.equal(
             browser.getText(selectedCaseSet_sel),
-            "All",
-            "Default selected case set with multiple studies should be 'All'"
+            "Cases with both mutations and copy number alterations data",
+            "Default selected case set with multiple studies should be 'Cases with both mutations and copy number alterations data'"
         );
 
         // Uncheck study
@@ -982,8 +982,8 @@ describe('case set selection in modify query form', ()=>{
         browser.waitForExist(selectedCaseSet_sel, 10000);
         assert.equal(
             browser.getText(selectedCaseSet_sel),
-            "All",
-            "Default selected case set with multiple studies should be 'All'"
+            "Cases with both mutations and copy number alterations data",
+            "Default selected case set with multiple studies should be 'Cases with both mutations and copy number alterations data'"
         );
 
         // Deselect all tcga -provisional studies
@@ -1031,8 +1031,10 @@ describe('genetic profile selection in modify query form', ()=>{
         browser.click('[data-test="StudySelect"] input');
 
         // wait for data type priority selector to load
-        browser.waitForExist('[data-test="dataTypePrioritySelector"] input[type="radio"][data-test="MC"]', 10000);
-        assert(browser.isSelected('[data-test="dataTypePrioritySelector"] input[type="radio"][data-test="MC"]'), "mutation and cna option should be selected");
+        browser.waitForExist('[data-test="dataTypePrioritySelector"] input[type="checkbox"][data-test="M"]', 10000);
+        browser.waitForExist('[data-test="dataTypePrioritySelector"] input[type="checkbox"][data-test="C"]', 10000);
+        assert(browser.isSelected('[data-test="dataTypePrioritySelector"] input[type="checkbox"][data-test="M"]'), "'Mutation' should be selected");
+        assert(browser.isSelected('[data-test="dataTypePrioritySelector"] input[type="checkbox"][data-test="C"]'), "'Copy number alterations' should be selected");
 
         //deselect other study
         browser.click('[data-test="StudySelect"] input');
@@ -1066,8 +1068,11 @@ describe('genetic profile selection in modify query form', ()=>{
         browser.click('div[data-test="cancerTypeListContainer"] input[data-test="selectAllStudies"]');
 
         // wait for data type priority selector to load
-        browser.waitForExist('[data-test="dataTypePrioritySelector"] input[type="radio"][data-test="MC"]', 10000);
-        assert(browser.isSelected('[data-test="dataTypePrioritySelector"] input[type="radio"][data-test="MC"]'), "mutation and cna option should be selected");
+        browser.waitForExist('[data-test="dataTypePrioritySelector"] input[type="checkbox"][data-test="M"]', 10000);
+        browser.waitForExist('[data-test="dataTypePrioritySelector"] input[type="checkbox"][data-test="C"]', 10000);
+        assert(browser.isSelected('[data-test="dataTypePrioritySelector"] input[type="checkbox"][data-test="M"]'), "'Mutation' should be selected");
+        assert(browser.isSelected('[data-test="dataTypePrioritySelector"] input[type="checkbox"][data-test="C"]'), "'Copy number alterations' should be selected");
+
 
         // Deselect all tcga -provisional studies
         browser.click('div[data-test="cancerTypeListContainer"] input[data-test="selectAllStudies"]');
@@ -1122,8 +1127,10 @@ describe('genetic profile selection in front page query form', ()=>{
         browser.click('[data-test="StudySelect"] input');
 
         // wait for data type priority selector to load
-        browser.waitForExist('[data-test="dataTypePrioritySelector"] input[type="radio"][data-test="MC"]', 10000);
-        assert(browser.isSelected('[data-test="dataTypePrioritySelector"] input[type="radio"][data-test="MC"]'), "mutation and cna option should be selected");
+        browser.waitForExist('[data-test="dataTypePrioritySelector"] input[type="checkbox"][data-test="M"]', 10000);
+        browser.waitForExist('[data-test="dataTypePrioritySelector"] input[type="checkbox"][data-test="C"]', 10000);
+        assert(browser.isSelected('[data-test="dataTypePrioritySelector"] input[type="checkbox"][data-test="M"]'), "'Mutation' should be selected");
+        assert(browser.isSelected('[data-test="dataTypePrioritySelector"] input[type="checkbox"][data-test="C"]'), "'Copy number alterations' should be selected");
 
         //deselect other study
         browser.click('[data-test="StudySelect"] input');
@@ -1143,8 +1150,10 @@ describe('genetic profile selection in front page query form', ()=>{
         browser.click('div[data-test="cancerTypeListContainer"] input[data-test="selectAllStudies"]');
 
         // wait for data type priority selector to load
-        browser.waitForExist('[data-test="dataTypePrioritySelector"] input[type="radio"][data-test="MC"]', 10000);
-        assert(browser.isSelected('[data-test="dataTypePrioritySelector"] input[type="radio"][data-test="MC"]'), "mutation and cna option should be selected");
+        browser.waitForExist('[data-test="dataTypePrioritySelector"] input[type="checkbox"][data-test="M"]', 10000);
+        browser.waitForExist('[data-test="dataTypePrioritySelector"] input[type="checkbox"][data-test="C"]', 10000);
+        assert(browser.isSelected('[data-test="dataTypePrioritySelector"] input[type="checkbox"][data-test="M"]'), "'Mutation' should be selected");
+        assert(browser.isSelected('[data-test="dataTypePrioritySelector"] input[type="checkbox"][data-test="C"]'), "'Copy number alterations' should be selected");
 
         // Deselect all tcga provisional studies
         browser.click('div[data-test="cancerTypeListContainer"] input[data-test="selectAllStudies"]');

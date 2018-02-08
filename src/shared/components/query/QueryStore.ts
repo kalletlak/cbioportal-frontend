@@ -958,18 +958,22 @@ export class QueryStore
 
 	// SAMPLE LIST
 
+	private calculateSampleListId(dataTypePriority:{mutation: boolean, cna: boolean}): '0'|'1'|'2'|'all'
+	{
+		let {mutation, cna} = dataTypePriority;
+		if (mutation && cna)
+		    return '0';
+		if (mutation)
+		    return'1';
+		else if (cna)
+		    return '2';
+		return ALL_CASES_LIST_ID;
+	}
+
 	@computed get defaultSelectedSampleListId()
 	{
 		if (this.isVirtualCohortQuery) {
-			let toReturn = ALL_CASES_LIST_ID;
-			let {mutation, cna} = this.dataTypePriority;
-			if (mutation && cna)
-			    toReturn = '0';
-			else if (mutation)
-			    toReturn = '1';
-			else if (cna)
-			    toReturn = '2';
-			return toReturn;
+			return this.calculateSampleListId(this.dataTypePriority);
 		}
 
 		let studyId = this.singleSelectedStudyId;

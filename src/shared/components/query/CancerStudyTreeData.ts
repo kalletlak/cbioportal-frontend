@@ -64,13 +64,7 @@ export default class CancerStudyTreeData
 		const virtualCohortStudies = [];
 		for (let virtualCohort of virtualCohorts) {
 			let study = {
-				//allSampleCount: [].concat.apply([], virtualCohort.data.studies.map(study => study.samples)).length,
-				allSampleCount:virtualCohort.data.studies
-													.map(study => study.samples)
-													.reduce(function(prev, curr) {
-														return prev.concat(curr);
-													})
-													.length,
+				allSampleCount:_.sumBy(virtualCohort.data.studies, function(study) { return study.samples.length }),
 				studyId: virtualCohort.id,
 				name: virtualCohort.data.name,
 				description: virtualCohort.data.description,

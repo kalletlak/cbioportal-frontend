@@ -114,8 +114,6 @@ export class QueryStore
 
 	constructor(_window:Window, urlWithInitialParams?:string)
 	{
-		this.loadSavedVirtualCohorts();
-
 		labelMobxPromises(this);
 		if (urlWithInitialParams)
 			this.setParamsFromUrl(urlWithInitialParams);
@@ -145,50 +143,36 @@ export class QueryStore
 	}
 
 	@observable studiesHaveChangedSinceInitialization:boolean = false;
-	@observable userVirtualStudies:VirtualStudy[] = [];
+
 	@observable deletedVirtualStudies:string[] = [];
 
-	@action public deleteVirtualCohort(id:string) {
-		sessionServiceClient.deleteVirtualStudy(id)
-		.then(() => {
-			this.deletedVirtualStudies.push(id)
-		});
-	}
+	@action
+	deleteVirtualStudy = async (id:string) => {
+		this.deletedVirtualStudies.push(id);
+		//unselect if the virtual study is selected
+		if(this.selectedStudyIds.indexOf(id) !== -1) {
+			this.selectedStudyIds = _.difference(this.selectedStudyIds, [id]);
+		}
+		await sessionServiceClient.deleteVirtualStudy(id);
+	};
 
-	@action public addVirtualCohort(id:string) {
-		sessionServiceClient.addVirtualStudy(id)
-		.then(() => {
-			this.deletedVirtualStudies = this.deletedVirtualStudies.filter(x => (x !== id));
-		});
-	}
+	@action
+	addVirtualStudy = async (id:string) => {
+		this.deletedVirtualStudies = this.deletedVirtualStudies.filter(x => (x !== id));
+		await sessionServiceClient.addVirtualStudy(id);
+	};
 
-	@action private loadSavedVirtualCohorts() {
-		sessionServiceClient.getUserVirtualStudies().then((response) => {
-			this.userVirtualStudies = response;
-		});
-	}
-
-	@computed get virtualCohorts():VirtualStudy[] {
-		return this.userVirtualStudies;
-	}
-
-	@computed get virtualCohortsSet():{[id:string]:VirtualStudy} {
-		return this.virtualCohorts.reduce((acc:{[id:string]:VirtualStudy}, next:VirtualStudy)=>{
-			acc[next.id] = next;
-			return acc;
-		}, {});
+	@computed get virtualStudiesSet():{[id:string]:VirtualStudy} {
+		return _.keyBy(this.virtualStudies.result, study => study.id);
 	}
 
 	@computed get studyIdsInSelection():string[] {
 		// Gives selected study ids and study ids that are in selected virtual cohorts
-		const virtualCohortsSet = this.virtualCohortsSet;
 		const ret:{[id:string]:boolean} = {};
 		for (const studyId of this.selectedStudyIds) {
-			const vc = virtualCohortsSet[studyId];
+			const vc = this.virtualStudiesSet[studyId];
 			if (vc) {
-				for (const constStudyId of vc.data.studies.map(study => study.id)) {
-					ret[constStudyId] = true;
-				}
+				vc.data.studies.forEach(study => ret[study.id] = true);
 			} else {
 				ret[studyId] = true;
 			}
@@ -230,28 +214,8 @@ export class QueryStore
 	{
 		let ids:string[] = this._selectedStudyIds.keys();
 		const selectableStudies = this.selectableStudiesSet;
-		let selectableIds = ids.filter(id=>!!selectableStudies[id]);
-
-		if(ids.length !== selectableIds.length) {
-			let entities = this.caseIds.trim().split(/\s+/g);
-			let normStudies:string [] = entities
-			.map(entity=>{
-				let splitEntity = entity.split(':');
-				if (splitEntity.length === 2) {
-					const study = splitEntity[0];
-					const id = splitEntity[1];
-					return study;
-				}
-			})
-			.filter(element => element !== undefined) as string[];
-
-			normStudies = _.uniq(normStudies);
-
-			selectableIds = normStudies.filter(id=>!!selectableStudies[id]);
-		}
-		
-
-		return this.forDownloadTab ? selectableIds.slice(-1) : selectableIds;
+		ids = ids.filter(id=>!!selectableStudies[id]);
+		return this.forDownloadTab ? ids.slice(-1) : ids;
 	}
 
 	set selectedStudyIds(val:string[]) {
@@ -428,12 +392,18 @@ export class QueryStore
 		default: {},
 	});
 
+	readonly virtualStudies = remoteData(sessionServiceClient.getUserVirtualStudies(), []);
+
+	readonly virtualStudyIdsSet = remoteData<{[studyId:string]:boolean}>({
+		await: ()=>[this.virtualStudies],
+		invoke: async ()=>{
+			return stringListToSet(this.virtualStudies.result.map(x=>x.id));
+		},
+		default: {},
+	});
+
 	@computed get selectableStudiesSet():{[studyId:string]:boolean} {
-		const ret = Object.assign({}, this.cancerStudyIdsSet.result);
-		for (const cohort of this.virtualCohorts) {
-			ret[cohort.id] = true;
-		}
-		return ret;
+		return Object.assign({}, this.cancerStudyIdsSet.result, this.virtualStudyIdsSet.result);
 	}
 
 	readonly molecularProfiles = remoteData<MolecularProfile[]>({
@@ -739,7 +709,7 @@ export class QueryStore
 			cancerTypes: this.cancerTypes.result,
 			studies: this.cancerStudies.result,
 			priorityStudies: this.priorityStudies,
-			virtualCohorts: this.virtualCohorts
+			virtualCohorts: this.virtualStudies.result
 		});
 	}
 
@@ -811,9 +781,8 @@ export class QueryStore
 
 	@computed public get isVirtualCohortSelected() {
 		let ret = false;
-		const virtualCohorts = this.virtualCohortsSet;
 		for (const studyId of this.selectedStudyIds) {
-			if (virtualCohorts[studyId]) {
+			if (this.virtualStudiesSet[studyId]) {
 				ret = true;
 				break;
 			}

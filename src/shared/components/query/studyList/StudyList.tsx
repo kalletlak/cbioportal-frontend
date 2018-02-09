@@ -240,7 +240,7 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
                     children={
                         <button 
                             className={`btn btn-default btn-xs`} 
-                            onClick={()=>this.store.addVirtualCohort(study.studyId)}
+                            onClick={()=>this.store.addVirtualStudy(study.studyId)}
                             style={{
                                 lineHeight: '80%',
                             }}
@@ -262,7 +262,7 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
                 links.push({
                     icon: 'trash',
                     tooltip: "Delete this virtual study.",
-                    onClick: ()=>this.store.deleteVirtualCohort(study.studyId),
+                    onClick: ()=>this.store.deleteVirtualStudy(study.studyId),
                 });
             } else {
                 links.push({
@@ -330,11 +330,11 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
                                 <div className={styles.tooltip}
                                 >View study summary</div>
                             }
-                            children={
-                                <span onClick={()=>openStudySummaryFormSubmit(study.studyId)}
-                                  className={ classNames(styles.summaryIcon, 'ci ci-pie-chart')}></span>
-                            }
-                        />
+                        >
+						    <span onClick={()=>openStudySummaryFormSubmit(study.studyId)}
+						        className={ classNames(styles.summaryIcon, 'ci ci-pie-chart')}>
+					        </span>
+						</DefaultTooltip>
                     )}
                 </span>
             );

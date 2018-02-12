@@ -79,7 +79,6 @@ describe('QueryAndDownloadTabs', () => {
         });
 
         it('View VirtualStudies', ()=>{
-            expect(Object.keys(store.selectableStudiesSet)).to.have.lengthOf(virtualStudies.length)
             expect(component.find('[data-test="VirtualStudySelect"]')).to.have.lengthOf(virtualStudies.length)
         });
 

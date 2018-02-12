@@ -65,6 +65,8 @@ import {
     computeCustomDriverAnnotationReport, computePutativeDriverAnnotatedMutations,
     initializeCustomDriverAnnotationSettings, computeGenePanelInformation
 } from "./ResultsViewPageStoreUtils";
+import sessionServiceClient from "shared/api//sessionServiceInstance";
+import { VirtualStudy } from "shared/model/VirtualStudy";
 
 type Optional<T> = (
     {isApplicable: true, value: T}
@@ -312,6 +314,8 @@ export class ResultsViewPageStore {
     @observable hugoGeneSymbols: string[];
     @observable genesetIds: string[];
     @observable samplesSpecification: SamplesSpecificationElement[] = [];
+
+    @observable cohortIdsList: string[] = []
 
     @observable zScoreThreshold: number;
 
@@ -1224,7 +1228,44 @@ export class ResultsViewPageStore {
             })
         }
     }, []);
+    
+    readonly virtualStudies = remoteData(sessionServiceClient.getUserVirtualStudies(), []);
+    
+    readonly virtualStudyIdToStudy = remoteData({
+        await: ()=>[this.virtualStudies],
+        invoke: async ()=>{
+            return _.keyBy(
+                this.virtualStudies.result.map(virtualStudy=>{
+                    let study = {
+                        allSampleCount:_.sumBy(virtualStudy.data.studies, function(study) { return study.samples.length }),
+                        studyId: virtualStudy.id,
+                        name: virtualStudy.data.name,
+                        description: virtualStudy.data.description,
+                        cancerTypeId: "My Virtual Studies"
+                    } as CancerStudy;
+                    return study;
+                }), x =>x.studyId);
+        }
+    },{});
 
+    readonly userQueryStudies = remoteData({
+		await: ()=>[this.studyIdToStudy, this.virtualStudyIdToStudy],
+		invoke: async ()=>{
+            const userStudies = [];
+            const cohorts = Object.assign({}, 
+                                        this.studyIdToStudy.result,
+                                        this.virtualStudyIdToStudy.result) as {[id:string]:CancerStudy}; 
+
+            for(const cohortId of this.cohortIdsList){
+                if(cohorts[cohortId]){
+                    userStudies.push(cohorts[cohortId])
+                }
+            }
+			return userStudies;
+		},
+		default: [],
+    });
+    
     readonly studyIdToStudy = remoteData({
         await: ()=>[this.studies],
         invoke:()=>Promise.resolve(_.keyBy(this.studies.result, x=>x.studyId))

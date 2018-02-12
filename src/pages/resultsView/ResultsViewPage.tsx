@@ -90,6 +90,7 @@ function initStore(queryStore: QueryStore) {
     resultsViewPageStore.zScoreThreshold = serverVars.zScoreThreshold;
     resultsViewPageStore.oqlQuery = oqlQuery;
     resultsViewPageStore.queryStore = queryStore;
+    resultsViewPageStore.cohortIdsList = serverVars.cohortIdsList;
 
     return resultsViewPageStore;
 

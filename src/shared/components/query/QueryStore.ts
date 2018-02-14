@@ -174,13 +174,6 @@ export class QueryStore
 		)
 	};
 
-	/* addVirtualStudy = async (id:string) => {
-		action(()=>{
-			this.deletedVirtualStudies = this.deletedVirtualStudies.filter(x => (x !== id));
-		});
-		await sessionServiceClient.addVirtualStudy(id);
-	}; */
-
 	@computed get virtualStudiesSet():{[id:string]:VirtualStudy} {
 		return _.keyBy(this.virtualStudies.result, study => study.id);
 	}
@@ -761,7 +754,33 @@ export class QueryStore
 
 	@computed get selectedStudies_totalSampleCount()
 	{
-		return this.selectedStudies.reduce((sum:number, study:CancerStudy) => sum + study.allSampleCount, 0);
+		const result:{[id:string]:number} = {};
+		const virtualStudySamples:{[id:string]:string[]} = {};
+
+		this.selectedStudies.forEach(study => {
+			//merge samples for a study across all virtual studies 
+			if(this.isVirtualCohort(study.studyId)){
+				this.virtualStudiesSet[study.studyId] 
+				&& this.virtualStudiesSet[study.studyId]
+						.data
+						.studies
+						.forEach(study => {
+							let samples = virtualStudySamples[study.id] || []
+							//samples may contain duplicates
+							virtualStudySamples[study.id] = samples.concat(study.samples)
+						})
+			}else{
+				//add selected physical studies samples count to result
+				result[study.studyId] =study.allSampleCount;
+			}
+		})
+		//if the physical study in virtual study is not present result object, then 
+		//add the study and samples count into result object
+		Object.keys(virtualStudySamples).forEach(id => {
+			if(!result[id])
+				result[id] = _.uniq(virtualStudySamples[id]).length
+		});
+		return Object.keys(result).reduce((sum, id) => sum + result[id], 0);
 	}
 
 	public isVirtualCohort(studyId:string):boolean {

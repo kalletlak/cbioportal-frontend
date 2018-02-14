@@ -35,6 +35,8 @@ import VirtualCohorts, {LocalStorageVirtualCohort} from "../../lib/VirtualCohort
 import getOverlappingStudies from "../../lib/getOverlappingStudies";
 import MolecularProfilesInStudyCache from "../../cache/MolecularProfilesInStudyCache";
 import {CacheData} from "../../lib/LazyMobXCache";
+import sessionServiceClient from "shared/api//sessionServiceInstance";
+import {IVirtualStudy} from "shared/model/VirtualStudy";
 
 // interface for communicating
 export type CancerStudyQueryUrlParams = {
@@ -112,6 +114,8 @@ export class QueryStore
 
 	constructor(_window:Window, urlWithInitialParams?:string)
 	{
+
+		console.log("came to constructor")
 		this.loadSavedVirtualCohorts();
 
 		labelMobxPromises(this);
@@ -143,46 +147,27 @@ export class QueryStore
 	}
 
 	@observable studiesHaveChangedSinceInitialization:boolean = false;
-	@observable savedVirtualCohorts:VirtualCohort[] = [];
+	@observable userVirtualStudies:IVirtualStudy[] = [];
 
 	@action public deleteVirtualCohort(id:string) {
-		VirtualCohorts.delete(id);
-
-		this.loadSavedVirtualCohorts();
+		console.log("came to delete")
+		sessionServiceClient.deleteVirtualStudy(id)
+		.then(() => {
+			this.loadSavedVirtualCohorts();
+		});
 	}
-
 	@action private loadSavedVirtualCohorts() {
-		let localStorageVirtualCohorts:LocalStorageVirtualCohort[] = VirtualCohorts.get();
-		this.savedVirtualCohorts = localStorageVirtualCohorts.map((x:any)=>{
-			let samples:{studyId:string, sampleId:string}[] = [];
-			const constituentStudyIds:string[] = [];
-			for (const selectedCasesObj of x.selectedCases) {
-				samples = samples.concat(selectedCasesObj.samples.map((sampleId:string)=>({studyId:selectedCasesObj.studyID, sampleId})));
-				constituentStudyIds.push(selectedCasesObj.studyID);
-			}
-			return {
-				id: x.virtualCohortID,
-				name: x.studyName,
-				description: x.description,
-				samples,
-				constituentStudyIds
-			};
+		let temp = sessionServiceClient.getUserVirtualStudies().then((response) => {
+			this.userVirtualStudies = response;
 		});
 	}
 
-	@computed get virtualCohorts():VirtualCohort[] {
-		const ret:VirtualCohort[] = [];
-		// if (this.temporaryVirtualCohort.result) {
-		// 	ret.push(this.temporaryVirtualCohort.result);
-		// }
-		// for (let i=0; i<this.savedVirtualCohorts.length; i++) {
-		// 	ret.push(this.savedVirtualCohorts[i]);
-		// }
-		return ret;
+	@computed get virtualCohorts():IVirtualStudy[] {
+		return this.userVirtualStudies;
 	}
 
-	@computed get virtualCohortsSet():{[id:string]:VirtualCohort} {
-		return this.virtualCohorts.reduce((acc:{[id:string]:VirtualCohort}, next:VirtualCohort)=>{
+	@computed get virtualCohortsSet():{[id:string]:IVirtualStudy} {
+		return this.virtualCohorts.reduce((acc:{[id:string]:IVirtualStudy}, next:IVirtualStudy)=>{
 			acc[next.id] = next;
 			return acc;
 		}, {});
@@ -205,60 +190,15 @@ export class QueryStore
 		return Object.keys(ret);
 	}
 
-	readonly temporaryVirtualCohortId = remoteData({
-		await:()=>[this.cancerStudies],
+	getUserVirtualStudies = remoteData<IVirtualStudy[]|undefined>({
 		invoke: async ()=>{
-			const knownStudies:{[studyId:string]:boolean} = {};
-			for (const study of this.cancerStudies.result) {
-				knownStudies[study.studyId] = true;
-			}
-			for (const study of this.savedVirtualCohorts) {
-				knownStudies[study.id] = true;
-			}
-			const candidates = ((window as any).cohortIdsList as string[]) || [];
-			const temporary = candidates.filter(x=>!knownStudies[x]);
-			if (temporary.length === 0) {
-				return undefined;
-			} else {
-				return temporary[0];
-			}
-		}
-	});
-
-	readonly temporaryVirtualCohort = remoteData<VirtualCohort|undefined>({
-		await: ()=>[this.temporaryVirtualCohortId],
-		invoke: async ()=>{
-			if (!this.temporaryVirtualCohortId.result) {
-				return undefined;
-			}
 			try {
-				const virtualCohortData:Response = await request.get(`${window.location.protocol}//${getHost()}/api-legacy/proxy/session-service/virtual_cohort/${this.temporaryVirtualCohortId.result}`);
-				const virtualCohortJSON = JSON.parse(virtualCohortData.text);
-				const name:string = virtualCohortJSON.data.studyName as string;
-				const description:string = virtualCohortJSON.data.description as string;
-				let samples:{sampleId:string, studyId:string}[] = [];
-				const constituentStudyIds:string[] = [];
-				for (const selectedCasesObj of virtualCohortJSON.data.selectedCases) {
-					samples = samples.concat(selectedCasesObj.samples.map((sampleId:string)=>({studyId:selectedCasesObj.studyID, sampleId})));
-					constituentStudyIds.push(selectedCasesObj.studyID);
-				}
-				return {
-					id: this.temporaryVirtualCohortId.result,
-					name,
-					description,
-					samples,
-					constituentStudyIds
-				};
+				const rs: IVirtualStudy[] = await sessionServiceClient.getUserVirtualStudies();
+				return rs;
+				
 			} catch (e) {
 				// In case anything related to fetching this data fails
 				return undefined;
-			}
-		},
-		onResult:(vc?:VirtualCohort)=>{
-			if (vc) {
-				this.selectedSampleListId = CUSTOM_CASE_LIST_ID;
-				this.caseIdsMode = "sample";
-				this.caseIds = vc.samples.map(sample=>`${sample.studyId}:${sample.sampleId}`).join("\n");
 			}
 		}
 	});
@@ -483,10 +423,10 @@ export class QueryStore
 
 	readonly molecularProfiles = remoteData<MolecularProfile[]>({
 		invoke: async () => {
-			if (!this.singleSelectedStudyId)
+			if (!this.isSingleNonVirtualStudySelected)
 				return [];
 			return await client.getAllMolecularProfilesInStudyUsingGET({
-				studyId: this.singleSelectedStudyId
+				studyId: this.selectedStudyIds[0]
 			});
 		},
 		default: [],
@@ -823,9 +763,9 @@ export class QueryStore
 		return !this.cancerStudyIdsSet.result[studyId];
 	}
 
-	public isTemporaryVirtualCohort(studyId:string):boolean {
-		return this.temporaryVirtualCohortId.isComplete && this.temporaryVirtualCohortId.result === studyId;
-	}
+	// public isTemporaryVirtualCohort(studyId:string):boolean {
+	// 	return this.temporaryVirtualCohortId.isComplete && this.temporaryVirtualCohortId.result === studyId;
+	// }
 
 	private isSingleStudySelected(shouldBeVirtualCohort:boolean) {
 		if (this.selectedStudyIds.length !== 1) {

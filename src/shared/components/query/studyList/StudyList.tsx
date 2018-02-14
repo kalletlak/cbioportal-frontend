@@ -231,7 +231,9 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
 			});
 		}
 
-		if (this.store.isVirtualCohort(study.studyId) && !this.store.isTemporaryVirtualCohort(study.studyId)) {
+		if (this.store.isVirtualCohort(study.studyId) 
+		//&& !this.store.isTemporaryVirtualCohort(study.studyId)
+	) {
 			links.push({
 				icon: 'trash',
 				tooltip: "Delete this virtual study.",

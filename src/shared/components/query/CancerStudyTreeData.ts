@@ -1,6 +1,7 @@
 import {CancerStudy, TypeOfCancer as CancerType} from "../../api/generated/CBioPortalAPI";
 import * as _ from 'lodash';
-import {PriorityStudies, VirtualCohort} from "config/IAppConfig";
+import {PriorityStudies} from "config/IAppConfig";
+import {IVirtualStudy} from "shared/model/VirtualStudy";
 
 export const CANCER_TYPE_ROOT = 'tissue';
 
@@ -39,7 +40,7 @@ export default class CancerStudyTreeData
 	map_cancerTypeId_cancerType = new Map<string, CancerType>();
 	map_studyId_cancerStudy = new Map<string, CancerStudy>();
 
-	constructor({cancerTypes = [], studies = [], priorityStudies = {}, virtualCohorts=[]}: {cancerTypes: CancerType[], studies: CancerStudy[], priorityStudies?:PriorityStudies, virtualCohorts?:VirtualCohort[]})
+	constructor({cancerTypes = [], studies = [], priorityStudies = {}, virtualCohorts=[]}: {cancerTypes: CancerType[], studies: CancerStudy[], priorityStudies?:PriorityStudies, virtualCohorts?:IVirtualStudy[]})
 	{
 		let nodes:CancerTreeNode[];
 		let node:CancerTreeNode;
@@ -51,7 +52,7 @@ export default class CancerStudyTreeData
 
 		// add virtual cohort category, and studies
 		// disabled, for now
-		/*const virtualCohortsName = "My Virtual Studies";
+		const virtualCohortsName = "My Virtual Studies";
 		const virtualCohortsCategory = {
 			clinicalTrialKeywords: '',
 			dedicatedColor: '',
@@ -70,7 +71,7 @@ export default class CancerStudyTreeData
 				cancerTypeId: virtualCohortsName
 			} as CancerStudy;
 			virtualCohortStudies.push(study);
-		}*/
+		}
 
 		// add priority categories
 		for (let name in priorityStudies)
@@ -84,8 +85,8 @@ export default class CancerStudyTreeData
 				cancerTypeId: name
 			});
 		}
-		//cancerTypes = [virtualCohortsCategory].concat(this.priorityCategories).concat(this.rootCancerType, cancerTypes);
-		//studies = virtualCohortStudies.concat(studies);
+		cancerTypes = [virtualCohortsCategory].concat(this.priorityCategories).concat(this.rootCancerType, cancerTypes);
+		studies = virtualCohortStudies.concat(studies);
 		cancerTypes = this.priorityCategories.concat(this.rootCancerType, cancerTypes);
 
 		// initialize lookups and metadata entries

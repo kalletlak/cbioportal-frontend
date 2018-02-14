@@ -238,7 +238,9 @@ export class QueryStore
 	}
 
 	set selectedStudyIds(val:string[]) {
-		this._selectedStudyIds = observable.map(stringListToSet(val));
+		//filter out deleted virtual study
+		const filteredStudies = val.filter(id => !_.includes(this.deletedVirtualStudies,id))
+		this._selectedStudyIds = observable.map(stringListToSet(filteredStudies));
 	}
 
 	@action public setStudyIdSelected(studyId:string, selected:boolean) {

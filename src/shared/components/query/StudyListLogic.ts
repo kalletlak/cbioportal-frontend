@@ -205,7 +205,7 @@ export class FilteredCancerTreeView
 		return meta.descendantStudies.filter(this.nodeFilter);
 	}
 
-	getCheckboxProps(node: CancerTreeNode): {checked: boolean, indeterminate?: boolean}
+	getCheckboxProps(node: CancerTreeNode): {checked: boolean, indeterminate?: boolean, disabled?: boolean}
 	{
 		let meta = this.getMetadata(node);
 		if (meta.isCancerType)
@@ -223,7 +223,8 @@ export class FilteredCancerTreeView
 		{
 			let study = node as CancerStudy;
 			let checked = !!this.store.selectedStudyIds.find(id => id == study.studyId);
-			return {checked};
+			let disabled = this.store.isDeletedVirtualStudy(study.studyId);
+			return {checked,disabled};
 		}
 	}
 

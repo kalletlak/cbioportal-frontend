@@ -356,18 +356,11 @@ export class CancerTreeCheckbox extends QueryStoreComponent<ICancerTreeCheckboxP
 		return this.props.view.getCheckboxProps(this.props.node);
 	}
 
-	@computed get isCheckBoxDisabled()
-	{
-		return this.props.view.isCheckBoxDisabled(this.props.node)
-	} 
-
 	render()
 	{
-		const inputProps = {disabled:this.isCheckBoxDisabled} as React.HTMLProps<HTMLInputElement>;
 		return (
 			<LabeledCheckbox
 				{...this.checkboxProps}
-				inputProps={inputProps}
 				onChange={event => {
 					this.props.view.onCheck(this.props.node, (event.target as HTMLInputElement).checked);
 				}}

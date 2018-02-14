@@ -101,7 +101,7 @@ export function getGenomeNexusApiUrl() {
 }
 
 export function getSessionServiceApiUrl() {
-    return cbioUrl(`/api/session/virtual_study`);
+    return cbioUrl(`/api-legacy/proxy/session/virtual_study`);
 }
 
 export function getPdbAnnotationApiUrl() {

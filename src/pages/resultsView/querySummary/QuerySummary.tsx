@@ -87,7 +87,7 @@ export default class QuerySummary extends React.Component<{ queryStore:QueryStor
 
             const loadingComplete = this.props.store.totalAlterationStats.isComplete && this.props.store.studies.isComplete;
             const selectableStudies = this.props.queryStore.selectableStudiesSet;
-            let selectableIds = this.cohortsList.filter(id=>!!selectableStudies[id]);
+            const selectableIds = this.cohortsList.filter(id=>!!selectableStudies[id]);
             let isSingleCohortQuery = (this.props.store.studies.result.length === 1);
 
 

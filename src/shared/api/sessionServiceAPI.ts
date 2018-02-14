@@ -28,12 +28,12 @@ export default class sessionSeriveAPI {
                 .then((res) => {
                     let response : Array<VirtualStudy> = res.body;
                     return response.map((record: VirtualStudy) => {
-                        const constituentStudyIds:string[] = []
-                        const samplesTemp = record.data.studies.map((obj) => {
+                        let constituentStudyIds:string[] = []
+                        let studySamples = record.data.studies.map((obj) => {
                             constituentStudyIds.push(obj.id)
                             return obj.samples.map((sample)=>({studyID:obj.id,sample:sample}))
                         })
-                        const samples = [].concat.apply([], samplesTemp)
+                        let samples = [].concat.apply([], studySamples)
                         
                         return {
                             id: record.id,

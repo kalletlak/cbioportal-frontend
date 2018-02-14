@@ -114,8 +114,6 @@ export class QueryStore
 
 	constructor(_window:Window, urlWithInitialParams?:string)
 	{
-
-		console.log("came to constructor")
 		this.loadSavedVirtualCohorts();
 
 		labelMobxPromises(this);
@@ -150,14 +148,13 @@ export class QueryStore
 	@observable userVirtualStudies:IVirtualStudy[] = [];
 
 	@action public deleteVirtualCohort(id:string) {
-		console.log("came to delete")
 		sessionServiceClient.deleteVirtualStudy(id)
 		.then(() => {
 			this.loadSavedVirtualCohorts();
 		});
 	}
 	@action private loadSavedVirtualCohorts() {
-		let temp = sessionServiceClient.getUserVirtualStudies().then((response) => {
+		sessionServiceClient.getUserVirtualStudies().then((response) => {
 			this.userVirtualStudies = response;
 		});
 	}
@@ -784,10 +781,6 @@ export class QueryStore
 		// if the study id doesn't correspond to one in this.cancerStudies, then its a virtual cohort
 		return !this.cancerStudyIdsSet.result[studyId];
 	}
-
-	// public isTemporaryVirtualCohort(studyId:string):boolean {
-	// 	return this.temporaryVirtualCohortId.isComplete && this.temporaryVirtualCohortId.result === studyId;
-	// }
 
 	private isSingleStudySelected(shouldBeVirtualCohort:boolean) {
 		if (this.selectedStudyIds.length !== 1) {

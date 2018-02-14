@@ -144,23 +144,42 @@ export class QueryStore
 
 	@observable studiesHaveChangedSinceInitialization:boolean = false;
 
+	//temporary store to collect deleted studies. 
+	//it is used to restore virtual studies in current window
 	@observable deletedVirtualStudies:string[] = [];
 
-	@action
-	deleteVirtualStudy = async (id:string) => {
-		this.deletedVirtualStudies.push(id);
-		//unselect if the virtual study is selected
-		if(this.selectedStudyIds.indexOf(id) !== -1) {
-			this.selectedStudyIds = _.difference(this.selectedStudyIds, [id]);
-		}
-		await sessionServiceClient.deleteVirtualStudy(id);
+	deleteVirtualStudy(id:string) {
+		sessionServiceClient.deleteVirtualStudy(id).then(
+            action(() => {
+				this.deletedVirtualStudies.push(id);
+				//unselect if the virtual study is selected
+				if(this.selectedStudyIds.indexOf(id) !== -1) {
+					this.selectedStudyIds = _.difference(this.selectedStudyIds, [id]);
+				}
+            }),
+            action(error => {
+                //TODO: how to handle if there is an error
+			})
+		)
 	};
 
-	@action
-	addVirtualStudy = async (id:string) => {
-		this.deletedVirtualStudies = this.deletedVirtualStudies.filter(x => (x !== id));
-		await sessionServiceClient.addVirtualStudy(id);
+	addVirtualStudy(id:string) {
+		sessionServiceClient.addVirtualStudy(id).then(
+            action(() => {
+				this.deletedVirtualStudies = this.deletedVirtualStudies.filter(x => (x !== id));
+            }),
+            action(error => {
+                //TODO: how to handle if there is an error
+			})
+		)
 	};
+
+	/* addVirtualStudy = async (id:string) => {
+		action(()=>{
+			this.deletedVirtualStudies = this.deletedVirtualStudies.filter(x => (x !== id));
+		});
+		await sessionServiceClient.addVirtualStudy(id);
+	}; */
 
 	@computed get virtualStudiesSet():{[id:string]:VirtualStudy} {
 		return _.keyBy(this.virtualStudies.result, study => study.id);

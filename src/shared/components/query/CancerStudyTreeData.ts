@@ -48,7 +48,6 @@ export default class CancerStudyTreeData
 
 		// sort by name
 		cancerTypes = CancerStudyTreeData.sortNodes(cancerTypes);
-		studies = CancerStudyTreeData.sortNodes(studies);
 
 		// add virtual cohort category, and studies
 		// disabled, for now
@@ -64,7 +63,7 @@ export default class CancerStudyTreeData
 		const virtualCohortStudies = [];
 		for (let virtualCohort of virtualCohorts) {
 			let study = {
-				allSampleCount:_.sumBy(virtualCohort.data.studies, function(study) { return study.samples.length }),
+				allSampleCount:_.sumBy(virtualCohort.data.studies, study=>study.samples.length),
 				studyId: virtualCohort.id,
 				name: virtualCohort.data.name,
 				description: virtualCohort.data.description,
@@ -85,8 +84,8 @@ export default class CancerStudyTreeData
 				cancerTypeId: name
 			});
 		}
-		cancerTypes = [virtualCohortsCategory].concat(this.priorityCategories).concat(this.rootCancerType, cancerTypes);
-		studies = CancerStudyTreeData.sortNodes(virtualCohortStudies).concat(studies);
+		cancerTypes = [virtualCohortsCategory, ...this.priorityCategories, this.rootCancerType, ...cancerTypes];
+		studies = CancerStudyTreeData.sortNodes([...virtualCohortStudies, ...studies]);
 
 		// initialize lookups and metadata entries
 		for (nodes of [cancerTypes, studies])

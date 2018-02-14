@@ -109,7 +109,7 @@ export default class CancerSummaryContainer extends React.Component<{ store: Res
 
             // if we have no groupby value, then we need to choose a default
             if (this.groupAlterationsBy === undefined) {
-                if (this.props.store.studies.result.length > 1) {
+                if (this.props.store.physicalStudies.result.length > 1) {
                     this.groupAlterationsBy = 'studyId';
                 } else {
                     const cancerTypes = _.chain(this.props.store.samplesExtendedWithClinicalData.result)

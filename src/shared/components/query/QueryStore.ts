@@ -225,8 +225,14 @@ export class QueryStore
 	@computed get selectedStudyIds():string[]
 	{
 		let ids:string[] = this._selectedStudyIds.keys();
-		const selectableStudies = this.selectableStudiesSet;
-		ids = ids.filter(id=>!!selectableStudies[id]);
+		const selectableStudies = this.selectableIdToPhysicalIdsMap.result;
+		ids = ids.reduce((obj:string[],next)=>{
+			if(selectableStudies[next]){
+				return obj.concat(selectableStudies[next])
+			}
+			return obj;
+
+		},[]);
 		return this.forDownloadTab ? ids.slice(-1) : ids;
 	}
 
@@ -253,9 +259,14 @@ export class QueryStore
 		}
 	}
 
-	//TODO: never used, to be cleaned
-	private isStudyIdSelected(studyId:string):boolean {
-		return !!this._selectedStudyIds.get(studyId);
+	@observable private _defaultSelectedIds:ObservableMap<boolean> = observable.map<boolean>();
+	
+	@action private setDefaultSelectedIds(studyId:string, selected:boolean) {
+		if (selected) {
+			this._defaultSelectedIds.set(studyId, true);
+		} else {
+			this._defaultSelectedIds.delete(studyId);
+		}
 	}
 
 	@observable dataTypePriority = {mutation: true, cna: true};
@@ -408,17 +419,37 @@ export class QueryStore
 
 	readonly virtualStudies = remoteData(sessionServiceClient.getUserVirtualStudies(), []);
 
-	readonly virtualStudyIdsSet = remoteData<{[studyId:string]:boolean}>({
-		await: ()=>[this.virtualStudies],
-		invoke: async ()=>{
-			return stringListToSet(this.virtualStudies.result.map(x=>x.id));
+	readonly selectableIdToPhysicalIdsMap = remoteData<{[studyId:string]:string[]}>({
+		await: ()=>[this.cancerStudies, this.virtualStudies],
+	    invoke: async ()=>{
+			let physicalStudiesIdsMap:{[studyId:string]:string[]} = this.cancerStudies.result.reduce((obj:{[studyId:string]:string[]}, item) =>{
+				obj[item.studyId] = [item.studyId]
+				return obj
+			}, {});
+
+			let virtualStudiesIdsMap:{[studyId:string]:string[]} = this.virtualStudies.result.reduce((obj:{[studyId:string]:string[]}, item) =>{
+				obj[item.id] = [item.id]
+				return obj
+			}, {});
+
+			let knownSelectableIds:{[studyId:string]:string[]} = Object.assign({}, physicalStudiesIdsMap, virtualStudiesIdsMap);
+
+			const unknownIds:string[] = this._defaultSelectedIds.keys().filter(id => !knownSelectableIds[id]);
+
+			await Promise.all(unknownIds.map(id =>{
+				return new Promise((resolve, reject) => {
+					sessionServiceClient.getVirtualStudy(id).then((response)=>{
+						knownSelectableIds[id] = response.data.studies.map(study=>study.id)
+						resolve();
+					}).catch(() => {
+						resolve();
+					});
+				});
+			}));
+			return knownSelectableIds;
 		},
 		default: {},
 	});
-
-	@computed get selectableStudiesSet():{[studyId:string]:boolean} {
-		return Object.assign({}, this.cancerStudyIdsSet.result, this.virtualStudyIdsSet.result);
-	}
 
 	readonly molecularProfiles = remoteData<MolecularProfile[]>({
 		invoke: async () => {
@@ -746,10 +777,9 @@ export class QueryStore
 
 	@computed get unknownStudyIds()
 	{
-		let ids:string[] = this.selectedStudyIds;
-		const selectableStudies = this.selectableStudiesSet;
-		ids = ids.filter(id=>!(id in selectableStudies));
-		return ids;
+		const selectableStudies = this.selectableIdToPhysicalIdsMap.result;
+		let ids:string[] = this._selectedStudyIds.keys();
+		return ids.filter(id=>!(id in selectableStudies));
 	}
 
 	@computed get selectedStudies_totalSampleCount()
@@ -1281,12 +1311,14 @@ export class QueryStore
 		const windowStudyId = (_window as any).selectedCancerStudyId;
 		if (windowStudyId) {
 			this.setStudyIdSelected(windowStudyId, true);
+			this.setDefaultSelectedIds(windowStudyId, true);
 		}
 
 		const cohortIdsList:string[] = ((_window as any).cohortIdsList as string[]) || [];
 		for (const studyId of cohortIdsList) {
 			if (studyId !== "null") {
 				this.setStudyIdSelected(studyId, true);
+				this.setDefaultSelectedIds(studyId, true);
 			}
 		}
 

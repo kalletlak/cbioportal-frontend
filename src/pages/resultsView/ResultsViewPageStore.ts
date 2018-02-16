@@ -1248,24 +1248,39 @@ export class ResultsViewPageStore {
         }
     },{});
 
+    //this is only required to show study name and description on the results page
     readonly queriedStudies = remoteData({
 		await: ()=>[this.studyIdToStudy, this.virtualStudyIdToStudy],
 		invoke: async ()=>{
-            const userStudies = [];
+            const queriedStudies = [];
             const cohorts = Object.assign({}, 
                                         this.studyIdToStudy.result,
                                         this.virtualStudyIdToStudy.result) as {[id:string]:CancerStudy}; 
 
             for(const cohortId of this.cohortIdsList){
                 if(cohorts[cohortId]){
-                    userStudies.push(cohorts[cohortId])
+                    queriedStudies.push(cohorts[cohortId])
                 }
             }
-			return userStudies;
+
+            if(this.cohortIdsList.length === 1 && queriedStudies.length === 0){
+                return sessionServiceClient.getVirtualStudy(this.cohortIdsList[0]).then(function(virtualStudy){
+                    let study = {
+                        allSampleCount:_.sumBy(virtualStudy.data.studies, study=>study.samples.length),
+                        studyId: virtualStudy.id,
+                        name: virtualStudy.data.name,
+                        description: virtualStudy.data.description,
+                        cancerTypeId: "My Virtual Studies"
+                    } as CancerStudy;
+                    return [study];
+                }, () => []);
+            }else{
+                return queriedStudies;
+            }
 		},
 		default: [],
     });
-    
+
     readonly studyIdToStudy = remoteData({
         await: ()=>[this.physicalStudies],
         invoke:()=>Promise.resolve(_.keyBy(this.physicalStudies.result, x=>x.studyId))

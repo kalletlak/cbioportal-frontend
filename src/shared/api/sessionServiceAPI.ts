@@ -14,6 +14,14 @@ export default class sessionSeriveAPI {
                 });              
     }
 
+    getVirtualStudy(id:string): Promise<VirtualStudy> {
+        return request
+                .get(getSessionServiceApiUrl()+'/'+id)
+                .then((res) => {
+                    return res.body;
+                });              
+    }
+
     deleteVirtualStudy(id:string){
         return request
                 .delete(`${getSessionServiceApiUrl()}/${id}`)

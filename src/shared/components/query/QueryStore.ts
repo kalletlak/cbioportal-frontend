@@ -238,6 +238,29 @@ export class QueryStore
 		return this.forDownloadTab ? ids.slice(-1) : ids;
 	}
 
+	//this is mainly used when custom case set is selected
+	@computed get selectedStudyToSampleSet():{[id:string]:{[id:string]:boolean}}
+	{
+		let studyToSampleSet:{[id:string]:{[id:string]:boolean}} = {}
+		this.selectedStudyIds.forEach(id => {
+			if(this.virtualStudiesMap[id]){
+				let virtualStudy = this.virtualStudiesMap[id]
+				virtualStudy.data.studies.forEach(study => {
+					if(studyToSampleSet[study.id]){
+						if(Object.keys(studyToSampleSet[study.id]).length > 0){
+							studyToSampleSet[study.id] = Object.assign({}, studyToSampleSet[study.id], stringListToSet(study.samples))
+						}
+					}else {
+						studyToSampleSet[study.id] = stringListToSet(study.samples)
+					}
+				});
+			} else {
+				studyToSampleSet[id] = {} //an empty list indicates all to select all samples
+			}
+		});
+		return studyToSampleSet;
+	}
+
 	set selectedStudyIds(val:string[]) {
 		//filter out deleted virtual study
 		const filteredStudies = val.filter(id => !_.includes(this.deletedVirtualStudies,id))
@@ -710,6 +733,19 @@ export class QueryStore
 			}
 
 			invalidIds = invalidIds.concat(cases.filter(x=>(!validIds[`${x.study}:${x.id}`])));
+
+			let selectedStudyToSampleSet = this.selectedStudyToSampleSet;
+
+			//check if the valid samples are in selectable samples set
+			//this is when a virtual study(which would have subset of samples) is selected
+			retSamples.forEach(obj => {
+				//if selectedStudyToSampleSet[obj.studyId] is empty indicates that all samples in that study are selectable
+				if(selectedStudyToSampleSet[obj.studyId] && !_.isEmpty(selectedStudyToSampleSet[obj.studyId])){
+					if(!selectedStudyToSampleSet[obj.studyId][obj.sampleId]){
+						invalidIds.push({id:obj.sampleId,study:obj.studyId})
+					}
+				}
+			});
 
 			if (invalidIds.length) {
 				if (this.isSingleNonVirtualStudySelected) {

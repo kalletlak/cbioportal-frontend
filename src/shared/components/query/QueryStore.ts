@@ -133,9 +133,41 @@ export class QueryStore
 		};
 
 		reaction(
-			()=>this.allSelectedStudyIds,
+			()=>this._selectedStudyIds,
 			()=>{
 				this.studiesHaveChangedSinceInitialization = true;
+			}
+		);
+
+		reaction(
+			()=>this.selectableIdToPhysicalIdsSet.result,
+			selectableIdToPhysicalIdsSet=>{
+				if(this.selectedSampleListId !== CUSTOM_CASE_LIST_ID) {
+					let virtualStudyIdsSet = stringListToSet(this.virtualStudies.result.map(x=>x.id));
+					let userSelectableIds:{[studyId:string]:boolean} = Object.assign({}, this.cancerStudyIdsSet.result, virtualStudyIdsSet);
+					let sharedIds:string[] = [];
+					let unknownIds:string[] = [];
+			
+					this._defaultSelectedIds.keys().forEach(id=>{
+						if(selectableIdToPhysicalIdsSet[id]){
+							if(!userSelectableIds[id]){
+								sharedIds.push(id)
+							}
+						}else{
+							unknownIds.push(id);
+						}
+					});
+					//this block is executed when the query is a saved virtual study query is shared to other user
+					//in this scenario we override some parameters to correctly show selected cases to user
+					if(!_.isEmpty(sharedIds) && _.isEmpty(unknownIds)){
+						this.selectedSampleListId = CUSTOM_CASE_LIST_ID;
+						this.caseIdsMode = 'sample';
+						let studySampleMap = this._defaultStudySampleMap
+						this.caseIds = _.flatten<string>(Object.keys(studySampleMap).map(studyId=>{
+							return studySampleMap[studyId].map((sampleId:string)=>`${studyId}:${sampleId}`);
+						})).join("\n");
+					}
+				}
 			}
 		);
 	}
@@ -220,14 +252,10 @@ export class QueryStore
 
 	@observable private _selectedStudyIds:ObservableMap<boolean> = observable.map<boolean>();
 
-	@computed get allSelectedStudyIds():string[] {
-		return this._selectedStudyIds.keys();
-	}
-
 	@computed get selectedStudyIds():string[]
 	{
 		let ids:string[] = this._selectedStudyIds.keys();
-		const selectableStudies = this.selectableIdToPhysicalIdsMap.result;
+		const selectableStudies = this.selectableIdToPhysicalIdsSet.result;
 		ids = ids.reduce((obj:string[],next)=>{
 			if(selectableStudies[next]){
 				return obj.concat(selectableStudies[next])
@@ -353,6 +381,9 @@ export class QueryStore
 
 	@observable caseIds = '';
 
+	// this variable is used to set set custom case ids if the query is a shared virtual study query
+	@observable _defaultStudySampleMap:{[id:string]:string[]} = {};
+
 	@observable _caseIdsMode:'sample'|'patient' = 'sample';
 	@computed get caseIdsMode()
 	{
@@ -441,13 +472,12 @@ export class QueryStore
 
 	readonly virtualStudies = remoteData(sessionServiceClient.getUserVirtualStudies(), []);
 
-
 	//map all ids to UI selectable(accessible) ids.
 	//user accessible physical study id is mapped directly
 	//user virtual study id is mapped directly
 	//shared(created by another user) virtual study, id is mapped to all the physical studies in that study
-	readonly selectableIdToPhysicalIdsMap = remoteData<{[studyId:string]:string[]}>({
-		await: ()=>[this.cancerStudies, this.virtualStudies],
+	readonly selectableIdToPhysicalIdsSet = remoteData<{[studyId:string]:string[]}>({
+		await: ()=>[this.cancerStudies, this.virtualStudies, this.cancerStudyIdsSet],
 		invoke: async ()=>{
 			let physicalStudiesIdsMap:{[studyId:string]:string[]} = this.cancerStudies.result.reduce((obj:{[studyId:string]:string[]}, item) =>{
 				obj[item.studyId] = [item.studyId]
@@ -461,9 +491,11 @@ export class QueryStore
 
 			let knownSelectableIds:{[studyId:string]:string[]} = Object.assign({}, physicalStudiesIdsMap, virtualStudiesIdsMap);
 
-			const unknownIds:string[] = this._defaultSelectedIds.keys().filter(id => !knownSelectableIds[id]);
+			let userSelectableIds = Object.assign({},knownSelectableIds)
+			//queried id that are not selectable(this would mostly be shared virtual study)
+			const unknownQueriedIds:string[] = this._defaultSelectedIds.keys().filter(id => !knownSelectableIds[id]);
 			
-			await Promise.all(unknownIds.map(id =>{
+			await Promise.all(unknownQueriedIds.map(id =>{
 				return new Promise((resolve, reject) => {
 					sessionServiceClient.getVirtualStudy(id).then((virtualStudy)=>{
 						//physical study ids iin virtual study
@@ -481,7 +513,7 @@ export class QueryStore
 			}));
 			return knownSelectableIds;
 		},
-		default: {},
+		default: {}
 	});
 
 	readonly molecularProfiles = remoteData<MolecularProfile[]>({
@@ -825,9 +857,9 @@ export class QueryStore
 	// this may be any unknow and unauthorized studies trying to query
 	@computed get unknownStudyIds()
 	{
-		const selectableStudies = this.selectableIdToPhysicalIdsMap.result;
+		const selectableStudiesSet = this.selectableIdToPhysicalIdsSet.result;
 		let ids:string[] = this._selectedStudyIds.keys();
-		return ids.filter(id=>!(id in selectableStudies));
+		return ids.filter(id=>!(id in selectableStudiesSet));
 	}
 
 	@computed get selectedStudies_totalSampleCount()
@@ -1346,14 +1378,17 @@ export class QueryStore
 				this.initiallySelected.sampleListId = true;
 			}
 
+			// this variable is set custom case ids when it is a shared virtual study query
 			const studySampleMap = (_window as any).serverVars.studySampleObj;
 			if (studySampleMap) {
-				if (caseSetId === CUSTOM_CASE_LIST_ID) {
-					this.caseIdsMode = 'sample';
-					this.caseIds = _.flatten<string>(Object.keys(studySampleMap).map(studyId=>{
-						return studySampleMap[studyId].map((sampleId:string)=>`${studyId}:${sampleId}`);
-					})).join("\n");
-				}
+				this._defaultStudySampleMap = studySampleMap;
+			}
+
+			const caseIds:string = (_window as any).serverVars.caseIds;
+			if (caseIds && (caseSetId === CUSTOM_CASE_LIST_ID)) {
+				this.caseIdsMode = 'sample';
+				this.caseIds = caseIds.split(/[\s+]/).join("\n");
+				this.initiallySelected.sampleListId = true;
 			}
 		}
 
@@ -1370,14 +1405,6 @@ export class QueryStore
 				this.setStudyIdSelected(studyId, true);
 				this._defaultSelectedIds.set(studyId, true);
 			}
-		}
-
-		const windowSampleIds:string = (_window as any).selectedSampleIds;
-		if (windowSampleIds) {
-			this.selectedSampleListId = CUSTOM_CASE_LIST_ID;
-			this.caseIdsMode = 'sample';
-			this.caseIds = windowSampleIds.split(/\s+/).join("\n");
-			this.initiallySelected.sampleListId = true;
 		}
 	}
 

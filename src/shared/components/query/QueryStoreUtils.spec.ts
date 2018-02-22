@@ -39,7 +39,7 @@ describe('QueryStoreUtils', ()=>{
         it("correctly sets study parameters in case of single study", ()=>{
             let store = new QueryStore({} as Window);
             store.selectedStudyIds = ["a"];
-            Sinon.stub(store, "selectableIdToPhysicalIdsMap").returns(() => {
+            Sinon.stub(store, "selectableIdToPhysicalIdsSet").returns(() => {
                 return new Promise((resolve, reject) => {
                     resolve({"a":["a"], "b":["b"]});
                 });

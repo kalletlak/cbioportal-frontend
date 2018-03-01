@@ -63,7 +63,8 @@ import {QueryStore} from "shared/components/query/QueryStore";
 import {
     annotateMolecularDatum, getOncoKbOncogenic,
     computeCustomDriverAnnotationReport, computePutativeDriverAnnotatedMutations,
-    initializeCustomDriverAnnotationSettings, computeGenePanelInformation
+    initializeCustomDriverAnnotationSettings, computeGenePanelInformation,
+    getQueriedStudies
 } from "./ResultsViewPageStoreUtils";
 import sessionServiceClient from "shared/api//sessionServiceInstance";
 import { VirtualStudy } from "shared/model/VirtualStudy";
@@ -697,10 +698,10 @@ export class ResultsViewPageStore {
         await: () => [
             this.samples,
             this.clinicalDataForSamples,
-            this.physicalStudies
+            this.studies
         ],
         invoke: () => {
-            return Promise.resolve(extendSamplesWithCancerType(this.samples.result, this.clinicalDataForSamples.result,this.physicalStudies.result));
+            return Promise.resolve(extendSamplesWithCancerType(this.samples.result, this.clinicalDataForSamples.result,this.studies.result));
         }
     });
 
@@ -772,8 +773,8 @@ export class ResultsViewPageStore {
        }
     });
 
-    public get studyMap():{ [studyId:string]:CancerStudy } {
-        return _.keyBy(this.physicalStudies.result, (study:CancerStudy)=>study.studyId);
+    public get physicalStudyMap():{ [studyId:string]:CancerStudy } {
+        return _.keyBy(this.studies.result, (study:CancerStudy)=>study.studyId);
     }
 
     public getAlterationCountsForCancerTypesByGene(alterationsByGeneBySampleKey:{ [geneName:string]: {[sampleId: string]: ExtendedAlteration[]} },
@@ -1010,7 +1011,7 @@ export class ResultsViewPageStore {
 
     readonly clinicalDataForSamples = remoteData<ClinicalData[]>({
         await: () => [
-            this.physicalStudies,
+            this.studies,
             this.samples
         ],
         invoke: () => this.getClinicalData("SAMPLE", this.samples.result, ["CANCER_TYPE", "CANCER_TYPE_DETAILED"])
@@ -1021,8 +1022,8 @@ export class ResultsViewPageStore {
 
         // single study query endpoint is optimal so we should use it
         // when there's only one study
-        if (this.physicalStudies.result.length === 1) {
-            const study = this.physicalStudies.result[0];
+        if (this.studies.result.length === 1) {
+            const study = this.studies.result[0];
             const filter: ClinicalDataSingleStudyFilter = {
                 attributeIds: attributeIds,
                 ids: _.map(entities, clinicalDataType === "SAMPLE" ? 'sampleId' : 'patientId')
@@ -1047,7 +1048,7 @@ export class ResultsViewPageStore {
 
     readonly survivalClinicalData = remoteData<ClinicalData[]>({
         await: () => [
-            this.physicalStudies,
+            this.studies,
             this.patients
         ],
         invoke: () => this.getClinicalData("PATIENT", this.patients.result, ["OS_STATUS", "OS_MONTHS", "DFS_STATUS", "DFS_MONTHS"])
@@ -1219,7 +1220,7 @@ export class ResultsViewPageStore {
         invoke: async () => fetchStudiesForSamplesWithoutCancerTypeClinicalData(this.samplesWithoutCancerTypeClinicalData)
     }, []);
 
-    readonly physicalStudies = remoteData({
+    readonly studies = remoteData({
         await: ()=>[this.studyIds],
         invoke: async () => {
             return client.fetchStudiesUsingPOST({
@@ -1229,9 +1230,9 @@ export class ResultsViewPageStore {
         }
     }, []);
     
-    readonly virtualStudies = remoteData(sessionServiceClient.getUserVirtualStudies(), []);
+    private readonly virtualStudies = remoteData(sessionServiceClient.getUserVirtualStudies(), []);
     
-    readonly virtualStudyIdToStudy = remoteData({
+    private readonly virtualStudyIdToStudy = remoteData({
         await: ()=>[this.virtualStudies],
         invoke: async ()=>{
             return _.keyBy(
@@ -1252,38 +1253,16 @@ export class ResultsViewPageStore {
     readonly queriedStudies = remoteData({
 		await: ()=>[this.studyIdToStudy, this.virtualStudyIdToStudy],
 		invoke: async ()=>{
-            const queriedStudies = [];
-            const cohorts = Object.assign({}, 
-                                        this.studyIdToStudy.result,
-                                        this.virtualStudyIdToStudy.result) as {[id:string]:CancerStudy}; 
-
-            for(const cohortId of this.cohortIdsList){
-                if(cohorts[cohortId]){
-                    queriedStudies.push(cohorts[cohortId])
-                }
-            }
-
-            if(this.cohortIdsList.length === 1 && queriedStudies.length === 0){
-                return sessionServiceClient.getVirtualStudy(this.cohortIdsList[0]).then(function(virtualStudy){
-                    let study = {
-                        allSampleCount:_.sumBy(virtualStudy.data.studies, study=>study.samples.length),
-                        studyId: virtualStudy.id,
-                        name: virtualStudy.data.name,
-                        description: virtualStudy.data.description,
-                        cancerTypeId: "My Virtual Studies"
-                    } as CancerStudy;
-                    return [study];
-                }, () => []);
-            }else{
-                return queriedStudies;
-            }
+            return getQueriedStudies(this.studyIdToStudy.result,
+                                     this.virtualStudyIdToStudy.result,
+                                     this.cohortIdsList);
 		},
 		default: [],
     });
 
     readonly studyIdToStudy = remoteData({
-        await: ()=>[this.physicalStudies],
-        invoke:()=>Promise.resolve(_.keyBy(this.physicalStudies.result, x=>x.studyId))
+        await: ()=>[this.studies],
+        invoke:()=>Promise.resolve(_.keyBy(this.studies.result, x=>x.studyId))
     }, {});
 
     readonly molecularProfilesInStudies = remoteData<MolecularProfile[]>({

@@ -177,7 +177,7 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
 		return (
 			<li key={arrayIndex} 
 			    className={liClassName} 
-			    data-test={this.store.isVirtualCohort(study.studyId) ? 'VirtualStudySelect' : 'StudySelect'}>
+			    data-test={this.store.isVirtualStudy(study.studyId) ? 'VirtualStudySelect' : 'StudySelect'}>
                 <Observer>
                 {() => {
                     const classes = classNames({ [styles.StudyName]:true, 'overlappingStudy':isOverlap ,   [styles.DeletedStudy]: this.store.isDeletedVirtualStudy(study.studyId)});
@@ -240,7 +240,7 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
                     children={
                         <button 
                             className={`btn btn-default btn-xs`} 
-                            onClick={()=>this.store.addVirtualStudy(study.studyId)}
+                            onClick={()=>this.store.restoreVirtualStudy(study.studyId)}
                             style={{
                                 lineHeight: '80%',
                             }}
@@ -258,7 +258,7 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
                 }
             ];
     
-            if (this.store.isVirtualCohort(study.studyId)) {
+            if (this.store.isVirtualStudy(study.studyId)) {
                 links.push({
                     icon: 'trash',
                     tooltip: "Delete this virtual study.",

@@ -4,6 +4,7 @@ import {PriorityStudies} from "config/IAppConfig";
 import {VirtualStudy} from "shared/model/VirtualStudy";
 
 export const CANCER_TYPE_ROOT = 'tissue';
+export const VIRTUAL_STUDY_NAME= 'My Virtual Studies';
 
 export type CancerTreeNode = CancerType|CancerStudy;
 export type NodeMetadata = {
@@ -35,12 +36,21 @@ export default class CancerStudyTreeData
 		cancerTypeId: CANCER_TYPE_ROOT
 	};
 
+	virtualStudyCategory:CancerType = {
+		clinicalTrialKeywords: '',
+		dedicatedColor: '',
+		name: VIRTUAL_STUDY_NAME,
+		parent: CANCER_TYPE_ROOT,
+		shortName: VIRTUAL_STUDY_NAME,
+		cancerTypeId: VIRTUAL_STUDY_NAME
+	};
+
 	priorityCategories:CancerType[] = [];
 	map_node_meta = new Map<CancerTreeNode, NodeMetadata>();
 	map_cancerTypeId_cancerType = new Map<string, CancerType>();
 	map_studyId_cancerStudy = new Map<string, CancerStudy>();
 
-	constructor({cancerTypes = [], studies = [], priorityStudies = {}, virtualCohorts=[]}: {cancerTypes: CancerType[], studies: CancerStudy[], priorityStudies?:PriorityStudies, virtualCohorts?:VirtualStudy[]})
+	constructor({cancerTypes = [], studies = [], priorityStudies = {}, virtualStudies=[]}: {cancerTypes: CancerType[], studies: CancerStudy[], priorityStudies?:PriorityStudies, virtualStudies?:VirtualStudy[]})
 	{
 		let nodes:CancerTreeNode[];
 		let node:CancerTreeNode;
@@ -49,28 +59,16 @@ export default class CancerStudyTreeData
 		// sort by name
 		cancerTypes = CancerStudyTreeData.sortNodes(cancerTypes);
 
-		// add virtual cohort category, and studies
-		// disabled, for now
-		const virtualCohortsName = "My Virtual Studies";
-		const virtualCohortsCategory = {
-			clinicalTrialKeywords: '',
-			dedicatedColor: '',
-			name: virtualCohortsName,
-			parent: CANCER_TYPE_ROOT,
-			shortName: virtualCohortsName,
-			cancerTypeId: virtualCohortsName
-		};
-		const virtualCohortStudies = [];
-		for (let virtualCohort of virtualCohorts) {
-			let study = {
-				allSampleCount:_.sumBy(virtualCohort.data.studies, study=>study.samples.length),
-				studyId: virtualCohort.id,
-				name: virtualCohort.data.name,
-				description: virtualCohort.data.description,
-				cancerTypeId: virtualCohortsName
+		//map virtual study to cancer study
+		const _virtualStudies = virtualStudies.map(virtualstudy => {
+			return {
+				allSampleCount:_.sumBy(virtualstudy.data.studies, study=>study.samples.length),
+				studyId: virtualstudy.id,
+				name: virtualstudy.data.name,
+				description: virtualstudy.data.description,
+				cancerTypeId: VIRTUAL_STUDY_NAME
 			} as CancerStudy;
-			virtualCohortStudies.push(study);
-		}
+		});
 
 		// add priority categories
 		for (let name in priorityStudies)
@@ -84,8 +82,9 @@ export default class CancerStudyTreeData
 				cancerTypeId: name
 			});
 		}
-		cancerTypes = [virtualCohortsCategory, ...this.priorityCategories, this.rootCancerType, ...cancerTypes];
-		studies = CancerStudyTreeData.sortNodes([...virtualCohortStudies, ...studies]);
+		// add virtual study category, and studies
+		cancerTypes = [this.virtualStudyCategory, ...this.priorityCategories, this.rootCancerType, ...cancerTypes];
+		studies = CancerStudyTreeData.sortNodes([..._virtualStudies, ...studies]);
 
 		// initialize lookups and metadata entries
 		for (nodes of [cancerTypes, studies])

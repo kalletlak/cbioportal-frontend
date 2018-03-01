@@ -40,8 +40,8 @@ export default class CancerSummaryContainer extends React.Component<{ store: Res
 
     // this is used to map study id to study shortname
     private mapStudyIdToShortName(str: string){
-            if (str in this.props.store.physicalStudyMap) {
-                return this.props.store.physicalStudyMap[str].shortName;
+            if (str in this.props.store.physicalStudySet) {
+                return this.props.store.physicalStudySet[str].shortName;
             } else {
                 return str;
             }

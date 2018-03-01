@@ -38,11 +38,11 @@ export default class CancerStudyTreeData
 
 	virtualStudyCategory:CancerType = {
 		clinicalTrialKeywords: '',
-		dedicatedColor: '',
-		name: VIRTUAL_STUDY_NAME,
-		parent: CANCER_TYPE_ROOT,
-		shortName: VIRTUAL_STUDY_NAME,
-		cancerTypeId: VIRTUAL_STUDY_NAME
+		dedicatedColor       : '',
+		name                 : VIRTUAL_STUDY_NAME,
+		parent               : CANCER_TYPE_ROOT,
+		shortName            : VIRTUAL_STUDY_NAME,
+		cancerTypeId         : VIRTUAL_STUDY_NAME
 	};
 
 	priorityCategories:CancerType[] = [];
@@ -62,11 +62,11 @@ export default class CancerStudyTreeData
 		//map virtual study to cancer study
 		const _virtualStudies = virtualStudies.map(virtualstudy => {
 			return {
-				allSampleCount:_.sumBy(virtualstudy.data.studies, study=>study.samples.length),
-				studyId: virtualstudy.id,
-				name: virtualstudy.data.name,
-				description: virtualstudy.data.description,
-				cancerTypeId: VIRTUAL_STUDY_NAME
+				allSampleCount: _.sumBy(virtualstudy.data.studies, study=>study.samples.length),
+				studyId       : virtualstudy.id,
+				name          : virtualstudy.data.name,
+				description   : virtualstudy.data.description,
+				cancerTypeId  : VIRTUAL_STUDY_NAME
 			} as CancerStudy;
 		});
 
@@ -84,7 +84,7 @@ export default class CancerStudyTreeData
 		}
 		// add virtual study category, and studies
 		cancerTypes = [this.virtualStudyCategory, ...this.priorityCategories, this.rootCancerType, ...cancerTypes];
-		studies = CancerStudyTreeData.sortNodes([..._virtualStudies, ...studies]);
+		studies     = CancerStudyTreeData.sortNodes([..._virtualStudies, ...studies]);
 
 		// initialize lookups and metadata entries
 		for (nodes of [cancerTypes, studies])

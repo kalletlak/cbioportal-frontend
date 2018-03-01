@@ -171,7 +171,7 @@ export async function getQueriedStudies(
 
     let promises = unknownIds.map(id =>sessionServiceClient.getVirtualStudy(id))
 			
-    let temporaryVirtualStudies = await Promise.all(promises).then((allData: VirtualStudy[]) => {
+    let otherVirtualStudies = await Promise.all(promises).then((allData: VirtualStudy[]) => {
         return allData.map(virtualStudy => {
             let study = {
                 allSampleCount:_.sumBy(virtualStudy.data.studies, study=>study.samples.length),
@@ -183,5 +183,5 @@ export async function getQueriedStudies(
             return study;
         })
     });
-    return queriedStudies.concat(temporaryVirtualStudies);
+    return queriedStudies.concat(otherVirtualStudies);
 }

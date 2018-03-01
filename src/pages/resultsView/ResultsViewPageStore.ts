@@ -773,7 +773,9 @@ export class ResultsViewPageStore {
        }
     });
 
-    public get physicalStudyMap():{ [studyId:string]:CancerStudy } {
+    //contains all the physical studies for the current selected cohort ids
+    //selected cohort ids can be any combination of physical_study_id and virtual_study_id(shared or saved ones)
+    public get physicalStudySet():{ [studyId:string]:CancerStudy } {
         return _.keyBy(this.studies.result, (study:CancerStudy)=>study.studyId);
     }
 
@@ -1230,6 +1232,7 @@ export class ResultsViewPageStore {
         }
     }, []);
     
+    //user saved virtual studies
     private readonly virtualStudies = remoteData(sessionServiceClient.getUserVirtualStudies(), []);
     
     private readonly virtualStudyIdToStudy = remoteData({

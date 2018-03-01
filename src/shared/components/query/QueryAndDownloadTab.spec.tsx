@@ -7,6 +7,7 @@ import { Tab } from 'react-bootstrap';
 import {QueryStore} from "./QueryStore";
 import {VirtualStudy, VirtualStudyData} from "shared/model/VirtualStudy";
 import sessionServiceClient from "shared/api//sessionServiceInstance";
+import client from "../../api/cbioportalClientInstance";
 
 describe('QueryAndDownloadTabs', () => {
       
@@ -75,7 +76,19 @@ describe('QueryAndDownloadTabs', () => {
                     resolve();
                 });
             });
-            
+
+            sinon.stub(client, "getAllCancerTypesUsingGET").callsFake(function fakeFn({}) {
+                return new Promise((resolve, reject) => {
+                    resolve([]);
+                });
+            });
+
+            sinon.stub(client, "getAllStudiesUsingGET").callsFake(function fakeFn({}) {
+                return new Promise((resolve, reject) => {
+                    resolve([]);
+                });
+            });
+
             store= new QueryStore({} as any);
             component = mount(<QueryAndDownloadTabs store={store} />);
         });

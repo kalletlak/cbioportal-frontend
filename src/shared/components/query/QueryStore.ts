@@ -262,9 +262,12 @@ export class QueryStore
 	}
 
 	set selectedStudyIds(val:string[]) {
-		//filter out deleted virtual study
-		const filteredStudies = val.filter(id => !_.includes(this.deletedVirtualStudies,id))
-		this._selectedStudyIds = observable.map(stringListToSet(filteredStudies));
+		//surrounded with action block to indicate that state is going to be modified
+		action(()=>{
+			//filter out deleted virtual study
+			const filteredStudies = val.filter(id => !_.includes(this.deletedVirtualStudies,id))
+			this._selectedStudyIds = observable.map(stringListToSet(filteredStudies));
+		})()
 	}
 
 	@action public setStudyIdSelected(studyId:string, selected:boolean) {
@@ -439,7 +442,7 @@ export class QueryStore
 	readonly virtualStudies = remoteData(sessionServiceClient.getUserVirtualStudies(), []);
 
 
-	//map all ids to UI selectable ids.
+	//map all ids to UI selectable(accessible) ids.
 	//user accessible physical study id is mapped directly
 	//user virtual study id is mapped directly
 	//shared(created by another user) virtual study, id is mapped to all the physical studies in that study
@@ -459,14 +462,23 @@ export class QueryStore
 			let knownSelectableIds:{[studyId:string]:string[]} = Object.assign({}, physicalStudiesIdsMap, virtualStudiesIdsMap);
 
 			const unknownIds:string[] = this._defaultSelectedIds.keys().filter(id => !knownSelectableIds[id]);
-
-			let promises = unknownIds.map(id =>sessionServiceClient.getVirtualStudy(id))
 			
-			await Promise.all(promises).then((allData: VirtualStudy[]) => {
-				allData.forEach(virtualStudy => {
-					knownSelectableIds[virtualStudy.id] = virtualStudy.data.studies.map(study=>study.id)
-				})
-            });
+			await Promise.all(unknownIds.map(id =>{
+				return new Promise((resolve, reject) => {
+					sessionServiceClient.getVirtualStudy(id).then((virtualStudy)=>{
+						//physical study ids iin virtual study
+						let ids = virtualStudy.data.studies.map(study=>study.id);
+						//unknown/unauthorized studies within virtual study
+						let unKnownStudyIds = ids.filter(id => !physicalStudiesIdsMap[id]);
+						if(_.isEmpty(unKnownStudyIds)){
+							knownSelectableIds[id] = ids;
+						}
+						resolve();
+					}).catch(() => {
+						resolve();
+					});
+				});
+			}));
 			return knownSelectableIds;
 		},
 		default: {},

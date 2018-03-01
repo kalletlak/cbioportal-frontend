@@ -140,16 +140,17 @@ export class QueryStore
 		);
 
 		reaction(
-			()=>this.selectableIdToPhysicalIdsSet.result,
-			selectableIdToPhysicalIdsSet=>{
+			()=>this.selectableStudiesSet,
+			selectableStudiesSet=>{
 				if(this.selectedSampleListId !== CUSTOM_CASE_LIST_ID) {
 					let virtualStudyIdsSet = stringListToSet(this.virtualStudies.result.map(x=>x.id));
-					let userSelectableIds:{[studyId:string]:boolean} = Object.assign({}, this.cancerStudyIdsSet.result, virtualStudyIdsSet);
+					let physicalStudyIdsSet = stringListToSet(this.cancerStudies.result.map(x=>x.studyId))
+					let userSelectableIds:{[studyId:string]:boolean} = Object.assign({}, physicalStudyIdsSet, virtualStudyIdsSet);
 					let sharedIds:string[] = [];
 					let unknownIds:string[] = [];
 			
 					this._defaultSelectedIds.keys().forEach(id=>{
-						if(selectableIdToPhysicalIdsSet[id]){
+						if(selectableStudiesSet[id]){
 							if(!userSelectableIds[id]){
 								sharedIds.push(id)
 							}
@@ -255,7 +256,7 @@ export class QueryStore
 	@computed get selectedStudyIds():string[]
 	{
 		let ids:string[] = this._selectedStudyIds.keys();
-		const selectableStudies = this.selectableIdToPhysicalIdsSet.result;
+		const selectableStudies = this.selectableStudiesSet;
 		ids = ids.reduce((obj:string[],next)=>{
 			if(selectableStudies[next]){
 				return obj.concat(selectableStudies[next])
@@ -472,28 +473,46 @@ export class QueryStore
 
 	readonly virtualStudies = remoteData(sessionServiceClient.getUserVirtualStudies(), []);
 
-	//map all ids to UI selectable(accessible) ids.
-	//user accessible physical study id is mapped directly
-	//user virtual study id is mapped directly
-	//shared(created by another user) virtual study, id is mapped to all the physical studies in that study
-	readonly selectableIdToPhysicalIdsSet = remoteData<{[studyId:string]:string[]}>({
-		await: ()=>[this.cancerStudies, this.virtualStudies, this.cancerStudyIdsSet],
+	@computed get selectableStudiesSet():{[studyId:string]:string[]} {
+		return  Object.assign({}, this.physicalStudiesIdsSet.result, this.virtualStudiesIdsSet.result, this.unselectableQueriedStudiesSet.result);
+	}
+
+	private readonly physicalStudiesIdsSet = remoteData<{[studyId:string]:string[]}>({
+		await: ()=>[this.cancerStudies],
 		invoke: async ()=>{
-			let physicalStudiesIdsMap:{[studyId:string]:string[]} = this.cancerStudies.result.reduce((obj:{[studyId:string]:string[]}, item) =>{
+			return  this.cancerStudies.result.reduce((obj:{[studyId:string]:string[]}, item) =>{
 				obj[item.studyId] = [item.studyId]
 				return obj
 			}, {});
 
-			let virtualStudiesIdsMap:{[studyId:string]:string[]} = this.virtualStudies.result.reduce((obj:{[studyId:string]:string[]}, item) =>{
+		},
+		default: {},
+	})
+
+	private readonly virtualStudiesIdsSet = remoteData<{[studyId:string]:string[]}>({
+		await: ()=>[this.virtualStudies],
+		invoke: async ()=>{
+			return  this.virtualStudies.result.reduce((obj:{[studyId:string]:string[]}, item) =>{
 				obj[item.id] = [item.id]
 				return obj
 			}, {});
 
-			let knownSelectableIds:{[studyId:string]:string[]} = Object.assign({}, physicalStudiesIdsMap, virtualStudiesIdsMap);
+		},
+		default: {},
+	})
 
-			let userSelectableIds = Object.assign({},knownSelectableIds)
+	readonly unselectableQueriedStudiesSet = remoteData<{[studyId:string]:string[]}>({
+		await: ()=>[this.physicalStudiesIdsSet, this.virtualStudiesIdsSet],
+		invoke: async ()=>{
+			let physicalStudiesIdsSet:{[studyId:string]:string[]} = this.physicalStudiesIdsSet.result
+			let virtualStudiesIdsSet:{[studyId:string]:string[]} = this.virtualStudiesIdsSet.result
+
+			let knownSelectableIdsSet:{[studyId:string]:string[]} = Object.assign({}, physicalStudiesIdsSet, virtualStudiesIdsSet);
+
 			//queried id that are not selectable(this would mostly be shared virtual study)
-			const unknownQueriedIds:string[] = this._defaultSelectedIds.keys().filter(id => !knownSelectableIds[id]);
+			const unknownQueriedIds:string[] = this._defaultSelectedIds.keys().filter(id => !knownSelectableIdsSet[id]);
+
+			let result:{[studyId:string]:string[]} = {}
 			
 			await Promise.all(unknownQueriedIds.map(id =>{
 				return new Promise((resolve, reject) => {
@@ -501,17 +520,17 @@ export class QueryStore
 						//physical study ids iin virtual study
 						let ids = virtualStudy.data.studies.map(study=>study.id);
 						//unknown/unauthorized studies within virtual study
-						let unKnownStudyIds = ids.filter(id => !physicalStudiesIdsMap[id]);
-						if(_.isEmpty(unKnownStudyIds)){
-							knownSelectableIds[id] = ids;
+						let unKnownPhysicalStudyIds = ids.filter(id => !physicalStudiesIdsSet[id]);
+						if(_.isEmpty(unKnownPhysicalStudyIds)){
+							result[id] = ids;
 						}
 						resolve();
-					}).catch(() => {
+					}).catch(() => {//error is thrown when the id is not found
 						resolve();
 					});
 				});
 			}));
-			return knownSelectableIds;
+			return result;
 		},
 		default: {}
 	});
@@ -857,7 +876,7 @@ export class QueryStore
 	// this may be any unknow and unauthorized studies trying to query
 	@computed get unknownStudyIds()
 	{
-		const selectableStudiesSet = this.selectableIdToPhysicalIdsSet.result;
+		const selectableStudiesSet = this.selectableStudiesSet;
 		let ids:string[] = this._selectedStudyIds.keys();
 		return ids.filter(id=>!(id in selectableStudiesSet));
 	}

@@ -6,13 +6,11 @@ describe("QueryStore", ()=>{
         it("should contain the correct case_ids parameter in single study query", ()=>{
             const store = new QueryStore({
                 serverVars: {
-                    studySampleObj: {
-                        study1: ["sample1", "sample2", "sample3"]
-                    },
                     theQuery:"",
                     caseSetProperties:{
                         case_set_id: CUSTOM_CASE_LIST_ID
-                    }
+                    },
+                    caseIds:"study1:sample1+study1:sample2+study1:sample3"
                 }
             } as any);
             assert.equal(
@@ -24,14 +22,11 @@ describe("QueryStore", ()=>{
             const store = new QueryStore(
                 {
                     serverVars: {
-                        studySampleObj: {
-                            study1: ["sample1", "sample2", "sample3"],
-                                study2: ["sample4", "sample5", "sample6"]
-                        },
                         theQuery:"",
                         caseSetProperties:{
                             case_set_id: CUSTOM_CASE_LIST_ID
-                        }
+                        },
+                        caseIds:"study1:sample1+study1:sample2+study1:sample3+study2:sample4+study2:sample5+study2:sample6"
                     }
                 } as any
             );

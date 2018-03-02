@@ -1,5 +1,10 @@
-import {assert} from "chai";
+import {assert, expect} from "chai";
 import {QueryStore, CUSTOM_CASE_LIST_ID} from "./QueryStore";
+import { VirtualStudy, VirtualStudyData } from "shared/model/VirtualStudy";
+import Sinon from 'sinon';
+import sessionServiceClient from "shared/api//sessionServiceInstance";
+import client from "../../api/cbioportalClientInstance";
+import * as _ from 'lodash';
 
 describe("QueryStore", ()=>{
     describe("initialQueryParams on results page", ()=>{
@@ -34,6 +39,83 @@ describe("QueryStore", ()=>{
                 store.initialQueryParams.nonMolecularProfileParams.case_ids,
                 "study1:sample1\nstudy1:sample2\nstudy1:sample3\nstudy2:sample4\nstudy2:sample5\nstudy2:sample6"
             );
+        });
+    });
+    describe('Virtual Studies section on query page', () => {
+        let store_vs:QueryStore;
+        const virtualStudies: VirtualStudy[] = [
+            {
+            "id": "study1",
+            "data": {
+                "name": "Test Study",
+                "description": "Test Study",
+                "studies": [
+                {
+                    "id": "test_study",
+                    "samples": [
+                    "sample-01",
+                    "sample-02",
+                    "sample-03"
+                    ]
+                }
+                ],
+                "filters": {
+                "patients": {},
+                "samples": {}
+                },
+                "origin": [
+                "test_study"
+                ]
+            } as VirtualStudyData
+            }
+        ];
+        let getUserVirtualStudiesStub: sinon.SinonStub
+
+        before(()=>{
+            getUserVirtualStudiesStub = Sinon.stub(sessionServiceClient, "getUserVirtualStudies").callsFake(function fakeFn() {
+                return new Promise((resolve, reject) => {
+                    resolve(virtualStudies);
+                });
+            });
+
+            store_vs = new QueryStore({} as Window);
+
+        });
+
+        after(()=>{
+            getUserVirtualStudiesStub.restore();
+        });
+
+        it('should show all user virtual studies', (done)=>{
+            setTimeout(()=>{
+                assert.equal(_.keys(store_vs.selectableStudiesSet).length,virtualStudies.length)
+                done()
+            },1000)
+               
+        });
+        it('should be able to delete a virtual study', (done)=>{
+            let deleteVirtualStudyStub = Sinon.stub(sessionServiceClient, "deleteVirtualStudy").callsFake(function fakeFn(id:string) {
+                return new Promise((resolve, reject) => {
+                    resolve();
+                });
+            });
+            store_vs.deleteVirtualStudy("study1")
+            setTimeout(()=>{
+                assert.equal(JSON.stringify(store_vs.deletedVirtualStudies),'["study1"]')
+                done()
+            },1000)  
+        });
+        it('should be able to restore back delete virtual study', (done)=>{
+            let addVirtualStudyStub = Sinon.stub(sessionServiceClient, "addVirtualStudy").callsFake(function fakeFn(id:string) {
+                return new Promise((resolve, reject) => {
+                    resolve();
+                });
+            });
+            store_vs.restoreVirtualStudy("study1")
+            setTimeout(()=>{
+                assert.equal(JSON.stringify(store_vs.deletedVirtualStudies),'[]')
+                done()
+            },1000)  
         });
     });
 });

@@ -474,7 +474,7 @@ export class QueryStore
 	readonly virtualStudies = remoteData(sessionServiceClient.getUserVirtualStudies(), []);
 
 	@computed get selectableStudiesSet():{[studyId:string]:string[]} {
-		return  Object.assign({}, this.physicalStudiesIdsSet.result, this.virtualStudiesIdsSet.result, this.unselectableQueriedStudiesSet.result);
+		return  Object.assign({}, this.physicalStudiesIdsSet.result, this.virtualStudiesIdsSet.result, this.sharedQueriedStudiesSet.result);
 	}
 
 	private readonly physicalStudiesIdsSet = remoteData<{[studyId:string]:string[]}>({
@@ -501,7 +501,7 @@ export class QueryStore
 		default: {},
 	})
 
-	readonly unselectableQueriedStudiesSet = remoteData<{[studyId:string]:string[]}>({
+	readonly sharedQueriedStudiesSet = remoteData<{[studyId:string]:string[]}>({
 		await: ()=>[this.physicalStudiesIdsSet, this.virtualStudiesIdsSet],
 		invoke: async ()=>{
 			let physicalStudiesIdsSet:{[studyId:string]:string[]} = this.physicalStudiesIdsSet.result

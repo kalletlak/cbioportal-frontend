@@ -3,7 +3,7 @@ import {
     SampleIdentifier, MolecularProfile, Mutation, NumericGeneMolecularData, MolecularDataFilter, Gene,
     ClinicalDataSingleStudyFilter, CancerStudy, PatientIdentifier, Patient, GenePanelData, GenePanelDataFilter,
     SampleList, MutationCountByPosition, MutationMultipleStudyFilter, SampleMolecularIdentifier,
-    MolecularDataMultipleStudyFilter, SampleFilter, MolecularProfileFilter, GenePanelMultipleStudyFilter, PatientFilter
+    MolecularDataMultipleStudyFilter, SampleFilter, MolecularProfileFilter, GenePanelMultipleStudyFilter, PatientFilter, GenePanel
 } from "shared/api/generated/CBioPortalAPI";
 import client from "shared/api/cbioportalClientInstance";
 import {computed, observable, action} from "mobx";
@@ -499,11 +499,15 @@ export class ResultsViewPageStore {
                 genePanelData = [];
             }
 
-            const genePanelIds = _.uniq(genePanelData.map(gpData=>gpData.genePanelId));
-            const genePanels = await client.fetchGenePanelsUsingPOST({
-                genePanelIds,
-                projection:"DETAILED"
-            });
+            const genePanelIds = _.uniq(genePanelData.map(gpData=>gpData.genePanelId).filter(id => !_.isUndefined(id)));
+            let genePanels :GenePanel[] = []
+            if(!_.isEmpty(genePanelIds)){
+                genePanels = await client.fetchGenePanelsUsingPOST({
+                    genePanelIds,
+                    projection:"DETAILED"
+                });
+            }
+            
             return computeGenePanelInformation(genePanelData, genePanels, this.samples.result!, this.patients.result!, this.genes.result!);
         }
     });

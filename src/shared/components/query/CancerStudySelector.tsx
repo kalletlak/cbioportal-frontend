@@ -169,7 +169,6 @@ export default class CancerStudySelector extends QueryStoreComponent<ICancerStud
                             </Observer>
                         )}
 
-
                         {(!!(!this.store.forDownloadTab) && !!(!this.store.cancerTypes.isPending && !this.store.cancerStudies.isPending)) && (
                             <Observer>
                                 {() => {
@@ -191,51 +190,6 @@ export default class CancerStudySelector extends QueryStoreComponent<ICancerStud
                                 }}
                             </Observer>
                         )}
-
-                        { (!!(!this.store.forDownloadTab) &&
-                           !!(!this.store.cancerTypes.isPending &&
-                            !this.store.cancerStudies.isPending)) && (
-                            <Observer>
-                                {() => {
-                                    let selectAllChecked = expr(() => this.logic.mainView.getCheckboxProps(this.store.treeData.rootCancerType).checked);
-                                    let clearable = false;
-                                    var divStyle = {
-                                        "align-items": "center"
-                                        };
-
-                                    let listOptions = [{
-                                                        label: 'All',
-                                                        value: 'all'
-                                                        },{
-                                                        label: 'Pediatric',
-                                                        value: 'pediatric'
-                                                        },{
-                                                        label: 'Adult',
-                                                        value: 'adult'
-                                                       }];
-                                    return (
-                                        <FlexRow style={divStyle} padded overflow>
-                                            <FlexCol overflow>
-                                                <span>
-                                                    <b>Studies Type : </b>
-                                                </span>
-                                                </FlexCol>
-                                            <FlexCol overflow>
-                                                <ReactSelect
-                                                    className={styles.StudyTypeSelector}
-                                                    value={this.store.filterType}
-                                                    clearable={clearable}
-                                                    options={listOptions}
-                                                    onChange={option => this.store.setStudyFilter(option ? option.value : 'all')}
-                                                />
-                                            </FlexCol>
-                                        </FlexRow>
-                                    );
-                                }}
-                            </Observer>
-                        )}
-                        
-
 
                         {!!(!this.store.cancerTypes.isPending && !this.store.cancerStudies.isPending) && (
                             <Observer>
@@ -281,8 +235,33 @@ export default class CancerStudySelector extends QueryStoreComponent<ICancerStud
                                 searchTextOptions = [this.store.searchText].concat(searchTextOptions as string[]);
                             let searchTimeout: number | null = null;
 
+                            let selectAllChecked = expr(() => this.logic.mainView.getCheckboxProps(this.store.treeData.rootCancerType).checked);
+                            let listOptions = [{
+                                                label: 'All',
+                                                value: 'all'
+                                                },{
+                                                label: 'Pediatric',
+                                                value: 'pediatric'
+                                                },{
+                                                label: 'Adult',
+                                                value: 'adult'
+                                               }];
+
                             return (
                                 <div style={{display: 'flex', alignItems: 'center'}}>
+                                    <div style={{display: 'flex', alignItems: 'center', paddingRight: '10px'}}>
+                                        <span>
+                                            <b>Studies Type&nbsp;</b>
+                                        </span>
+                                        <ReactSelect
+                                            className={styles.StudyTypeSelector}
+                                            value={this.store.filterType}
+                                            clearable={false}
+                                            options={listOptions}
+                                            onChange={option => this.store.setStudyFilter(option ? option.value : 'all')}
+                                        />
+                                    </div>
+                               
                                     {
                                         (this.store.searchText) && (
                                             <span data-test="clearStudyFilter"

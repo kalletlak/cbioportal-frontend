@@ -1,6 +1,6 @@
 .chart {
-    width:200px;
-    border: 1px solid #d3d3d3;
+    width:150px;
+    //border: 1px solid #d3d3d3;
     margin: 5px;
     .header {
         overflow: hidden;
@@ -23,7 +23,10 @@
     }
     
     .plot {
-        height:200px;
+        height:150px;
+        text {
+            user-select: none;
+        }
     }
     .footer {
         height:21px;

@@ -2,10 +2,10 @@ import * as React from "react";
 import styles from "./styles.module.scss";
 import { StudyViewPageStore, ClinicalAttributeDataWithMeta, ClinicalDataType } from "pages/studyView/StudyViewPage";
 import { observer } from "mobx-react";
-import { VictoryPie, VictoryContainer, VictoryLabel } from 'victory';
+import { VictoryPie, VictoryContainer, VictoryLabel, VictoryTooltip } from 'victory';
 import { ClinicalAttribute } from "shared/api/generated/CBioPortalAPI";
 import { ClinicalDataCount } from "shared/api/generated/CBioPortalAPIInternal";
-import { observable } from "mobx";
+import { observable, computed } from "mobx";
 import _ from "lodash";
 export interface IPieChartProps {
   data: ClinicalAttributeDataWithMeta;
@@ -72,7 +72,6 @@ export const COLORS = [
 @observer
 export class PieChart extends React.Component<IPieChartProps, {}> {
 
-
   constructor(props: IPieChartProps) {
     super(props);
   }
@@ -93,56 +92,58 @@ export class PieChart extends React.Component<IPieChartProps, {}> {
     }
   }];
 
+  @computed get totalCount(){
+    return this.props.data.counts.reduce((acc:number,next)=>{
+      return acc+next.count
+    },0)
+  }
+
   public render() {
     let data:ClinicalDataCount[] = this.props.data.counts;
     let chartFilters = this.props.filters;
     let result =data.map(prop => {
       let toReturn = {x:prop.value,y:prop.count};
       if(_.includes(chartFilters,prop.value)){
-        toReturn = Object.assign({}, toReturn, { stroke: "#cccccc", strokeWidth: 3 });
+        toReturn = Object.assign({}, toReturn, { stroke: "#cccccc", strokeWidth: 6 });
       }
       return toReturn;
     })
     return (
-        <VictoryPie
-          colorScale={COLORS}
-          containerComponent={<VictoryContainer responsive={false} />}
-          width={200}
-          height={200}
-          labelRadius={25}
-          labels={(d:any) => d.y}
-          data={result}
-          events={this.events}
-          labelComponent={<CustomLabel/>}
-          style={{
-            data: {
-              fillOpacity: 0.9
-            },
-            labels: { fill: "white" }
-          }}
-        />
-    );
+      <VictoryPie
+        colorScale={COLORS}
+        containerComponent={<VictoryContainer/>}
+        width={300}
+        height={300}
+        labelRadius={50}
+        data={result}
+        events={this.events}
+        labelComponent={<CustomTooltip count={this.totalCount}/>}
+      />
+    )
   }
-
 }
 
-//to hide label if the angle is too small(currently set to 20 degrees)
-class CustomLabel extends React.Component {
-  static defaultEvents = VictoryLabel.defaultEvents
+
+class CustomTooltip extends React.Component<{count:number}, {}> {
+  static defaultEvents = VictoryTooltip.defaultEvents
   render() {
     const d:any = this.props;
-    let text = d.text;
-    if(d.slice){
-      let degrees = Math.abs((d.slice.endAngle as number) - (d.slice.startAngle as number))*180/3.14159;
-      if(degrees<20){
-        text = '';
-      }
-    }
+    console.log(d)
+    let text = ((d.datum.y*360)/this.props.count)<20?'':d.datum.y;
+
     return (
       <g>
-        <VictoryLabel
-            {...this.props} 
-            text={text}/>
+        <VictoryTooltip {...this.props}
+                        pointerLength={0}
+                        cornerRadius={0}
+                        text={`${d.datum.x}: ${d.datum.y}`}
+                        style={{ fontSize:"24px", borderWidth:"0px" }}
+                        />
+
+        <VictoryLabel {...this.props} 
+                      text={text}
+                      style={{ fill: "white", fontSize:"24px" }}
+                      />
       </g>
     );
   }

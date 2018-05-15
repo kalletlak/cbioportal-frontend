@@ -59,6 +59,8 @@ export class StudyViewPageStore {
 
     @observable private _cnaGeneFilter: CopyNumberGeneFilter;
 
+    private _attributeChartVisibility = observable.map<boolean>();
+
     @action
     updateClinicalDataEqualityFilters(attributeId: string,
                                       clinicalDataType: ClinicalDataType,
@@ -207,8 +209,33 @@ export class StudyViewPageStore {
                 studyId: this.studyId
             })
         },
-        default: []
+        default: [],
+        onResult:(attributes:ClinicalAttribute[])=>{
+            attributes.forEach(attribute=>{
+                this._attributeChartVisibility.set(attribute.clinicalAttributeId,false);
+            })
+        }
     });
+
+    readonly clinicalAttributeSet = remoteData<{[id:string]:ClinicalAttribute}>({
+        await: () => [this.clinicalAttributes],
+        invoke: () => Promise.resolve(_.keyBy(this.clinicalAttributes.result, x=>x.clinicalAttributeId))
+    },{});
+
+    @computed get visibleAttributes(){
+        const attributes = this.clinicalAttributeSet.result
+        return _.reduce(this._attributeChartVisibility.toJS(),(acc:ClinicalAttribute[],next,key)=>{
+            if(next && attributes[key]){
+                acc.push(attributes[key])
+            }
+            return acc;
+        },[])
+    }
+
+    @action hideChart(attributeId:string){
+        this._attributeChartVisibility.set(attributeId,false)
+    }
+
 
     //TODO:cleanup
     readonly defaultVisibleAttributes = remoteData({
@@ -241,7 +268,12 @@ export class StudyViewPageStore {
             });
             return filterAttributes
         },
-        default: []
+        default: [],
+        onResult:(attributes:ClinicalAttribute[])=>{
+            attributes.forEach(attribute=>{
+                this._attributeChartVisibility.set(attribute.clinicalAttributeId,true);
+            })
+        }
     });
 
     readonly allSamples = remoteData<Sample[]>({

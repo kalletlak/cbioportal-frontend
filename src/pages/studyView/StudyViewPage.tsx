@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { inject, observer } from "mobx-react";
+import { inject, observer, Observer } from "mobx-react";
 import styles from "./styles.module.scss";
 import {MutatedGenesTable} from "./table/MutatedGenesTable";
 import {CNAGenesTable} from "./table/CNAGenesTable";
@@ -9,7 +9,6 @@ import {MSKTab, MSKTabs} from "../../shared/components/MSKTabs/MSKTabs";
 import { StudyViewPageStore, ClinicalDataType, SurvivalType } from 'pages/studyView/StudyViewPageStore';
 import { reaction } from 'mobx';
 import { ClinicalAttribute } from 'shared/api/generated/CBioPortalAPI';
-
 
 export interface IStudyViewPageProps {
     routing: any;
@@ -62,8 +61,7 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
         this.store.updateCNAGeneFilter(entrezGeneId, alteration);
     }
 
-    renderAttributeChart = (clinicalAttribute: ClinicalAttribute,
-                            arrayIndex: number) => {
+    renderAttributeChart = (clinicalAttribute: ClinicalAttribute) => {
         return (<ChartContainer
                     chartType={ChartType.PIE_CHART}
                     store={this.store}
@@ -121,7 +119,7 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
                                 this.store.defaultVisibleAttributes.isComplete &&
                                 (
                                     <div className={styles.flexContainer}>
-                                        {this.store.defaultVisibleAttributes.result.map(this.renderAttributeChart)}
+                                        {this.store.visibleAttributes.map(this.renderAttributeChart)}
                                     </div>
                                 )
                             }

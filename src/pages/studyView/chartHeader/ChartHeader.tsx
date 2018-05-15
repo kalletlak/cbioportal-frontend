@@ -17,6 +17,7 @@ export interface IChartHeaderProps {
     handleDownloadDataClick: () => void;
     handleSVGClick: () => void;
     handlePDFClick: () => void;
+    handleDeleteClick: () => void;
 }
 
 export class ChartHeader extends React.Component<IChartHeaderProps, {}> {
@@ -94,7 +95,7 @@ export class ChartHeader extends React.Component<IChartHeaderProps, {}> {
                             <button className="btn btn-xs">
                                 <i className="fa fa-arrows" aria-hidden="true" title="Move chart"></i>
                             </button>
-                            <button className="btn btn-xs">
+                            <button className="btn btn-xs" onClick={()=>this.props.handleDeleteClick()}>
                             <i className="fa fa-times" aria-hidden="true" title="Delete chart"></i>
                             </button>
                         </div>

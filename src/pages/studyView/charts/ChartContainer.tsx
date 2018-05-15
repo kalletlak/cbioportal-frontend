@@ -21,17 +21,17 @@ export interface AbstractChart {
 }
 
 export enum ChartType {
-    PIE_CHART,
-    BAR_CHART,
-    SURVIVAL,
-    TABLE,
-    SCATTER
+    PIE_CHART='PIE_CHART',
+    BAR_CHART='BAR_CHART',
+    SURVIVAL='SURVIVAL',
+    TABLE='TABLE',
+    SCATTER='SCATTER'
 }
 
 export interface IChartContainerProps {
     chartType:ChartType;
-    clinicalAttribute: ClinicalAttribute,
-    store:StudyViewPageStore,
+    clinicalAttribute: ClinicalAttribute;
+    store:StudyViewPageStore;
     onUserSelection: (attrId: string, clinicalDataType: ClinicalDataType, value: string[]) => void;
 }
 
@@ -43,7 +43,7 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
 
     @observable mouseInPlot:boolean = false;
     @observable filters:string[] = []
-
+    
     constructor(props: IChartContainerProps) {
         super(props);
         let fileName = props.clinicalAttribute.displayName.replace(/[ \t]/g,'_')
@@ -78,6 +78,9 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
             handlePDFClick:()=>{
                 svgToPdfDownload(`${fileName}.pdf`, this.toSVGDOMNode());
             },
+            deleteChart:()=>{
+                this.props.store.hideChart(this.props.clinicalAttribute.clinicalAttributeId)
+            }
         };
     }
 
@@ -133,6 +136,7 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                         showTableIcon={this.showTableControlIcon}
                         showPieIcon={this.showPieControlIcon}
                         handleResetClick={this.handlers.resetFilters}
+                        handleDeleteClick={this.handlers.deleteChart}
                         handleDownloadDataClick={this.handlers.handleDownloadDataClick}
                         handleSVGClick={this.handlers.handleSVGClick}
                         handlePDFClick={this.handlers.handlePDFClick}
@@ -151,5 +155,4 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
             </If>
         );
     }
-
 }

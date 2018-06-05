@@ -31,7 +31,7 @@ $sample-color-xenograft: pink;
     .clinical-attribute[attr-id="DFS_STATUS"],
     .clinical-attribute[attr-id="DFS_MONTHS"],
     .clinical-attribute[attr-id="CANCER_TYPE"],
-    #patient-attributes .clinical-attribute[attr-id="CANCER_TYPE_DETAILED"],
+    .clinical-attribute[attr-id="CANCER_TYPE_DETAILED"],
     .clinical-attribute[attr-id="KNOWN_MOLECULAR_CLASSIFIER"],
     .clinical-attribute[attr-id="GLEASON_SCORE"],
     .clinical-attribute[attr-id="HISTOLOGY"],
@@ -124,6 +124,9 @@ $sample-color-xenograft: pink;
     }
     .clinical-attribute[attr-id="DERIVED_NORMALIZED_CASE_TYPE"][attr-value="Metastasis"] {
       color: $sample-color-metastasis;
+    }
+    .clinical-attribute[attr-id="DERIVED_NORMALIZED_CASE_TYPE"][attr-value="Xenograft"] {
+        display: none; // already showing icon, no need to show text
     }
 }
 #patient-attributes {

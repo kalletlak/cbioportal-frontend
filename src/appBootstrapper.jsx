@@ -4,6 +4,7 @@ import { Provider } from 'mobx-react';
 import { hashHistory, createMemoryHistory, Router } from 'react-router';
 import { RouterStore, syncHistoryWithStore  } from 'mobx-react-router';
 import ExtendedRoutingStore from './shared/lib/ExtendedRouterStore';
+import {QueryStore} from "./shared/components/query/QueryStore";
 import {computed, extendObservable} from 'mobx';
 import makeRoutes from './routes';
 import * as _ from 'lodash';
@@ -12,9 +13,20 @@ import URL from 'url';
 import * as superagent from 'superagent';
 import { getHost } from './shared/api/urls';
 import { validateParametersPatientView } from './shared/lib/validateParameters';
+import AppConfig from "appConfig";
+import browser from 'bowser';
+import './shared/lib/tracking';
 
-if (localStorage.heroku && localStorage.localdev !== "true") {
+if (localStorage.localdev === 'true' || localStorage.localdist === 'true') {
+    __webpack_public_path__ = "//localhost:3000/"
+    localStorage.setItem("e2etest", "true");
+} else if (localStorage.heroku) {
     __webpack_public_path__ = ['//',localStorage.heroku,'.herokuapp.com','/'].join('');
+    localStorage.setItem("e2etest", "true");
+} else if (AppConfig.frontendUrl) {
+    // use given frontendUrl as base (use when deploying frontend on external
+    // CDN instead of cbioportal backend)
+    __webpack_public_path__ = AppConfig.frontendUrl;
 }
 
 if (!window.hasOwnProperty("$")) {
@@ -24,6 +36,24 @@ if (!window.hasOwnProperty("$")) {
 if (!window.hasOwnProperty("jQuery")) {
     window.jQuery = $;
 }
+
+// write browser name, version to brody tag
+if (browser) {
+    $(document).ready(()=>{
+        $("body").addClass(browser.name);
+    });
+}
+
+if (localStorage.e2etest) {
+    $(document).ready(()=>{
+        $("body").addClass("e2etest");
+        window.e2etest = true;
+    });
+}
+
+// expose version on window
+window.FRONTEND_VERSION = VERSION;
+window.FRONTEND_COMMIT = COMMIT;
 
 import 'script-loader!raven-js/dist/raven.js';
 
@@ -38,7 +68,8 @@ if (/cbioportal\.mskcc\.org|www.cbioportal\.org/.test(window.location.hostname) 
         tags:{
           fullUrl:window.location.href
         },
-        release:window.appVersion || '',
+        release:window.FRONTEND_COMMIT || '',
+        ignoreErrors: ['_germline', 'symlink_by_patient'],
         serverName: window.location.hostname
     }).install();
 }
@@ -50,16 +81,22 @@ const routingStore = new ExtendedRoutingStore();
 
 //sometimes we need to use memory history where there would be a conflict with
 //existing use of url hashfragment
-const history = (window.historyType === 'memory') ? createMemoryHistory() : hashHistory;
+const history = (AppConfig.historyType === 'memory') ? createMemoryHistory() : hashHistory;
 
 const syncedHistory = syncHistoryWithStore(history, routingStore);
+
+// lets make query Store since it's used in a lot of places
+const queryStore = new QueryStore(window, window.location.href);
 
 const stores = {
     // Key can be whatever you want
     routing: routingStore,
+    queryStore
     // ...other stores
 };
-//
+
+window.globalStores = stores;
+
 const end = superagent.Request.prototype.end;
 
 let redirecting = false;

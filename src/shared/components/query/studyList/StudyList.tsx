@@ -1,15 +1,16 @@
-import * as React from 'react';
+import * as React from "react";
 import {TypeOfCancer as CancerType, CancerStudy} from "../../../api/generated/CBioPortalAPI";
-import * as styles_any from './styles.module.scss';
-import classNames from 'classnames';
+import * as styles_any from "./styles.module.scss";
+import classNames from "classnames";
 import FontAwesome from "react-fontawesome";
 import LabeledCheckbox from "../../labeledCheckbox/LabeledCheckbox";
-import {observer} from "mobx-react";
+import {observer, Observer} from "mobx-react";
 import {computed} from "mobx";
-import {getStudySummaryUrl, getPubMedUrl} from "../../../api/urls";
+import _ from "lodash";
+import {getPubMedUrl, openStudySummaryFormSubmit} from "../../../api/urls";
 import {QueryStoreComponent} from "../QueryStore";
 import DefaultTooltip from "../../defaultTooltip/DefaultTooltip";
-import StudyListLogic, {FilteredCancerTreeView} from "../StudyListLogic";
+import {FilteredCancerTreeView} from "../StudyListLogic";
 import {CancerTreeNode} from "../CancerStudyTreeData";
 
 const styles = {
@@ -23,12 +24,15 @@ const styles = {
 
 		Study: string,
 		StudyName: string,
+		DeletedStudy: string,
 		StudyMeta: string,
 		StudySamples: string,
 		StudyLinks: string,
 
 		icon: string,
 		iconWithTooltip: string,
+		trashIcon: string,
+		summaryIcon: string,
 		tooltip: string,
 
 		disabled: string,
@@ -48,7 +52,7 @@ export interface IStudyListProps
 }
 
 @observer
-export default class StudyList extends QueryStoreComponent<IStudyListProps, void>
+export default class StudyList extends QueryStoreComponent<IStudyListProps, {}>
 {
 	private _view:FilteredCancerTreeView;
 
@@ -103,6 +107,7 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, void
 		let currentLevel = this.logic.getDepth(cancerType);
 		let childCancerTypes = this.view.getChildCancerTypes(cancerType);
 		let childStudies = this.view.getChildCancerStudies(cancerType);
+		let childStudyIds = this.logic.cancerTypeListView.getDescendantCancerStudies(cancerType).map(study => study.studyId);
 
 		let heading:JSX.Element | undefined;
 		let indentArrow:JSX.Element | undefined;
@@ -127,11 +132,12 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, void
 						<span className={styles.CancerTypeName}>
 							{cancerType.name}
 						</span>
-						{!!(!this.store.forDownloadTab) && (
-							<span className={styles.SelectAll}>
-								Select All
-							</span>
-						)}
+                            {!!(!this.store.forDownloadTab) && (
+                                <span className={styles.SelectAll}>
+                                    {_.intersection(childStudyIds, this.store.selectableSelectedStudyIds).length ?
+                                        'Deselect All' : 'Select All'}
+                                </span>
+                            )}
 					</CancerTreeCheckbox>
 				</li>
 			);
@@ -156,27 +162,60 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, void
 			styles.Study,
 			this.logic.isHighlighted(study) && styles.highlighted,
 		);
+
+		const isOverlap = study.studyId in this.store.getOverlappingStudiesMap;
+		const overlapWarning = isOverlap ?
+            <DefaultTooltip
+                mouseEnterDelay={0}
+                placement="top"
+                overlay={<div>This study may share samples with another selected study.</div>}
+            >
+                <i className="fa fa-exclamation-triangle"></i>
+            </DefaultTooltip>
+			: null;
+
 		return (
-			<li key={arrayIndex} className={liClassName} data-test='StudySelect'>
-				{this.renderStudyName(study)}
-				<div className={styles.StudyMeta}>
-					{this.renderSamples(study)}
-					{this.renderStudyLinks(study)}
-				</div>
+			<li key={arrayIndex} 
+			    className={liClassName} 
+			    data-test={this.store.isVirtualStudy(study.studyId) ? 'VirtualStudySelect' : 'StudySelect'}>
+                <Observer>
+                {() => {
+                    const classes = classNames({ [styles.StudyName]:true, 'overlappingStudy':isOverlap ,   [styles.DeletedStudy]: this.store.isDeletedVirtualStudy(study.studyId)});
+                    return(
+                        <CancerTreeCheckbox view={this.view} node={study}>
+                            <span className={classes}>
+                                {study.name}
+                                {overlapWarning}
+                            </span>
+                       </CancerTreeCheckbox>
+                    )
+                }}
+                </Observer>
+
+                <Observer>
+                    {() => {
+                        return(
+                            <div className={styles.StudyMeta}>
+                                {!this.store.isDeletedVirtualStudy(study.studyId) && this.renderSamples(study)}
+                                {this.renderStudyLinks(study)}
+                            </div>
+                        );
+                    }}
+                </Observer>
 			</li>
 		);
 	}
 
-	renderStudyName = (study:CancerStudy) =>
-	{
-		return (
-			<CancerTreeCheckbox view={this.view} node={study}>
-				<span className={styles.StudyName}>
-					{study.name}
-				</span>
-			</CancerTreeCheckbox>
-		);
-	}
+	// renderStudyName = (study:CancerStudy, afterName?:any) =>
+	// {
+	// 	return (
+	// 		<CancerTreeCheckbox view={this.view} node={study}>
+	// 			<span className={styles.StudyName}>
+	// 				{study.name} {afterName || null}
+	// 			</span>
+	// 		</CancerTreeCheckbox>
+	// 	);
+	// }
 
 	renderSamples = (study:CancerStudy) =>
 	{
@@ -189,64 +228,117 @@ export default class StudyList extends QueryStoreComponent<IStudyListProps, void
 
 	renderStudyLinks = (study:CancerStudy) =>
 	{
-		let links = [
-			{
-				icon: 'info-circle',
-				url: undefined,
-				tooltip: study.description
-			},
-			{
-				icon: 'bar-chart',
-				url: study.studyId && getStudySummaryUrl(study.studyId),
-				tooltip: study.studyId && "Summary"
-			},
-			{
-				icon: 'book',
-				url: study.pmid && getPubMedUrl(study.pmid),
-				tooltip: study.pmid && "PubMed"
-			},
-		];
-		return (
-			<span className={styles.StudyLinks}>
-				{links.map((link, i) => {
-					let content = (
-						<FontAwesome
-							key={i}
-							name={link.icon}
-							className={classNames({
-								[styles.icon]: true,
-								[styles.iconWithTooltip]: !!link.tooltip,
-							})}
-						/>
-					);
-
-					if (link.url)
-						content = (
-							<a key={i} href={link.url}>
-								{content}
-							</a>
-						);
-
-					if (link.tooltip)
-					{
-						let overlay = (
-							<div className={styles.tooltip} dangerouslySetInnerHTML={{__html: link.tooltip}}/>
-						);
-						content = (
-							<DefaultTooltip
-								key={i}
-								mouseEnterDelay={0}
-								placement="top"
-								overlay={overlay}
-								children={content}
-							/>
-						);
-					}
-
-					return content;
-				})}
-			</span>
-		);
+        if(this.store.isDeletedVirtualStudy(study.studyId)){
+            return(
+                <DefaultTooltip
+                    mouseEnterDelay={0}
+                    placement="top"
+                    overlay={
+                        <div className={styles.tooltip}
+                        >Restore study</div>
+                    }
+                    children={
+                        <button 
+                            className={`btn btn-default btn-xs`} 
+                            onClick={()=>this.store.restoreVirtualStudy(study.studyId)}
+                            style={{
+                                lineHeight: '80%',
+                            }}
+							data-test='virtualStudyRestore'>
+                            Restore
+                        </button>
+                    }
+                />
+            )
+        } else {
+            let links:{icon:string, onClick?:string|(()=>void), tooltip?:string}[] = [
+                {
+                    icon: 'info-circle',
+                    tooltip: this.store.isVirtualStudy(study.studyId) ? study.description.replace(/\r?\n/g, '<br />') : study.description,
+                }
+            ];
+    
+            if (this.store.isVirtualStudy(study.studyId)) {
+                links.push({
+                    icon: 'trash',
+                    tooltip: "Delete this virtual study.",
+                    onClick: ()=>this.store.deleteVirtualStudy(study.studyId),
+                });
+            } else {
+                links.push({
+                    icon: 'book',
+                    onClick: study.pmid && getPubMedUrl(study.pmid),
+                    tooltip: study.pmid && "PubMed",
+                });
+			}
+    
+            return (
+                <span className={styles.StudyLinks}>
+                    {links.map((link, i) => {
+                        let content = (
+                            <FontAwesome
+                                key={i}
+                                name={link.icon}
+                                className={classNames({
+                                    [styles.icon]: true,
+                                    [styles.iconWithTooltip]: !!link.tooltip,
+                                    [styles.trashIcon]: (link.icon === "trash")
+                                })}
+                            />
+                        );
+    
+                        if (link.onClick) {
+                            let anchorProps:any = {
+                                key: i
+                            };
+                            if (typeof link.onClick === "string") {
+                                anchorProps.href = link.onClick;
+                                anchorProps.target = "_blank";
+                            } else {
+                                anchorProps.onClick = link.onClick;
+                            }
+                            content = (
+                                <a {...anchorProps}>
+                                    {content}
+                                </a>
+                            );
+                        }
+    
+                        if (link.tooltip)
+                        {
+                            let overlay = (
+                                <div className={styles.tooltip} dangerouslySetInnerHTML={{__html: link.tooltip}}/>
+                            );
+                            content = (
+                                <DefaultTooltip
+                                    key={i}
+                                    mouseEnterDelay={0}
+                                    placement="top"
+                                    overlay={overlay}
+                                    children={content}
+                                />
+                            );
+                        }
+    
+                        return content;
+                    })}
+                    {study.studyId && (
+                        <DefaultTooltip
+                            mouseEnterDelay={0}
+                            placement="top"
+                            overlay={
+                                <div className={styles.tooltip}
+                                >View study summary</div>
+                            }
+                        >
+						    <span onClick={()=>openStudySummaryFormSubmit(study.studyId)}
+						        className={ classNames(styles.summaryIcon, 'ci ci-pie-chart')}>
+					        </span>
+						</DefaultTooltip>
+                    )}
+                </span>
+            );
+        }
 	}
 }
 
@@ -257,7 +349,7 @@ export interface ICancerTreeCheckboxProps
 }
 
 @observer
-export class CancerTreeCheckbox extends QueryStoreComponent<ICancerTreeCheckboxProps, void>
+export class CancerTreeCheckbox extends QueryStoreComponent<ICancerTreeCheckboxProps, {}>
 {
 	@computed.struct get checkboxProps()
 	{
@@ -269,7 +361,9 @@ export class CancerTreeCheckbox extends QueryStoreComponent<ICancerTreeCheckboxP
 		return (
 			<LabeledCheckbox
 				{...this.checkboxProps}
-				onChange={event => this.props.view.onCheck(this.props.node, (event.target as HTMLInputElement).checked)}
+				onChange={event => {
+					this.props.view.onCheck(this.props.node, (event.target as HTMLInputElement).checked);
+				}}
 			>
 				{this.props.children}
 			</LabeledCheckbox>

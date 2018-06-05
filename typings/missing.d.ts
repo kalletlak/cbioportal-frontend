@@ -4,6 +4,7 @@ declare module '*.json';
 
 // these packages are missing typings
 declare module 'react-file-download';
+declare module 'react-select-checked';
 declare module 'react-zeroclipboard';
 declare module 'reactableMSK';
 declare module 'redux-seamless-immutable';
@@ -20,3 +21,12 @@ declare module 'recompose/withContext';
 declare module 'react-bootstrap-autosuggest';
 declare module 'react-text-truncate';
 declare module 'react-resize-detector';
+declare module 'react-rangeslider';
+declare module 'jStat';
+declare module 'victory';
+declare module 'svgsaver';
+declare module 'addthis-snippet';
+declare module 'd3-dsv';
+declare module 'victory';
+declare module 'universal-ga';
+declare module 'mixpanel-browser';

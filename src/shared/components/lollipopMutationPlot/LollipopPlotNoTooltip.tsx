@@ -471,7 +471,23 @@ export default class LollipopPlotNoTooltip extends React.Component<LollipopPlotN
                         onClick={this.handlers.onBackgroundClick}
                         onMouseMove={this.handlers.onBackgroundMouseMove}
                     />
-                    {this.sequenceSegments}
+                    {
+                        // Originally this had tooltips by having separate segments
+                        // with hit zones. We disabled those separate segments with
+                        // tooltips (this.sequenceSegments) and instead just draw
+                        // one rectangle
+                        // this.sequenceSegments
+                    }
+                    <rect
+                        fill="#BABDB6"
+                        x={this.geneX}
+                        y={this.geneY}
+                        height={this.geneHeight}
+                        width={
+                            // the x-axis start from 0, so the rectangle size should be (width + 1)
+                            this.props.vizWidth + 1
+                        }
+                    />
                     {this.lollipops}
                     {this.domains}
                     <SVGAxis

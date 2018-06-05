@@ -3,6 +3,7 @@ import LazyLoadedTableCell from "shared/lib/LazyLoadedTableCell";
 import {Mutation, MutationCount} from "../../../api/generated/CBioPortalAPI";
 import MutationCountCache from "../../../cache/MutationCountCache";
 import MutationTable, {IMutationTableProps} from "../MutationTable";
+import generalStyles from "./styles.module.scss";
 
 export default class MutationCountColumnFormatter {
     public static makeRenderFunction<P extends IMutationTableProps>(table:MutationTable<P>) {
@@ -10,7 +11,7 @@ export default class MutationCountColumnFormatter {
             (d:Mutation[])=>{
                 const mutationCountCache:MutationCountCache|undefined = table.props.mutationCountCache;
                 if (mutationCountCache) {
-                    return mutationCountCache.get(d[0].sampleId);
+                    return mutationCountCache.get({sampleId:d[0].sampleId, molecularProfileId:d[0].molecularProfileId});
                 } else {
                     return {
                         status: "error",
@@ -18,7 +19,7 @@ export default class MutationCountColumnFormatter {
                     };
                 }
             },
-            (t:MutationCount)=>(<span className="pull-right">{t.mutationCount}</span>),
+            (t:MutationCount)=>(<div className={generalStyles["integer-data"]}>{t.mutationCount}</div>),
             "Mutation count not available for this sample."
         );
     }
@@ -26,7 +27,7 @@ export default class MutationCountColumnFormatter {
     public static sortBy(d:Mutation[], mutationCountCache?:MutationCountCache) {
         let ret;
         if (mutationCountCache) {
-            const cacheDatum = mutationCountCache.get(d[0].sampleId);
+            const cacheDatum = mutationCountCache.get({sampleId:d[0].sampleId, molecularProfileId:d[0].molecularProfileId});
             if (cacheDatum && cacheDatum.data) {
                 ret = cacheDatum.data.mutationCount;
             } else {
@@ -36,5 +37,11 @@ export default class MutationCountColumnFormatter {
             ret = null;
         }
         return ret;
+    }
+
+    public static download(d:Mutation[], mutationCountCache?:MutationCountCache) {
+        const sortValue = MutationCountColumnFormatter.sortBy(d, mutationCountCache);
+
+        return sortValue ? `${sortValue}` : "";
     }
 }

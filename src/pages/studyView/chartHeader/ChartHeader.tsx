@@ -5,9 +5,10 @@ import {If} from 'react-if';
 
 export interface IChartHeaderProps {
     clinicalAttribute: ClinicalAttribute;
-    showControls: boolean;
-    showResetIcon?: boolean;
-    handleResetClick: () => void;
+    showControls     : boolean;
+    showResetIcon?   : boolean;
+    handleResetClick : () => void;
+    onDeleteChart    : () => void;
 }
 
 export class ChartHeader extends React.Component<IChartHeaderProps, {}> {
@@ -30,6 +31,9 @@ export class ChartHeader extends React.Component<IChartHeaderProps, {}> {
                             <button className="btn btn-xs">
                                 <i className="fa fa-info-circle" aria-hidden="true"
                                    title={this.props.clinicalAttribute.description}></i>
+                            </button>
+                            <button className="btn btn-xs"  onClick={() => this.props.onDeleteChart()}>
+                                <i className="fa fa-times" aria-hidden="true" title="Delete chart"></i>
                             </button>
                         </div>
                     </If>

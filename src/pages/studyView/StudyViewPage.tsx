@@ -39,6 +39,9 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
             },
             updateCNAGeneFilter:(entrezGeneId: number, alteration: number)=> {
                 this.store.updateCNAGeneFilter(entrezGeneId, alteration);
+            },
+            onDeleteChart:(attributeId:string)=>{
+                this.store.hideChart(attributeId);
             }
         }
 
@@ -66,6 +69,7 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
             key={clinicalAttribute.clinicalAttributeId}
             promise={data}
             filters={filters}
+            onDeleteChart={this.handlers.onDeleteChart}
         />)
     };
 

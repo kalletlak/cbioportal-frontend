@@ -29,11 +29,12 @@ export enum ChartType {
 }
 
 export interface IChartContainerProps {
-    chartType:ChartType;
+    chartType        : ChartType;
     clinicalAttribute: ClinicalAttribute;
-    onUserSelection: (attrId: string, clinicalDataType: ClinicalDataType, value: string[]) => void;
-    promise:MobxPromise<ClinicalDataCount[]>
-    filters:string[];
+    promise          : MobxPromise<ClinicalDataCount[]>;
+    filters          : string[];
+    onUserSelection  : (attrId: string, clinicalDataType: ClinicalDataType, value: string[]) => void;
+    onDeleteChart    : (attrId:string) => void;
 }
 
 @observer
@@ -76,6 +77,9 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
             },
             handlePDFClick:()=>{
                 svgToPdfDownload(`${fileName}.pdf`, this.toSVGDOMNode());
+            },
+            onDeleteChart:()=>{
+                this.props.onDeleteChart(this.props.clinicalAttribute.clinicalAttributeId);
             }
         };
     }
@@ -118,6 +122,7 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                         showControls={this.mouseInPlot}
                         showResetIcon={this.props.filters.length>0}
                         handleResetClick={this.handlers.resetFilters}
+                        onDeleteChart={this.handlers.onDeleteChart}
                     />
 
                     <If condition={this.props.chartType===ChartType.PIE_CHART}>

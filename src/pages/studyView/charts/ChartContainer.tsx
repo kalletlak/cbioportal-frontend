@@ -130,7 +130,8 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                             ref={this.handlers.ref}
                             onUserSelection={this.handlers.onUserSelection}
                             filters={this.props.filters}
-                            data={this.data} />
+                            data={this.data}
+                            active={this.mouseInPlot} />
                     </If>
                 </div>
             </If>

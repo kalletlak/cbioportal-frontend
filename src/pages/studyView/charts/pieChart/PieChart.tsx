@@ -8,11 +8,15 @@ import { COLORS, UNSELECTED_COLOR, NA_COLOR } from "pages/studyView/StudyViewUti
 import CBIOPORTAL_VICTORY_THEME from "shared/theme/cBioPoralTheme";
 import { AbstractChart } from "pages/studyView/charts/ChartContainer";
 import { ClinicalDataCount } from "shared/api/generated/CBioPortalAPIInternal";
+import LazyMobXTable from "shared/components/lazyMobXTable/LazyMobXTable";
+import { bind } from "bind-decorator";
+import { Popover } from "react-bootstrap";
 
 export interface IPieChartProps {
     data: ClinicalDataCount[];
     filters:string[];
     onUserSelection:(values:string[])=>void;
+    active:boolean
 }
 
 @observer
@@ -21,6 +25,7 @@ export default class PieChart extends React.Component<IPieChartProps, {}> implem
     // used in saving slice color
     private colorSet:{[id:string]:string} = {};
     private svgContainer: any;
+    @observable isTooltipHovered: boolean = false;
 
     constructor(props: IPieChartProps) {
         super(props);
@@ -51,6 +56,16 @@ export default class PieChart extends React.Component<IPieChartProps, {}> implem
         }];
     }
 
+    @bind
+    private tooltipMouseEnter(): void {
+        this.isTooltipHovered = true;
+    }
+
+    @bind
+    private tooltipMouseLeave(): void {
+        this.isTooltipHovered = false;
+    }
+
     public downloadData() {
         return this.props.data.map(obj=>obj.value+'\t'+obj.count).join('\n');
     }
@@ -74,8 +89,10 @@ export default class PieChart extends React.Component<IPieChartProps, {}> implem
             b. No  -> add appropriate slice style properties depending on the filters
     */
     @computed get annotatedData() {
+        let totalCount = _.sumBy(this.props.data, obj=>obj.count);
         return this.props.data.map(slice => {
             let color = this.colorSet[slice.value];
+            let frequency = (slice.count/totalCount)*100
             if (_.isUndefined(color)) {
                 if (slice.value.toLowerCase().includes('na')) {
                     color = NA_COLOR;
@@ -85,20 +102,25 @@ export default class PieChart extends React.Component<IPieChartProps, {}> implem
                 this.colorSet[slice.value] = color;
             }
             if (_.isEmpty(this.props.filters)) {
-                return { ...slice, fill: color };
+                return { ...slice, fill: color, frequency: frequency+'%'};
             } else {
                 if (_.includes(this.props.filters, slice.value)) {
-                    return { ...slice, fill: color, stroke: "#cccccc", strokeWidth: 3 };
+                    return { ...slice, fill: color, stroke: "#cccccc", strokeWidth: 3, frequency: frequency+'%' };
                 } else {
-                    return { ...slice, fill: UNSELECTED_COLOR, fillOpacity: '0.5' };
+                    return { ...slice, fill: UNSELECTED_COLOR, fillOpacity: '0.5', frequency: frequency+'%' };
                 }
             }
         })
     }
 
+    @computed get tooltipModel(){
+        return this.props.active || this.isTooltipHovered
+    }
+
     public render() {
         //to hide label if the angle is too small(currently set to 20 degrees)
         return (
+            <div>
             <VictoryPie
                 theme={CBIOPORTAL_VICTORY_THEME}
                 containerComponent={<VictoryContainer
@@ -121,6 +143,36 @@ export default class PieChart extends React.Component<IPieChartProps, {}> implem
                 x="value"
                 y="count"
             />
+            {this.tooltipModel &&
+                <Popover
+                onMouseEnter={this.tooltipMouseEnter}
+                onMouseLeave={this.tooltipMouseLeave}
+                >
+                    <PieChartTableComponent
+                        className={styles.body}
+                        initialItemsPerPage={10}
+                        showCopyDownload={false}
+                        data={this.props.data}
+                        showFilter={false}
+                        showColumnVisibility={false}
+                        enableHorizontalScroll={false}
+                        showPagination={false}
+                        columns={
+                            [
+                                {
+                                    name: 'Value',
+                                    render: (data: ClinicalDataCount) => <span>{data.value}</span>
+                                },
+                                {
+                                    name: 'Count',
+                                    render: (data: ClinicalDataCount) => <span>{data.count}</span>
+                                }
+                            ]
+                        }
+                    />
+                </Popover>
+            }
+            </div>
         );
     }
 
@@ -136,4 +188,7 @@ class CustomSlice extends React.Component<{}, {}> {
         </g>
         );
     }
+}
+
+class PieChartTableComponent extends LazyMobXTable<ClinicalDataCount> {
 }

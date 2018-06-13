@@ -14,6 +14,8 @@ import { ClinicalDataCount, StudyViewFilter } from "shared/api/generated/CBioPor
 import { remoteData } from "shared/api/remoteData";
 import internalClient from "shared/api/cbioportalInternalClientInstance";
 import MobxPromise from "mobxpromise";
+import classnames from 'classnames';
+import { bind } from "bind-decorator";
 
 export interface AbstractChart {
     downloadData:()=>string;
@@ -44,6 +46,7 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
     private plot:AbstractChart;
 
     @observable mouseInPlot:boolean = false;
+    @observable placement:'left'|'right' = 'right';
     
     constructor(props: IChartContainerProps) {
         super(props);
@@ -66,8 +69,14 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                     clinicalDataType,
                     values);
             }),
-            onMouseEnterPlot: action(()=>{ this.mouseInPlot = true;}),
-            onMouseLeavePlot: action(()=>{ this.mouseInPlot = false;}),
+            onMouseEnterPlot:action((event:React.MouseEvent<any>)=> {
+                this.placement = event.nativeEvent.x>800 ? 'left' : 'right';
+                this.mouseInPlot = true;
+            }),
+            onMouseLeavePlot: action(()=>{ 
+                this.placement = 'right'
+                this.mouseInPlot = false;
+            }),
             handleDownloadDataClick:()=>{
                 let firstLine = this.props.clinicalAttribute.displayName+'\tCount'
                 fileDownload(firstLine+'\n'+this.plot.downloadData(), fileName);
@@ -110,11 +119,15 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
         return this.props.promise.result || [];
     }
 
+    @computed get chartStyle(){
+        return this.props.chartType === ChartType.PIE_CHART ? [styles.chartHeightOne, styles.chartWidthOne] : [styles.chartHeightTwo, styles.chartWidthTwo];
+    }
+
     public render() {
         
         return (
             <If condition={this.isChartVisible}>
-                <div className={styles.chart}
+                <div className={ classnames(styles.chart, ...this.chartStyle) }
                      onMouseEnter={this.handlers.onMouseEnterPlot}
                      onMouseLeave={this.handlers.onMouseLeavePlot}>
                     <ChartHeader 
@@ -131,7 +144,8 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                             onUserSelection={this.handlers.onUserSelection}
                             filters={this.props.filters}
                             data={this.data}
-                            active={this.mouseInPlot} />
+                            active={this.mouseInPlot} 
+                            placement={this.placement}/>
                     </If>
                 </div>
             </If>

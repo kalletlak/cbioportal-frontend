@@ -15,4 +15,3 @@ common-dist/
 frontend-cbioportal.iml
 test/
 .vscode/**
-end-to-end-tests/**

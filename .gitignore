@@ -14,5 +14,3 @@ common-dist/
 .sass-cache
 frontend-cbioportal.iml
 test/
-.vscode/**
-end-to-end-tests/**

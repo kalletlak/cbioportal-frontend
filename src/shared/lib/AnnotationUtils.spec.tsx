@@ -162,8 +162,8 @@ describe('AnnotationUtils', () => {
     let hotspot3dIndex: IHotspotIndex;
 
     before(() => {
-        hotspotIndex = indexHotspots(hotspots);
-        hotspot3dIndex = indexHotspots(hotspots3d);
+        hotspotIndex = indexHotspots(hotspots as any);
+        hotspot3dIndex = indexHotspots(hotspots3d as any);
     });
 
     it('checks if a mutation is a hotspot mutation', () => {

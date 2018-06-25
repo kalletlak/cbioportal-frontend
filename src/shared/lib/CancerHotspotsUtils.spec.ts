@@ -83,7 +83,7 @@ describe('CancerHotspotsUtils', () => {
     let hotspotIndex: IHotspotIndex;
 
     before(() => {
-        hotspotIndex = indexHotspots(hotspots);
+        hotspotIndex = indexHotspots(hotspots as any);
     });
 
     it('properly creates hotspot index', () => {

@@ -1,0 +1,14 @@
+.Checkboxes {
+  display: flex;
+  flex-direction: row;
+  float: left;
+}
+
+.Checkboxes > * {
+  margin:0 10px !important;
+}
+
+.Tendency {
+  display: flex;
+  flex-direction: column;
+}

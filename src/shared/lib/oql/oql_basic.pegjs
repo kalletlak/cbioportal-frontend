@@ -2,11 +2,6 @@ start
 	= Query
 	/ sp { return false; }
 
-br	= [\n] b:br
-        / ";" b:br
-        / [\n]
-	/ ";"
-
 NaturalNumber = number:[0-9]+ { return number.join("");}
 Number = "-" number: Number { return "-"+number;}
         / whole_part:NaturalNumber "." decimal_part:NaturalNumber { return whole_part + "." + decimal_part;}
@@ -14,10 +9,18 @@ Number = "-" number: Number { return "-"+number;}
         / whole_part:NaturalNumber {return whole_part;}
 String = word:[-_.@/a-zA-Z0-9*]+ { return word.join("") }
 AminoAcid = letter:[GPAVLIMCFYWHKRQNEDST] { return letter; }
+// any character, except " :
+StringExceptQuotes = stringExceptQuotes:[^"]+ { return stringExceptQuotes.join("") }
 
 sp = space:[ \t\r]+
 msp = space:[ \t\r]*
 
+zmbs = zero_or_more_breaks_and_spaces:[; \t\r\n]*
+ombs = one_or_more_breaks_and_spaces:[; \t\r\n]+
+
+StartMergedGenes
+	= "[" zmbs "\"" StringExceptQuotes "\"" {return {"label": label, "list":[]};}
+	/ "[" zmbs {return {"label": undefined, "list":[]};}
 
 // Case-insensitive keywords
 AMP = "AMP"i
@@ -29,16 +32,18 @@ EXP = "EXP"i
 PROT = "PROT"i
 
 Query
-	= listofgenes:ListOfGenes msp br rest:Query { return listofgenes.map(function(gene) { return {"gene":gene, "alterations":false}; }).concat(rest); }
-        / listofgenes:ListOfGenes msp br { return listofgenes.map(function(gene) { return {"gene":gene, "alterations":false}; }); }
-        / listofgenes:ListOfGenes msp { return listofgenes.map(function(gene) { return {"gene":gene, "alterations":false}; }); }
-	/ msp first:SingleGeneQuery msp br rest:Query  { return [first].concat(rest); }
-	/ msp first:SingleGeneQuery msp br { return [first]; }
-	/ msp first:SingleGeneQuery msp { return [first]; }
+	= mqr:MergedQuery sqr:Query {return mqr.concat(sqr);}
+	/ qr:StandardQuery sqr:Query {return qr.concat(sqr);}
+	/ mqr:MergedQuery {return mqr;}
+	/ qr:StandardQuery {return qr; }
 
-ListOfGenes
-	= msp geneName:String msp rest:ListOfGenes { return [geneName].concat(rest);}
-	/ msp geneName1:String msp geneName2:String msp{ return [geneName1, geneName2]; }
+MergedQuery
+	= zmbs mergedGenes:StartMergedGenes qr:StandardQuery zmbs "]" zmbs mqr:MergedQuery { mergedGenes.list = qr; return [mergedGenes].concat(mqr);; }
+	/ zmbs mergedGenes:StartMergedGenes qr:StandardQuery zmbs "]" zmbs { mergedGenes.list = qr; return [mergedGenes]; }
+
+StandardQuery
+	= zmbs first:SingleGeneQuery ombs rest:StandardQuery  { return [first].concat(rest); }
+	/ zmbs first:SingleGeneQuery zmbs { return [first]; }
 
 SingleGeneQuery 
 	= geneName:String msp ":" msp alts:Alterations { return {"gene": geneName, "alterations": alts}; }
@@ -69,7 +74,7 @@ CNACommand
 MUTCommand
 	= "MUT" msp "=" msp mutation:Mutation { return {"alteration_type":"mut", "constr_rel": "=", "constr_type":mutation.type, "constr_val":mutation.value, "info":mutation.info}; }
 	/ "MUT" msp "!=" msp mutation:Mutation { return {"alteration_type":"mut", "constr_rel": "!=", "constr_type":mutation.type, "constr_val":mutation.value, "info":mutation.info}; }
-	/ "MUT" { return {"alteration_type":"mut"}; }
+	/ "MUT" { return {"alteration_type":"mut", "info":{}}; }
 	/ mutation:Mutation { return {"alteration_type":"mut", "constr_rel": "=", "constr_type":mutation.type, "constr_val":mutation.value, "info":mutation.info}; }
 
 EXPCommand
@@ -96,7 +101,7 @@ Mutation
 	/ "INFRAME"i { return {"type":"class", "value":"INFRAME", "info":{}}; }
 	/ "SPLICE"i { return {"type":"class", "value":"SPLICE", "info":{}}; }
 	/ "TRUNC"i { return {"type":"class", "value":"TRUNC", "info":{}}; }
-        / "PROMOTER"i { return {"type":"class", "value":"PROMOTER", "info":{}}; }
-        / letter:AminoAcid position:NaturalNumber string:String { return {"type":"name" , "value":(letter+position+string), "info":{}};}
-        / letter:AminoAcid position:NaturalNumber { return {"type":"position", "value":parseInt(position), "info":{"amino_acid":letter.toUpperCase()}}; }
-	/ mutation_name:String { return {"type":"name", "value":mutation_name, "info":{}}; }
+    / "PROMOTER"i { return {"type":"class", "value":"PROMOTER", "info":{}}; }
+    / letter:AminoAcid position:NaturalNumber string:String { return {"type":"name" , "value":(letter+position+string), "info":{}};}
+    / letter:AminoAcid position:NaturalNumber { return {"type":"position", "value":parseInt(position), "info":{"amino_acid":letter.toUpperCase()}}; }
+	/ mutation_name:String { return {"type":"name", "value":mutation_name, "info":{"unrecognized":true}}; }

@@ -6,12 +6,31 @@ import Testimonials from "../testimonials/Testimonials";
 import {ThreeBounce} from 'better-react-spinkit';
 import AppConfig from "appConfig";
 import {QueryStore} from "shared/components/query/QueryStore";
+import { Timeline } from 'react-twitter-widgets';
 
+
+interface IRightBarProps
+{
+    store:QueryStore;
+}
+interface IRightBarState
+{
+    twitterLoading: boolean;
+}
 
 @observer
-export default class RightBar extends React.Component<{}, {}> {
+export default class RightBar extends React.Component<IRightBarProps, IRightBarState> {
+    constructor(props:IRightBarProps) {
+        super(props);
+        this.state = {
+            twitterLoading: true // only used for default what's new
+        };
+    }
 
-    public studyStore = new QueryStore();
+
+    get studyStore() {
+      return this.props.store;
+    }
 
     get logic() { return this.studyStore.studyListLogic; }
 
@@ -34,8 +53,54 @@ export default class RightBar extends React.Component<{}, {}> {
         ));
     }
 
-    static getExampleSection() {
+    private getWhatsNew() {
+        if (AppConfig.skinRightNavWhatsNewBlurb) {
+            return (
+                <div className="rightBarSection">
+                    <h3>What's New</h3>
+                    <div dangerouslySetInnerHTML={{__html:AppConfig.skinRightNavWhatsNewBlurb}}></div>
+                </div>
+            );
+        } else {
+            return (
+                <div className="rightBarSection" style={{paddingBottom:20}}>
+                    <h3 style={{borderBottom:0}}>
+                        What's New
+                        <a href="http://www.twitter.com/pedcbioportal" className="pull-right">
+                            @pedcbioportal <i className="fa fa-twitter" aria-hidden="true"></i>
+                        </a>
+                    </h3>
+                    <div style={{marginTop:3}}>
+                        <Timeline
+                            dataSource={{
+                                sourceType: 'profile',
+                                screenName: 'cbioportal'
+                            }}
+                            options={{
+                                username: 'cbioportal',
+                                height: '200',
+                                chrome: 'noheader%20nofooter',
+                            }}
+                            onLoad={() => this.setState({twitterLoading:false})}
+                        />
+                    </div>
+                    <div>
+                        {this.state.twitterLoading &&
+                             (<ThreeBounce className="center-block text-center" />) ||
+                             (
+                                <div style={{paddingTop:5}}>
+                                    <p style={{textAlign:'center'}}>Sign up for low-volume email news alerts</p>
+                                    <a target="_blank" className="btn btn-default btn-sm" href="http://groups.google.com/group/pediatric-cbioportal-news/boxsubscribe" style={{width: "100%"}}>Subscribe</a>
+                                 </div>
+                             )
+                        }
+                    </div>
+                </div>
+            );
+        }
+    }
 
+    static getExampleSection() {
         const title:string = 'Example Queries';
         const defaultExamples:JSX.Element = (
             <div className="rightBarSection exampleQueries">
@@ -77,7 +142,7 @@ export default class RightBar extends React.Component<{}, {}> {
         }
     }
 
-    render(){
+    render() {
         const datasets:JSX.Element | null = AppConfig.skinRightNavShowDatasets? 
             (
                 <div className="rightBarSection">
@@ -116,16 +181,7 @@ export default class RightBar extends React.Component<{}, {}> {
 
         return (
             <div>
-                <div className="rightBarSection">
-                    <h3>
-                        What's New
-                        <a href="http://www.twitter.com/pedcbioportal" className="pull-right">
-                            @pedcbioportal <i className="fa fa-twitter" aria-hidden="true"></i>
-                        </a>
-                    </h3>
-                    <p>Sign up for low-volume email news alerts:</p>
-                    <a target="_blank" className="btn btn-default btn-sm" href="http://groups.google.com/group/pediatric-cbioportal-news/boxsubscribe" style={{width: "100%"}}>Subscribe</a>
-                </div>
+                {this.getWhatsNew()}
                 {datasets}
                 {examples}
                 {testimonials}

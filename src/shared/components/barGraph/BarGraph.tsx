@@ -3,7 +3,7 @@ import * as _ from 'lodash';
 import wordwrap from 'word-wrap';
 import { ThreeBounce } from 'better-react-spinkit';
 import { CancerStudy } from 'shared/api/generated/CBioPortalAPI';
-import { ChartTooltipItem } from '@types/chart.js';
+import { ChartTooltipItem } from 'chart.js';
 const convertCssColorNameToHex = require('convert-css-color-name-to-hex');
 import Chart from 'chart.js';
 
@@ -46,8 +46,10 @@ export default class BarGraph extends React.Component<IBarGraphProps, {}> {
         };
     }
 
-    lightenDarkenColor(col:string, amt:number) {
-        const num = parseInt(col,16);
+    lightenDarkenColor(color:string, amt:number):string {
+        const hexColor = convertCssColorNameToHex(color).slice(1);
+
+        const num = parseInt(hexColor,16);
 
         let r = (num >> 16) + amt;
 
@@ -64,6 +66,11 @@ export default class BarGraph extends React.Component<IBarGraphProps, {}> {
         if (g > 255) g = 255;
         else if (g < 0) g = 0;
 
+        const luma = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+        if (luma >= 254 && color !== 'White' && amt > 1) {
+            return this.lightenDarkenColor(color, amt/2);
+        }
+
         return "#" + (g | (b << 8) | (r << 16)).toString(16);
     }
 
@@ -71,9 +78,15 @@ export default class BarGraph extends React.Component<IBarGraphProps, {}> {
         return wordwrap(label, {width: 30}).split(/\r?\n/).map(_label => _label.trim());
     }
 
+    get byPrimarySiteStudies() {
+        return this.props.data.filter(cancers => _.every(cancers.studies, study => study.cancerTypeId !== "other" &&  study.cancerTypeId  !== "mixed"));
+    }
+
     componentDidMount() {
 
-        const cancerStudies = this.props.data.filter(cancers => _.every(cancers.studies, study => study.cancerTypeId !== "other" &&  study.cancerTypeId  !== "mixed"));
+        const cancerStudies = this.byPrimarySiteStudies;
+
+        if (!cancerStudies.length) return;
         cancerStudies.forEach(study => {study.caseCount = study.studies.reduce((sum:number, cStudy) => sum + cStudy.allSampleCount, 0)});
 
         const cancerTypeStudiesArray = cancerStudies.sort((a, b) => b.caseCount! - a.caseCount!).slice(0, 20).map(study => this.getShortName(study));
@@ -88,7 +101,7 @@ export default class BarGraph extends React.Component<IBarGraphProps, {}> {
                     lightenColorConstant = 18;
                 } else if (cancerColor === "Yellow") {
                     lightenColorConstant = 11;
-                } else if (cancerColor === "LightBlue" || cancerColor === "LightSkyBlue" || cancerColor === "PeachPuff" || cancerColor === "LightYellow" ) {
+                } else if (_.includes(["LightBlue", "LightSkyBlue", "PeachPuff", "LightYellow"], cancerColor)) {
                     lightenColorConstant = 0;
                 } else if (cancerColor === "Teal") {
                     lightenColorConstant = 1;
@@ -97,10 +110,10 @@ export default class BarGraph extends React.Component<IBarGraphProps, {}> {
                 } else if (cancerColor === "Black") {
                     lightenColorConstant = 6;
                 }
-                const color = this.lightenDarkenColor(convertCssColorNameToHex(cancerColor).slice(1), (j + lightenColorConstant)/max * 90);
+                const color = this.lightenDarkenColor(cancerColor, (j + lightenColorConstant)/max * 90);
                 return {
                     studyId,
-                    borderColor: '#F1F6FE',
+                    borderColor: _.includes(['Gainsboro', 'White', 'LightYellow'], cancerColor) ? '#dddddd' : '#F1F6FE',
                     backgroundColor: color,
                     borderWidth: 1,
                     label: name,
@@ -181,7 +194,8 @@ export default class BarGraph extends React.Component<IBarGraphProps, {}> {
     }
 
     render() {
-        return <canvas ref={el => this.chartTarget = el} height="500px"/>;
+        const length = this.byPrimarySiteStudies.length;
+        return length ? <canvas ref={(el:HTMLCanvasElement) => this.chartTarget = el} height={70 + 430 * (length > 20 ? 20 : length)/20}/> : null;
     }
 
 };

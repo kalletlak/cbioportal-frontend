@@ -46,35 +46,6 @@ const RESISTANCE_LEVEL_SCORE:{[level:string]: number} = {
     'R1': 3,
 };
 
-// portal consquence (mutation type) => OncoKB consequence
-const CONSEQUENCE_MATRIX:{[consequence:string]: string[]} = {
-    '3\'Flank': ['any'],
-    '5\'Flank ': ['any'],
-    'Targeted_Region': ['inframe_deletion', 'inframe_insertion'],
-    'COMPLEX_INDEL': ['inframe_deletion', 'inframe_insertion'],
-    'ESSENTIAL_SPLICE_SITE': ['feature_truncation'],
-    'Exon skipping': ['inframe_deletion'],
-    'Frameshift deletion': ['frameshift_variant'],
-    'Frameshift insertion': ['frameshift_variant'],
-    'FRAMESHIFT_CODING': ['frameshift_variant'],
-    'Frame_Shift_Del': ['frameshift_variant'],
-    'Frame_Shift_Ins': ['frameshift_variant'],
-    'Fusion': ['fusion'],
-    'Indel': ['frameshift_variant', 'inframe_deletion', 'inframe_insertion'],
-    'In_Frame_Del': ['inframe_deletion'],
-    'In_Frame_Ins': ['inframe_insertion'],
-    'Missense': ['missense_variant'],
-    'Missense_Mutation': ['missense_variant'],
-    'Nonsense_Mutation': ['stop_gained'],
-    'Nonstop_Mutation': ['stop_lost'],
-    'Splice_Site': ['splice_region_variant'],
-    'Splice_Site_Del': ['splice_region_variant'],
-    'Splice_Site_SNP': ['splice_region_variant'],
-    'splicing': ['splice_region_variant'],
-    'Translation_Start_Site': ['start_lost'],
-    'vIII deletion': ['any']
-};
-
 const LEVELS = {
     sensitivity: ['4', '3B', '3A', '2B', '2A', '1', '0'],
     resistance: ['R3', 'R2', 'R1'],
@@ -99,7 +70,7 @@ export function generateIdToIndicatorMap(data:IndicatorQueryResp[]): {[queryId:s
 export function generateEvidenceQuery(queryVariants:Query[]): EvidenceQueries
 {
     return {
-        evidenceTypes: "GENE_SUMMARY,GENE_BACKGROUND,ONCOGENIC,MUTATION_EFFECT,VUS,STANDARD_THERAPEUTIC_IMPLICATIONS_FOR_DRUG_SENSITIVITY,STANDARD_THERAPEUTIC_IMPLICATIONS_FOR_DRUG_RESISTANCE,INVESTIGATIONAL_THERAPEUTIC_IMPLICATIONS_DRUG_SENSITIVITY",
+        evidenceTypes: "GENE_SUMMARY,GENE_BACKGROUND,ONCOGENIC,MUTATION_EFFECT,VUS,MUTATION_SUMMARY,TUMOR_TYPE_SUMMARY,STANDARD_THERAPEUTIC_IMPLICATIONS_FOR_DRUG_SENSITIVITY,STANDARD_THERAPEUTIC_IMPLICATIONS_FOR_DRUG_RESISTANCE,INVESTIGATIONAL_THERAPEUTIC_IMPLICATIONS_DRUG_SENSITIVITY,INVESTIGATIONAL_THERAPEUTIC_IMPLICATIONS_DRUG_RESISTANCE",
         highestLevelOnly: false,
         levels: ['LEVEL_1', 'LEVEL_2A', 'LEVEL_2B', 'LEVEL_3A', 'LEVEL_3B', 'LEVEL_4', 'LEVEL_R1'],
         queries: queryVariants,
@@ -108,7 +79,7 @@ export function generateEvidenceQuery(queryVariants:Query[]): EvidenceQueries
 }
 
 export function generateQueryVariant(entrezGeneId:number,
-                                     tumorType:string,
+                                     tumorType:string | null,
                                      alteration?:string,
                                      mutationType?:string,
                                      proteinPosStart?:number,
@@ -118,24 +89,25 @@ export function generateQueryVariant(entrezGeneId:number,
     return {
         id: generateQueryVariantId(entrezGeneId, tumorType, alteration, mutationType),
         hugoSymbol: '',
-        tumorType,
+        tumorType:(tumorType as string), // generated api typings are wrong, it can accept null
         alterationType: alterationType || AlterationTypes[AlterationTypes.Mutation],
         entrezGeneId: entrezGeneId,
         alteration: alteration || "",
-        consequence: convertConsequence(mutationType || ""),
+        consequence: mutationType || "any",
         proteinStart: proteinPosStart === undefined ? -1 : proteinPosStart,
         proteinEnd: proteinPosEnd === undefined ? -1 : proteinPosEnd,
         type: "web",
-        hgvs: ""
+        hgvs: "",
+        svType: "DELETION" // TODO: hack because svType is not optional
     };
 }
 
 export function generateQueryVariantId(entrezGeneId:number,
-                                       tumorType:string,
+                                       tumorType:string | null,
                                        alteration?:string,
                                        mutationType?:string): string
 {
-    let id = `${entrezGeneId}_${tumorType}`;
+    let id = (tumorType) ? `${entrezGeneId}_${tumorType}` : `${entrezGeneId}`;
 
     if (alteration) {
         id = `${id}_${alteration}`;
@@ -271,24 +243,6 @@ export function calcResistanceLevelScore(level:string)
     return RESISTANCE_LEVEL_SCORE[normalizeLevel(level) || ""] || 0;
 }
 
-/**
- * Convert cBioPortal consequence to OncoKB consequence
- *
- * @param consequence cBioPortal consequence
- * @returns
- */
-export function convertConsequence(consequence:string)
-{
-    if (consequence in CONSEQUENCE_MATRIX &&
-        CONSEQUENCE_MATRIX.hasOwnProperty(consequence))
-    {
-        return CONSEQUENCE_MATRIX[consequence].join(',');
-    }
-    else {
-        return 'any';
-    }
-}
-
 export function initEvidence()
 {
     return {
@@ -421,8 +375,9 @@ export function getTumorTypeFromEvidence(evidence:any) {
     var tumorType = _.isObject(evidence.tumorType) ? evidence.tumorType.name : (evidence.subtype || evidence.cancerType);
     var oncoTreeTumorType = '';
 
-    if(_.isObject(evidence.oncoTreeType)) {
-        oncoTreeTumorType = evidence.oncoTreeType.subtype ? evidence.oncoTreeType.subtype : evidence.oncoTreeType.cancerType;
+    if (_.isObject(evidence.oncoTreeType)) {
+        oncoTreeTumorType = evidence.oncoTreeType.name ? evidence.oncoTreeType.name :
+            (evidence.oncoTreeType.mainType ? evidence.oncoTreeType.mainType.name : '');
     }
 
     if(oncoTreeTumorType) {

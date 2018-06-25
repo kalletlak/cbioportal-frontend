@@ -10,10 +10,10 @@ import fileDownload from 'react-file-download';
 import classnames from 'classnames';
 import DefaultTooltip from "shared/components/defaultTooltip/DefaultTooltip";
 import PdbHeaderCache from "shared/cache/PdbHeaderCache";
-import PdbPositionMappingCache from "shared/cache/PdbPositionMappingCache";
-import {PdbUniprotResidueMapping} from "shared/api/generated/PdbAnnotationAPI";
+import ResidueMappingCache from "shared/cache/ResidueMappingCache";
+import {ResidueMapping} from "shared/api/generated/Genome2StructureAPI";
 import {CacheData} from "shared/lib/LazyMobXCache";
-import {IMobXApplicationDataStore} from "shared/lib/IMobXApplicationDataStore";
+import {ILazyMobXTableApplicationDataStore} from "shared/lib/ILazyMobXTableApplicationDataStore";
 import MutationMapperDataStore from "pages/resultsView/mutation/MutationMapperDataStore";
 import {Mutation} from "shared/api/generated/CBioPortalAPI";
 import {IPdbChain, PdbAlignmentIndex} from "shared/model/Pdb";
@@ -22,19 +22,20 @@ import {
     getProteinStartPositionsByRange
 } from "shared/lib/MutationUtils";
 import StructureViewer from "./StructureViewer";
+import PdbChainInfo from "../PdbChainInfo";
 import {ProteinScheme, ProteinColor, SideChain, MutationColor, IResidueSpec} from "./StructureVisualizer";
 import PyMolScriptGenerator from "./PyMolScriptGenerator";
 
 import styles from "./structureViewer.module.scss";
-import PdbChainInfo from "../PdbChainInfo";
 
 export interface IStructureViewerPanelProps extends IProteinImpactTypeColors
 {
-    pdbChainDataStore: IMobXApplicationDataStore<IPdbChain>;
+    pdbChainDataStore: ILazyMobXTableApplicationDataStore<IPdbChain>;
     pdbAlignmentIndex?: PdbAlignmentIndex;
     mutationDataStore?: MutationMapperDataStore;
     pdbHeaderCache?: PdbHeaderCache;
-    pdbPositionMappingCache?: PdbPositionMappingCache;
+    residueMappingCache?: ResidueMappingCache;
+    uniprotId?: string;
     onClose?: () => void;
 }
 
@@ -42,16 +43,21 @@ export interface IStructureViewerPanelProps extends IProteinImpactTypeColors
 export default class StructureViewerPanel extends React.Component<IStructureViewerPanelProps, {}> {
 
     @observable protected isCollapsed:boolean = false;
+    @observable protected isIncreasedSize:boolean = false;
     @observable protected proteinScheme:ProteinScheme = ProteinScheme.CARTOON;
     @observable protected proteinColor:ProteinColor = ProteinColor.UNIFORM;
     @observable protected sideChain:SideChain = SideChain.SELECTED;
     @observable protected mutationColor:MutationColor = MutationColor.MUTATION_TYPE;
     @observable protected displayBoundMolecules:boolean = true;
 
+    protected _3dMolDiv: HTMLDivElement|undefined;
+
     constructor() {
         super();
 
+        this.containerRefHandler = this.containerRefHandler.bind(this);
         this.toggleCollapse = this.toggleCollapse.bind(this);
+        this.toggleDoubleSize = this.toggleDoubleSize.bind(this);
         this.handleProteinSchemeChange = this.handleProteinSchemeChange.bind(this);
         this.handleProteinColorChange = this.handleProteinColorChange.bind(this);
         this.handleSideChainChange = this.handleSideChainChange.bind(this);
@@ -357,12 +363,17 @@ export default class StructureViewerPanel extends React.Component<IStructureView
     public header()
     {
         return (
-            <div className='row'>
+            <div className={classnames('row', styles["header"])}>
                 <div className='col col-sm-10'>
                     <span>3D Structure</span>
                 </div>
                 <div className="col col-sm-2">
                     <span className="pull-right">
+                        <i
+                            className={classnames("fa", {"fa-compress": this.isIncreasedSize, "fa-expand": !this.isIncreasedSize})}
+                            onClick={this.toggleDoubleSize}
+                            style={{marginRight: 5, cursor: "pointer"}}
+                        />
                         <i
                             className="fa fa-minus-circle"
                             onClick={this.toggleCollapse}
@@ -403,8 +414,7 @@ export default class StructureViewerPanel extends React.Component<IStructureView
                             </div>
                         </div>
                     </If>
-                    <div className={`${styles["vis-container"]} row`}>
-                        <hr />
+                    <div className="row" style={{paddingTop: 5, paddingBottom: 5}}>
                         <StructureViewer
                             displayBoundMolecules={this.displayBoundMolecules}
                             proteinScheme={this.proteinScheme}
@@ -414,8 +424,9 @@ export default class StructureViewerPanel extends React.Component<IStructureView
                             pdbId={this.pdbId}
                             chainId={this.chainId}
                             residues={this.residues}
+                            bounds={this.structureViewerBounds}
+                            containerRef={this.containerRefHandler}
                         />
-                        <hr />
                     </div>
                 </span>
             );
@@ -441,22 +452,36 @@ export default class StructureViewerPanel extends React.Component<IStructureView
             <Draggable
                 handle=".structure-viewer-header"
             >
-                <div className={classnames(styles["main-3d-panel"], {[styles["collapsed-panel"]]: this.isCollapsed})}>
+                <div
+                    className={
+                        classnames(styles["main-3d-panel"], {
+                            [styles["increased-size-panel"]]: this.isIncreasedSize
+                        })
+                    }
+                >
                     <div className="structure-viewer-header row">
                         {this.header()}
                         <hr style={{borderTopColor: "#BBBBBB"}} />
                     </div>
-                    {this.mainContent()}
-                    <div className='row'>
-                        {this.topToolbar()}
-                        <hr />
-                    </div>
-                    <div className="row">
-                        <div className='col col-sm-6'>
-                            {this.proteinStyleMenu()}
+                    <div
+                        className={
+                            classnames(styles["body"], {
+                                [styles["collapsed-panel"]]: this.isCollapsed
+                            })
+                        }
+                    >
+                        {this.mainContent()}
+                        <div className='row'>
+                            {this.topToolbar()}
+                            <hr />
                         </div>
-                        <div className='col col-sm-6'>
-                            {this.mutationStyleMenu()}
+                        <div className="row">
+                            <div className='col col-sm-6'>
+                                {this.proteinStyleMenu()}
+                            </div>
+                            <div className='col col-sm-6'>
+                                {this.mutationStyleMenu()}
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -464,8 +489,16 @@ export default class StructureViewerPanel extends React.Component<IStructureView
         );
     }
 
+    private containerRefHandler(div: HTMLDivElement) {
+        this._3dMolDiv = div;
+    }
+
     private toggleCollapse() {
         this.isCollapsed = !this.isCollapsed;
+    }
+
+    private toggleDoubleSize() {
+        this.isIncreasedSize = !this.isIncreasedSize;
     }
 
     private handleProteinSchemeChange(evt:React.FormEvent<HTMLSelectElement>) {
@@ -507,6 +540,24 @@ export default class StructureViewerPanel extends React.Component<IStructureView
             fileDownload(this.pyMolScript, filename);
         }
     }
+
+    @computed get structureViewerBounds(): {width: number|string, height: number|string} {
+        let width: number|string;
+        let height: number|string;
+
+        // if 3Dmol container div is not initialized yet, just set to a default value: width=auto; height=350
+        // otherwise toggle the size
+        if (this.isIncreasedSize) {
+            width = this._3dMolDiv ? Math.floor(this._3dMolDiv.offsetWidth * (5/3)) : "auto";
+            height = this._3dMolDiv ? this._3dMolDiv.offsetHeight * 2 : 350;
+        }
+        else {
+            width = this._3dMolDiv ? Math.floor(this._3dMolDiv.offsetWidth / (5/3)) : "auto";
+            height = this._3dMolDiv ? this._3dMolDiv.offsetHeight / 2 : 350;
+        }
+
+        return {width, height};
+    };
 
     @computed get pdbId()
     {
@@ -588,12 +639,12 @@ export default class StructureViewerPanel extends React.Component<IStructureView
 
         this.residueMappingData.forEach((cacheData) => {
             if (cacheData && cacheData.data) {
-                const mutations = this.mutationsByPosition[cacheData.data.uniprotPosition];
+                const mutations = this.mutationsByPosition[cacheData.data.queryPosition];
 
                 const highlighted: boolean = (
                     this.props.mutationDataStore && (
-                        this.props.mutationDataStore.isPositionSelected(cacheData.data.uniprotPosition) ||
-                        this.props.mutationDataStore.isPositionHighlighted(cacheData.data.uniprotPosition)
+                        this.props.mutationDataStore.isPositionSelected(cacheData.data.queryPosition) ||
+                        this.props.mutationDataStore.isPositionHighlighted(cacheData.data.queryPosition)
                     )
                 ) || false;
 
@@ -619,28 +670,44 @@ export default class StructureViewerPanel extends React.Component<IStructureView
         return _.uniq(residues);
     }
 
-    @computed get residueMappingData(): Array<CacheData<PdbUniprotResidueMapping>|null>|undefined
+    @computed get residueMappingData(): Array<CacheData<ResidueMapping>|null>|undefined
     {
         if (this.alignmentIds.length === 0) {
             return undefined;
         }
 
-        const residueMappingData: Array<CacheData<PdbUniprotResidueMapping>|null> = [];
+        let residueMappingData: Array<CacheData<ResidueMapping>|null> = [];
 
-        if (this.props.pdbPositionMappingCache &&
+        if (this.props.residueMappingCache &&
+            this.props.uniprotId &&
+            this.pdbId &&
+            this.chainId &&
             this.proteinPositions.length > 0)
         {
+            // TODO remove this after implementing the cache!
             // create query parameters
-            this.proteinPositions.forEach((uniprotPosition: number) => {
-                this.alignmentIds.forEach((alignmentId: number) => {
-                    if (this.props.pdbPositionMappingCache) {
-                        residueMappingData.push(this.props.pdbPositionMappingCache.get({
-                            uniprotPosition,
-                            alignmentId
-                        }));
-                    }
-                });
+            // this.proteinPositions.forEach((uniprotPosition: number) => {
+            //     this.alignmentIds.forEach((alignmentId: number) => {
+            //         if (this.props.pdbPositionMappingCache) {
+            //             residueMappingData.push(this.props.pdbPositionMappingCache.get({
+            //                 uniprotPosition,
+            //                 alignmentId
+            //             }));
+            //         }
+            //     });
+            // });
+
+            // TODO this query may slightly change wrt to the cache implementation
+            const remoteData = this.props.residueMappingCache.get({
+                uniprotId: this.props.uniprotId,
+                pdbId: this.pdbId,
+                chainId: this.chainId,
+                uniprotPositions: this.proteinPositions
             });
+
+            if (remoteData.result) {
+                residueMappingData = remoteData.result;
+            }
         }
 
         return residueMappingData;
@@ -658,9 +725,9 @@ export default class StructureViewerPanel extends React.Component<IStructureView
             if (cacheData &&
                 cacheData.data &&
                 this.props.mutationDataStore &&
-                this.props.mutationDataStore.isPositionSelected(cacheData.data.uniprotPosition))
+                this.props.mutationDataStore.isPositionSelected(cacheData.data.queryPosition))
             {
-                positions.push(cacheData.data.uniprotPosition);
+                positions.push(cacheData.data.queryPosition);
             }
         });
 

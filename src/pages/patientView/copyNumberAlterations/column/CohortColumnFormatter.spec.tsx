@@ -22,9 +22,12 @@ describe('CohortColumnFormatter', () => {
                 length: -1,
                 type: ""
             },
-            geneticProfileId: "alterations",
+            molecularProfileId: "alterations",
             sampleId: "SAMPLE_01",
-            patientId: "PATIENT1"
+            patientId: "PATIENT1",
+            studyId: "STUDY1",
+            uniquePatientKey: "",
+            uniqueSampleKey: ""
         },
         {
             alteration: 2,
@@ -37,9 +40,12 @@ describe('CohortColumnFormatter', () => {
                 length: -1,
                 type: ""
             },
-            geneticProfileId: "alterations",
+            molecularProfileId: "alterations",
             sampleId: "SAMPLE_02",
-            patientId: "PATIENT1"
+            patientId: "PATIENT1",
+            studyId: "STUDY1",
+            uniquePatientKey: "",
+            uniqueSampleKey: ""
         }
     ];
 
@@ -47,14 +53,14 @@ describe('CohortColumnFormatter', () => {
         {
             alteration: -2,
             entrezGeneId: 0,
-            geneticProfileId: "alterations",
+            molecularProfileId: "alterations",
             numberOfSamples: 100,
             numberOfSamplesWithAlterationInGene: 61
         },
         {
             alteration: 2,
             entrezGeneId: 1,
-            geneticProfileId: "alterations",
+            molecularProfileId: "alterations",
             numberOfSamples: 200,
             numberOfSamplesWithAlterationInGene: 1
         }
@@ -89,7 +95,7 @@ describe('CohortColumnFormatter', () => {
         tooltips.push(mount(CohortColumnFormatter.tooltipContent([copyNumberData[0]], copyNumberCountData[0])));
         tooltips.push(mount(CohortColumnFormatter.tooltipContent([copyNumberData[1]], copyNumberCountData[1])));
 
-        sinon.stub(fakeCache, 'get', (query:CopyNumberCountIdentifier):CacheData<CopyNumberCount>|null=>{
+        sinon.stub(fakeCache, 'get').callsFake((query:CopyNumberCountIdentifier):CacheData<CopyNumberCount>|null=>{
             let cnc:CopyNumberCount|undefined = copyNumberCountData.find(x=>{
                 return x.entrezGeneId === query.entrezGeneId && x.alteration === query.alteration;
             });

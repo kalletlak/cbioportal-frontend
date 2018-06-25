@@ -3,9 +3,12 @@ import {
     default as getCanonicalMutationType, CanonicalMutationType,
     ProteinImpactType, getProteinImpactTypeFromCanonical
 } from "./getCanonicalMutationType";
-import {Mutation} from "shared/api/generated/CBioPortalAPI";
-import {MUTATION_STATUS_GERMLINE, GENETIC_PROFILE_UNCALLED_MUTATIONS_SUFFIX} from "shared/constants";
+import {MolecularProfile, Mutation, SampleIdentifier} from "shared/api/generated/CBioPortalAPI";
+import {GenomicLocation} from "shared/api/generated/GenomeNexusAPIInternal";
+import {MUTATION_STATUS_GERMLINE, MOLECULAR_PROFILE_UNCALLED_MUTATIONS_SUFFIX} from "shared/constants";
 import {findFirstMostCommonElt} from "./findFirstMostCommonElt";
+import {toSampleUuid} from "./UuidUtils";
+import {stringListToSet} from "./StringUtils";
 
 export interface IProteinImpactTypeColors
 {
@@ -40,9 +43,9 @@ export const MUTATION_TYPE_PRIORITY: {[canonicalMutationType: string]: number} =
     "other": 11
 };
 
-export function isUncalled(geneticProfileId:string) {
-    const r = new RegExp(GENETIC_PROFILE_UNCALLED_MUTATIONS_SUFFIX + "$");
-    return r.test(geneticProfileId);
+export function isUncalled(molecularProfileId:string) {
+    const r = new RegExp(MOLECULAR_PROFILE_UNCALLED_MUTATIONS_SUFFIX + "$");
+    return r.test(molecularProfileId);
 }
 
 export function mutationTypeSort(typeA: CanonicalMutationType, typeB: CanonicalMutationType)
@@ -98,6 +101,37 @@ export function groupMutationsByProteinStartPos(mutationData: Mutation[][]): {[p
     return map;
 }
 
+export function groupMutationsByGeneAndPatientAndProteinChange(mutations: Mutation[]): {[key: string]: Mutation[]}
+{
+    // key = <gene>_<patient>_<proteinChange>
+    const map: {[key: string]: Mutation[]} = {};
+
+    for (const mutation of mutations)
+    {
+        const key = `${mutation.gene.hugoGeneSymbol}_${mutation.patientId}_${mutation.proteinChange}`;
+        map[key] = map[key] || [];
+        map[key].push(mutation);
+    }
+
+    return map;
+}
+
+export function countDuplicateMutations(groupedMutations: {[key: string]: Mutation[]}): number
+{
+    // helper to count duplicate mutations
+    const countMapper = (mutations: Mutation[]) => mutations.length > 0 ? mutations.length - 1 : 0;
+
+    // helper to get the total sum
+    const sumReducer = (acc: number, current: number) => acc + current;
+
+    return _.values(groupedMutations).map(countMapper).reduce(sumReducer, 0);
+}
+
+export function countUniqueMutations(mutations: Mutation[]): number
+{
+    return Object.keys(groupMutationsByGeneAndPatientAndProteinChange(mutations)).length;
+}
+
 /**
  * Protein start positions for the mutations falling between a specific start and end position range
  */
@@ -128,81 +162,100 @@ export function getProteinStartPositionsByRange(data: Mutation[][], start: numbe
 }
 
 /**
- * Percentage of cases/patients with a germline mutation in given gene.
- * Assumes all given patient ids in the study had germline screening for all
+ * Percentage of cases/samples with a germline mutation in given gene.
+ * Assumes all given sample ids in the study had germline screening for all
  * genes (TODO: use gene panel).
  */
 export function germlineMutationRate(hugoGeneSymbol:string,
                                      mutations: Mutation[],
-                                     patientIds: string[])
+                                     molecularProfileIdToMolecularProfile:{[molecularProfileId:string]:MolecularProfile},
+                                     samples: SampleIdentifier[])
 {
-    if (mutations.length > 0 && patientIds.length > 0) {
+    if (mutations.length > 0 && samples.length > 0) {
+        const sampleIds = stringListToSet(samples.map(toSampleUuid));
         const nrCasesGermlineMutation:number =
             _.chain(mutations)
-            .filter((m:Mutation) => (
-                m.gene.hugoGeneSymbol === hugoGeneSymbol &&
-                m.mutationStatus === MUTATION_STATUS_GERMLINE &&
-                // filter for given patient IDs
-                patientIds.indexOf(m.patientId) > -1
-            ))
-            .map('patientId')
+            .filter((m:Mutation) => {
+                const profile = molecularProfileIdToMolecularProfile[m.molecularProfileId];
+                if (profile) {
+                    return (
+                        m.gene.hugoGeneSymbol === hugoGeneSymbol &&
+                        new RegExp(MUTATION_STATUS_GERMLINE, "i").test(m.mutationStatus) &&
+                        // filter for given sample IDs
+                        !!sampleIds[toSampleUuid(profile.studyId, m.sampleId)]
+                    );
+                } else {
+                    return false;
+                }
+            })
+            .map(toSampleUuid)
             .uniq()
             .value()
             .length;
-        return nrCasesGermlineMutation * 100.0 / patientIds.length;
+        return nrCasesGermlineMutation * 100.0 / samples.length;
     } else {
         return 0;
     }
-}
-
-/**
- * Percentage of cases/patients with a somatic mutation in given gene.
- */
-export function somaticMutationRate(hugoGeneSymbol: string,
-                                    mutations: Mutation[],
-                                    patientIds: string[]) {
-    if (mutations.length > 0 && patientIds.length > 0) {
-       return (
-           _.chain(mutations)
-            .filter((m:Mutation) => (
-                m.gene.hugoGeneSymbol === hugoGeneSymbol &&
-                m.mutationStatus !== MUTATION_STATUS_GERMLINE &&
-                // filter for given patient IDs
-                patientIds.indexOf(m.patientId) > -1
-            ))
-           .map('patientId')
-           .uniq()
-           .value()
-           .length * 100.0 /
-           patientIds.length
-       );
-   } else {
-       return 0;
-   }
 }
 
 /**
  * Percentage of cases/samples with a somatic mutation in given gene.
  */
-// TODO mostly duplicate of somaticMutationRate, we should eventually replace somaticMutationRate with this one
-export function somaticMutationRateBySample(hugoGeneSymbol: string, mutations: Mutation[],
-                                            sampleIds: string[]) {
-    if (mutations.length > 0 && sampleIds.length > 0) {
+export function somaticMutationRate(hugoGeneSymbol: string, mutations: Mutation[],
+                                    molecularProfileIdToMolecularProfile:{[molecularProfileId:string]:MolecularProfile},
+                                    samples: SampleIdentifier[]) {
+    if (mutations.length > 0 && samples.length > 0) {
+        const sampleIds = stringListToSet(samples.map(toSampleUuid));
         return (
             _.chain(mutations)
-                .filter((m:Mutation) => (
-                    m.gene.hugoGeneSymbol === hugoGeneSymbol &&
-                    m.mutationStatus !== MUTATION_STATUS_GERMLINE &&
-                    // filter for given sample IDs
-                    sampleIds.indexOf(m.sampleId) > -1
-                ))
-                .map('sampleId')
+                .filter((m:Mutation) => {
+                    const profile = molecularProfileIdToMolecularProfile[m.molecularProfileId];
+                    if (profile) {
+                        return (
+                            m.gene.hugoGeneSymbol === hugoGeneSymbol &&
+                            !(new RegExp(MUTATION_STATUS_GERMLINE, "i").test(m.mutationStatus)) &&
+                            // filter for given sample IDs
+                            !!sampleIds[toSampleUuid(profile.studyId, m.sampleId)]
+                        );
+                    } else {
+                        return false;
+                    }
+                })
+                .map(toSampleUuid)
                 .uniq()
                 .value()
                 .length * 100.0 /
-                sampleIds.length
+                samples.length
         );
     } else {
         return 0;
     }
+}
+
+export function extractGenomicLocation(mutation: Mutation)
+{
+    return {
+        chromosome: mutation.gene.chromosome.replace("chr", ""),
+        start: mutation.startPosition,
+        end: mutation.endPosition,
+        referenceAllele: mutation.referenceAllele,
+        variantAllele: mutation.variantAllele
+    };
+}
+
+export function genomicLocationString(genomicLocation: GenomicLocation)
+{
+    return `${genomicLocation.chromosome},${genomicLocation.start},${genomicLocation.end},${genomicLocation.referenceAllele},${genomicLocation.variantAllele}`;
+}
+
+export function uniqueGenomicLocations(mutations: Mutation[]): GenomicLocation[]
+{
+    const genomicLocationMap: {[key: string]: GenomicLocation} = {};
+
+    mutations.map((mutaiton: Mutation) => {
+        const genomicLocation: GenomicLocation = extractGenomicLocation(mutaiton);
+        genomicLocationMap[genomicLocationString(genomicLocation)] = genomicLocation;
+    });
+
+    return _.values(genomicLocationMap);
 }

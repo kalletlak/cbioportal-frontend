@@ -1,14 +1,11 @@
 import * as React from 'react';
 import * as _ from 'lodash';
 import classnames from 'classnames';
-import ReactChild = React.ReactChild;
-import ReactNode = React.ReactNode;
-import ReactChildren = React.ReactChildren;
 import {ThreeBounce} from 'better-react-spinkit';
 import ReactResizeDetector from 'react-resize-detector';
-import onNextRenderFrame from "shared/lib/onNextRenderFrame";
+import './styles.scss';
 
-interface IMSKTabProps {
+export interface IMSKTabProps {
     inactive?:boolean;
     id:string;
     linkText:string;
@@ -52,6 +49,7 @@ interface IMSKTabsProps {
     // only used when pagination is true to style arrows
     arrowStyle?:{[k:string]:string|number|boolean};
     tabButtonStyle?:string;
+    unmountOnHide?:boolean;
 }
 
 export class MSKTabs extends React.Component<IMSKTabsProps, IMSKTabsState> {
@@ -130,21 +128,23 @@ export class MSKTabs extends React.Component<IMSKTabsProps, IMSKTabsState> {
     }
 
     render(){
-        if (this.props.children) {
+        if (this.props.children && React.Children.count(this.props.children)) {
 
             let children = (this.props.children as React.ReactElement<IMSKTabProps>[]);
 
             let hasActive: boolean = false;
             let effectiveActiveTab: string = "";
 
-            const arr = _.reduce(React.Children.toArray(children), (memo: React.ReactElement<IMSKTabProps>[], child:React.ReactElement<IMSKTabProps>) => {
+            const toArrayedChildren = React.Children.toArray(children);
+
+            const arr = _.reduce(toArrayedChildren, (memo: React.ReactElement<IMSKTabProps>[], child:React.ReactElement<IMSKTabProps>) => {
                 if (!child.props.hide) {
                     if (child.props.id === this.props.activeTabId) {
                         hasActive = true;
                         effectiveActiveTab = this.props.activeTabId;
                         this.shownTabs.push(child.props.id);
                         memo.push(this.cloneTab(child, false, !!child.props.loading));
-                    } else if (_.includes(this.shownTabs, child.props.id) && !child.props.loading) {
+                    } else if (!this.props.unmountOnHide && _.includes(this.shownTabs, child.props.id) && !child.props.loading) {
                         memo.push(this.cloneTab(child, true, !!child.props.loading));
                     }
                 }
@@ -153,15 +153,17 @@ export class MSKTabs extends React.Component<IMSKTabsProps, IMSKTabsState> {
 
             // if we don't have an active child, then default to first
             if (hasActive === false) {
-                this.shownTabs.push(children[0].props.id);
-                arr[0] = this.cloneTab(children[0], false, !!children[0].props.loading);
-                effectiveActiveTab = children[0].props.id;
+                const tabElement = toArrayedChildren[0] as React.ReactElement<IMSKTabProps>
+                this.shownTabs.push(tabElement.props.id);
+                arr[0] = this.cloneTab(tabElement, false, !!tabElement.props.loading);
+                effectiveActiveTab = tabElement.props.id;
             }
+
 
             return (
                 <div
                     id={(this.props.id) ? this.props.id : ''}
-                    className={ classnames(this.props.className) }
+                    className={ classnames('msk-tabs', this.props.className) }
                 >
                     {this.navTabs(children, effectiveActiveTab)}
                     <div className="tab-content">{arr}</div>
@@ -184,8 +186,8 @@ export class MSKTabs extends React.Component<IMSKTabsProps, IMSKTabsState> {
         // we need a little style tweak to prevent initial overflow flashing when paging enabled
         // TODO disabling maxHeight tweak due to inconsistencies for now
         const navBarStyle = this.props.enablePagination ? {
-            /*maxHeight: 40,*/ border: 0, overflow: "hidden"
-        } : undefined;
+           border: 0, overflow: "hidden" as "hidden"
+        } : {};
 
         const prev = this.state.currentPage > 1 ? (
             <li
@@ -259,8 +261,9 @@ export class MSKTabs extends React.Component<IMSKTabsProps, IMSKTabsState> {
         return pages;
     }
 
-    componentDidUpdate() {
-        onNextRenderFrame(() => {
+    componentDidMount() {
+
+        setTimeout(()=>{
             // if there are page breaks, it means that page calculations already performed
             if (this.props.enablePagination &&
                 this.state.pageBreaks.length  === 0)
@@ -276,7 +279,8 @@ export class MSKTabs extends React.Component<IMSKTabsProps, IMSKTabsState> {
                     pageBreaks
                 } as IMSKTabsState);
             }
-        });
+        },1);
+
     }
 
     findCurrentPage(pageBreaks: string[]) {
@@ -308,7 +312,6 @@ export class MSKTabs extends React.Component<IMSKTabsProps, IMSKTabsState> {
     {
         const pageBreaks: string[] = [];
         const containerWidth: number = (this.navTabsRef && this.navTabsRef.offsetWidth) || 0;
-
         // do not attempt paging if container width is zero
         if (containerWidth > 0)
         {

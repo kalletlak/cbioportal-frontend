@@ -115,12 +115,11 @@ function derive(clinicalData) {
                     caseTypeNormalized = 'Recurrence';
                 } else if (caseTypeLower.indexOf('progr') >= 0) {
                     caseTypeNormalized = 'Progressed';
-                } else if (caseTypeLower.indexOf('xeno') >= 0) {
+                } else if (caseTypeLower.indexOf('xeno') >= 0 || caseTypeLower.indexOf('pdx') >= 0) {
                     caseTypeNormalized = 'Xenograft';
                 } else if (caseTypeLower.indexOf('cfdna') >= 0) {
                     caseTypeNormalized = 'cfDNA';
-                } else if (caseTypeLower.indexOf('prim') >= 0 ||
-                                    caseTypeLower.indexOf('prim') >= 0) {
+                } else if (caseTypeLower.indexOf('prim') >= 0) {
                     caseTypeNormalized = 'Primary';
                 }
                 if (caseTypeNormalized !== null && typeof caseTypeNormalized !== 'undefined') {
@@ -169,9 +168,11 @@ function cleanAndDerive(clinicalData) {
  * @param {string} cancerStudyId    - short name of cancer study
  */
 function getSpanElements(clinicalData, cancerStudyId) {
-    let spans = [];
-    const clinicalAttributesCleanDerived = cleanAndDerive(clinicalData);
+    return getSpanElementsFromCleanData(cleanAndDerive(clinicalData), cancerStudyId);
+}
 
+function getSpanElementsFromCleanData(clinicalAttributesCleanDerived, cancerStudyId) {
+    let spans = [];
     return Object.keys(clinicalAttributesCleanDerived).map((key) => {
         let value = clinicalAttributesCleanDerived[key];
         return <span is class="clinical-attribute" attr-id={key} attr-value={value} study={cancerStudyId}>{value}</span>
@@ -198,4 +199,4 @@ function addFirstOrderClass() {
     });
 }
 
-export { cleanAndDerive, getSpanElements, addFirstOrderClass };
+export { cleanAndDerive, getSpanElements, getSpanElementsFromCleanData, addFirstOrderClass };

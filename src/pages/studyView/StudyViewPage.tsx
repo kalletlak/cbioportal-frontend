@@ -10,6 +10,7 @@ import { StudyViewComponentLoader } from "./charts/StudyViewComponentLoader";
 import { StudyViewPageStore, ClinicalDataType, SurvivalType, ChartMeta, ChartType } from 'pages/studyView/StudyViewPageStore';
 import { reaction } from 'mobx';
 import { If } from 'react-if';
+import SummaryHeader from 'pages/studyView/SummaryHeader';
 
 export interface IStudyViewPageProps {
     routing: any;
@@ -121,6 +122,7 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
                         className="mainTabs">
 
                         <MSKTab key={0} id="summaryTab" linkText="Summary">
+                            <SummaryHeader selectedSamples={this.store.selectedSamples.result!}/>
                             <div className={styles.studyViewFlexContainer}>
                                 {this.store.initialClinicalDataCounts.isComplete && 
                                     this.store.visibleAttributes.map(this.renderAttributeChart)}

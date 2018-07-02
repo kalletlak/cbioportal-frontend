@@ -1,16 +1,16 @@
 import * as _ from 'lodash';
 import {
-    SimpleMobXApplicationDataStore
-} from "../../../shared/lib/IMobXApplicationDataStore";
+    SimpleLazyMobXTableApplicationDataStore
+} from "../../../shared/lib/ILazyMobXTableApplicationDataStore";
 import {Mutation} from "../../../shared/api/generated/CBioPortalAPI";
 import {action, computed, observable} from "mobx";
 import Immutable from "seamless-immutable";
-import {IPdbChain} from "../../../shared/model/Pdb";
+import {countDuplicateMutations, groupMutationsByGeneAndPatientAndProteinChange} from "shared/lib/MutationUtils";
 
 type PositionAttr = {[position:string]:boolean};
 type ImmutablePositionAttr = PositionAttr & Immutable.ImmutableObject<PositionAttr>;
 
-export default class MutationMapperDataStore extends SimpleMobXApplicationDataStore<Mutation[]>{
+export default class MutationMapperDataStore extends SimpleLazyMobXTableApplicationDataStore<Mutation[]>{
     @observable.ref private selectedPositions:ImmutablePositionAttr;
     @observable.ref private highlightedPositions:ImmutablePositionAttr;
 
@@ -49,6 +49,14 @@ export default class MutationMapperDataStore extends SimpleMobXApplicationDataSt
     @action public resetFilterAndSelection() {
         super.resetFilter();
         this.clearSelectedPositions();
+    }
+
+    @computed get tableDataGroupedByPatients() {
+        return groupMutationsByGeneAndPatientAndProteinChange(_.flatten(this.tableData));
+    }
+
+    @computed get duplicateMutationCountInMultipleSamples(): number {
+        return countDuplicateMutations(this.tableDataGroupedByPatients);
     }
 
     constructor(data:Mutation[][]) {

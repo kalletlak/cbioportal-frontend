@@ -1,6 +1,6 @@
 import SimpleTable from "../simpleTable/SimpleTable";
 import * as React from 'react';
-import {observable, computed, action, reaction, IReactionDisposer} from "mobx";
+import {observable, computed, action, reaction, IReactionDisposer, autorun} from "mobx";
 import {observer, Observer} from "mobx-react";
 import './styles.scss';
 import {
@@ -9,24 +9,36 @@ import {
 import {
     ColumnVisibilityControls, IColumnVisibilityDef, IColumnVisibilityControlsProps
 } from "../columnVisibilityControls/ColumnVisibilityControls";
-import {CopyDownloadControls, ICopyDownloadControlsProps} from "../copyDownloadControls/CopyDownloadControls";
+import {
+    CopyDownloadControls, ICopyDownloadData
+} from "../copyDownloadControls/CopyDownloadControls";
+import {
+    resolveColumnVisibility, resolveColumnVisibilityByColumnDefinition
+} from "./ColumnVisibilityResolver";
+import {ICopyDownloadControlsProps} from "../copyDownloadControls/ICopyDownloadControls";
+import {SimpleCopyDownloadControls} from "../copyDownloadControls/SimpleCopyDownloadControls";
 import {serializeData} from "shared/lib/Serializer";
 import DefaultTooltip from "../defaultTooltip/DefaultTooltip";
 import {ButtonToolbar} from "react-bootstrap";
 import { If } from 'react-if';
 import {SortMetric} from "../../lib/ISortMetric";
-import {IMobXApplicationDataStore, SimpleMobXApplicationDataStore} from "../../lib/IMobXApplicationDataStore";
+import {ILazyMobXTableApplicationDataStore, SimpleLazyMobXTableApplicationDataStore} from "../../lib/ILazyMobXTableApplicationDataStore";
+import {ILazyMobXTableApplicationLazyDownloadDataFetcher} from "../../lib/ILazyMobXTableApplicationLazyDownloadDataFetcher";
+import {maxPage} from "./utils";
 
 export type SortDirection = 'asc' | 'desc';
 
 export type Column<T> = {
     name: string;
     headerRender?:(name:string)=>JSX.Element;
+    headerDownload?:(name:string)=>string;
+    width?:string|number;
+    align?:"left"|"center"|"right";
     filter?:(data:T, filterString:string, filterStringUpper?:string, filterStringLower?:string)=>boolean;
     visible?:boolean;
     sortBy?:((data:T)=>(number|null)) | ((data:T)=>(string|null)) | ((data:T)=>(number|null)[]) | ((data:T)=>(string|null)[]);
     render:(data:T)=>JSX.Element;
-    download?:(data:T)=>string;
+    download?:(data:T)=>string|string[];
     tooltip?:JSX.Element;
     defaultSortDirection?:SortDirection;
     togglable?:boolean;
@@ -36,7 +48,8 @@ type LazyMobXTableProps<T> = {
     className?:string;
     columns:Column<T>[];
     data?:T[];
-    dataStore?:IMobXApplicationDataStore<T>;
+    dataStore?:ILazyMobXTableApplicationDataStore<T>;
+    downloadDataFetcher?:ILazyMobXTableApplicationLazyDownloadDataFetcher;
     initialSortColumn?: string;
     initialSortDirection?:SortDirection;
     initialItemsPerPage?:number;
@@ -49,10 +62,14 @@ type LazyMobXTableProps<T> = {
 	// used only when showPagination === true (show pagination at bottom otherwise)
 	showPaginationAtTop?:boolean; 
     paginationProps?:IPaginationControlsProps;
+    enableHorizontalScroll?:boolean;
     showColumnVisibility?:boolean;
     columnVisibilityProps?:IColumnVisibilityControlsProps;
-    highlightColor?:"yellow"|"bluegray";
+    columnVisibility?: {[columnId: string]: boolean};
     pageToHighlight?:boolean;
+    showCountHeader?:boolean;
+    onRowClick?:(d:T)=>void;
+    filterPlaceholder?:string;
 };
 
 function compareValues<U extends number|string>(a:U|null, b:U|null, asc:boolean):number {
@@ -134,8 +151,52 @@ export function lazyMobXTableSort<T>(data:T[], metric:SortMetric<T>, ascending:b
     return dataAndValue.map(x=>x.data);
 }
 
+function getListOfEmptyStrings<T>(maxColLength:number): string[] {
+     return Array(maxColLength).join(".").split(".");
+}
+
+function getAsList<T>(data: Array<string|string[]>, maxColLength: number): string[][] {
+    let returnList: string[][] = [];
+    data.forEach((datum: string|string[]) => {
+        if (datum instanceof Array) {
+            if (maxColLength != datum.length) {
+                throw new Error('Not all the arrays returned from the download functions are from the same length.');
+            }
+            returnList.push(datum);
+        } else {
+            let arr: string[] = [];
+            for (var i=0; i<maxColLength; i++) {
+                arr = arr.concat(datum);
+            };
+            returnList.push(arr);
+        }
+    })
+    return returnList;
+}
+
+
+function getDownloadObject<T>(columns: Column<T>[], rowData: T) {
+    let downloadObject: {data: Array<string[]|string>; maxColLength: number} = {data: [], maxColLength: 1};
+    columns.forEach((column:Column<T>) => {
+        if (column.download) {
+            let downloadData = column.download(rowData);
+            if (downloadData instanceof Array) {
+                downloadObject.data.push(downloadData);
+                if (downloadData.length > downloadObject.maxColLength) {
+                    downloadObject.maxColLength = downloadData.length;
+                }
+            } else {
+                downloadObject.data.push(downloadData);
+            }
+        } else {
+            downloadObject.data.push("");
+        }
+    });
+    return downloadObject;
+}
+
 class LazyMobXTableStore<T> {
-    @observable public filterString:string;
+    public filterString:string|undefined;
     @observable private _page:number;
     @observable private _itemsPerPage:number;
     @observable private _itemsLabel:string|undefined;
@@ -143,9 +204,14 @@ class LazyMobXTableStore<T> {
     @observable public sortColumn:string;
     @observable public sortAscending:boolean;
     @observable.ref public columns:Column<T>[];
-    @observable private _columnVisibility:{[columnId: string]: boolean};
-    @observable public dataStore:IMobXApplicationDataStore<T>;
-    @observable private highlightColor:string;
+    @observable public dataStore:ILazyMobXTableApplicationDataStore<T>;
+    @observable public downloadDataFetcher:ILazyMobXTableApplicationLazyDownloadDataFetcher|undefined;
+    @observable private onRowClick:((d:T)=>void)|undefined;
+
+    // this observable is intended to always refer to props.columnVisibility
+    @observable private _columnVisibility:{[columnId: string]: boolean}|undefined;
+    // this one keeps the state of the latest action (latest user selection)
+    @observable private _columnVisibilityOverride:{[columnId: string]: boolean}|undefined;
 
     @computed public get itemsPerPage() {
         return this._itemsPerPage;
@@ -189,23 +255,17 @@ class LazyMobXTableStore<T> {
     }
 
     @computed get maxPage() {
-        if (this.itemsPerPage === PAGINATION_SHOW_ALL) {
-            return 0;
-        } else {
-            return Math.floor(this.displayData.length / this.itemsPerPage);
-        }
-    }
-
-    @computed get filterStringUpper() {
-        return this.filterString.toUpperCase();
-    }
-
-    @computed get filterStringLower() {
-        return this.filterString.toLowerCase();
+        return maxPage(this.displayData.length, this.itemsPerPage);
     }
 
     @computed public get columnVisibility() {
-        return this._columnVisibility;
+        return resolveColumnVisibility(this.columnVisibilityByColumnDefinition,
+            this._columnVisibility,
+            this._columnVisibilityOverride);
+    }
+
+    @computed public get columnVisibilityByColumnDefinition() {
+        return resolveColumnVisibilityByColumnDefinition(this.columns);
     }
 
     @computed public get downloadData()
@@ -215,25 +275,32 @@ class LazyMobXTableStore<T> {
         // add header (including hidden columns)
         tableDownloadData[0] = [];
         this.columns.forEach((column:Column<T>) => {
-            tableDownloadData[0].push(column.name);
+            tableDownloadData[0].push(column.headerDownload ? column.headerDownload(column.name) : column.name);
         });
 
-        // add rows (including hidden columns)
+        // add rows (including hidden columns). The purpose of this part is to ensure that
+        // if any element of rowData contains a column with multiple values, rowData is written as
+        // multiple rows in tableDownloadData
         this.dataStore.sortedData.forEach((rowData:T) => {
-            const rowDownloadData:string[] = [];
-
-            this.columns.forEach((column:Column<T>) => {
-                if (column.download) {
-                    rowDownloadData.push(column.download(rowData));
-                }
-                else {
-                    rowDownloadData.push("");
-                }
+            // retrieve all the download information for each row and store it in an object, 
+            // and calculate the maxColLength (max number of elements found in a column).
+            let downloadObject = getDownloadObject(this.columns, rowData);
+            // normalize the length of all columns based on the maxColLength (so that every column contains the
+            // same number of elements)
+            const rowDownloadData: string[][] = getAsList(downloadObject.data, downloadObject.maxColLength);
+            
+            //rowDownloadData is list of lists, containing all the elements per column.
+            //processedRowsDownloadData becomes the transposed of rowDownloadData.
+            let processedRowsDownloadData = rowDownloadData[0].map(function(row:string, i:number) { 
+              return rowDownloadData.map(function(col) { 
+                return col[i];
+              })
             });
-
-            tableDownloadData.push(rowDownloadData);
+           //Writing the transposed list to tableDownloadData to build the final table.
+           processedRowsDownloadData.forEach((processedRowDownloadData: string[]) => {
+              tableDownloadData.push(processedRowDownloadData);
+           });
         });
-
         return tableDownloadData;
     }
 
@@ -272,7 +339,7 @@ class LazyMobXTableStore<T> {
     @computed get headers():JSX.Element[] {
         return this.visibleColumns.map((column:Column<T>)=>{
             const headerProps:{role?:"button",
-                className?:"sort-asc"|"sort-des",
+                className?:"multilineHeader sort-asc"|"multilineHeader sort-des",
                 onClick?:()=>void} = {};
             if (column.sortBy) {
                 headerProps.role = "button";
@@ -287,10 +354,15 @@ class LazyMobXTableStore<T> {
                 };
             }
             if (this.sortColumn === column.name) {
-                headerProps.className = (this.sortAscending ? "sort-asc" : "sort-des");
+                headerProps.className = (this.sortAscending ? "multilineHeader sort-asc" : "multilineHeader sort-des");
             }
 
-            const label = column.headerRender ? column.headerRender(column.name) : (<span>{column.name}</span>);
+            let label;
+            if (column.headerRender) {
+                label = column.headerRender(column.name);
+            } else {
+                label = (<span>{column.name}</span>);
+            }
             let thContents;
 
             if (column.tooltip) {
@@ -302,8 +374,16 @@ class LazyMobXTableStore<T> {
             } else {
                 thContents = label;
             }
+            let style:any = {};
+            if (column.align) {
+                style.textAlign = column.align;
+            }
+            if (column.width) {
+                style.width = column.width;
+            }
+
             return (
-                <th {...headerProps}>
+                <th className='multilineHeader' {...headerProps} style={style}>
                     {thContents}
                 </th>
             );
@@ -334,7 +414,6 @@ class LazyMobXTableStore<T> {
     {
         let firstVisibleItemDisp;
         let lastVisibleItemDisp;
-        let itemsLabel:string = "";
 
         if (this.rows.length === 0) {
             firstVisibleItemDisp = 0;
@@ -351,21 +430,14 @@ class LazyMobXTableStore<T> {
             );
         }
 
-        if (this._itemsLabel) {
-            // use itemsLabel for plural in case no itemsLabelPlural provided
-            if (!this._itemsLabelPlural || this.displayData.length === 1) {
-                itemsLabel = this._itemsLabel;
-            }
-            else {
-                itemsLabel = this._itemsLabelPlural;
-            }
-
+        let itemsLabel:string = this.itemsLabel;
+        if (itemsLabel.length) {
             // we need to prepend the space here instead of within the actual return value
             // to avoid unnecessary white-space at the end of the string
             itemsLabel = ` ${itemsLabel}`;
         }
 
-        return `${firstVisibleItemDisp}-${lastVisibleItemDisp} of ${this.displayData.length}${itemsLabel}`;
+        return `Showing ${firstVisibleItemDisp}-${lastVisibleItemDisp} of ${this.displayData.length}${itemsLabel}`;
     }
 
     @computed get tds():JSX.Element[][] {
@@ -379,21 +451,28 @@ class LazyMobXTableStore<T> {
         });
     }
 
-    @computed get highlightClassName() {
-        if (this.highlightColor === "yellow") {
-            return "highlight";
-        } else if (this.highlightColor === "bluegray") {
-            return "highlight-bluegray";
-        }
-    }
-
     @computed get rows():JSX.Element[] {
         // We separate this so that highlighting isn't such a costly operation
         const ret = [];
         for (let i=0; i<this.visibleData.length; i++) {
             const rowProps:any = {};
-            if (this.dataStore.isHighlighted(this.visibleData[i])) {
-                rowProps.className = this.highlightClassName;
+            const rowIsHighlighted = this.dataStore.isHighlighted(this.visibleData[i]);
+            const classNames = [];
+            if (rowIsHighlighted) {
+                 classNames.push("highlighted");
+            }
+            if (this.onRowClick) {
+                if (!rowIsHighlighted) {
+                    classNames.push("clickable");
+                }
+
+                const onRowClick = this.onRowClick; // by the time its called this might be undefined again, so need to save ref
+                rowProps.onClick = ()=>{
+                    onRowClick(this.visibleData[i]);
+                };
+            }
+            if (classNames.length) {
+                rowProps.className = classNames.join(" ");
             }
             ret.push(
                 <tr key={i} {...rowProps}>
@@ -409,9 +488,15 @@ class LazyMobXTableStore<T> {
     }
 
     @action setFilterString(str:string) {
+        // we need to keep the filter string value in this store as well as in the data store,
+        // because data store gets reset each time the component receives props.
+        this.filterString = str;
         this.dataStore.filterString = str;
         this.page = 0;
         this.dataStore.setFilter((d:T, filterString:string, filterStringUpper:string, filterStringLower:string)=>{
+            if (!filterString) {
+                return true; // dont filter if no input
+            }
             let match = false;
             for (const column of this.visibleColumns) {
                 match = (column.filter && column.filter(d, filterString, filterStringUpper, filterStringLower)) || false;
@@ -423,17 +508,32 @@ class LazyMobXTableStore<T> {
         });
     }
 
+    @computed get itemsLabel() {
+        if (this._itemsLabel) {
+            // use itemsLabel for plural in case no itemsLabelPlural provided
+            if (!this._itemsLabelPlural || this.displayData.length === 1) {
+                return this._itemsLabel;
+            }
+            else {
+                return this._itemsLabelPlural;
+            }
+        } else {
+            return "";
+        }
+    }
+
     @action setProps(props:LazyMobXTableProps<T>) {
         this.columns = props.columns;
         this._itemsLabel = props.itemsLabel;
         this._itemsLabelPlural = props.itemsLabelPlural;
-        this._columnVisibility = this.resolveColumnVisibility(props.columns);
-        this.highlightColor = props.highlightColor!;
+        this._columnVisibility = props.columnVisibility;
+        this.downloadDataFetcher = props.downloadDataFetcher;
+        this.onRowClick = props.onRowClick;
 
         if (props.dataStore) {
             this.dataStore = props.dataStore;
         } else {
-            this.dataStore = new SimpleMobXApplicationDataStore<T>(props.data || []);
+            this.dataStore = new SimpleLazyMobXTableApplicationDataStore<T>(props.data || []);
         }
 
         // even if dataStore passed in, we need to initialize sort props if undefined
@@ -449,12 +549,24 @@ class LazyMobXTableStore<T> {
         if (this.dataStore.sortMetric === undefined) {
             this.dataStore.sortMetric = this.sortMetric;
         }
+
+        // we would like to keep the previous filter if exists
+        if (this.filterString) {
+            this.setFilterString(this.filterString);
+        }
     }
 
-    @action public updateColumnVisibility(id:string, visible:boolean)
+    @action updateColumnVisibility(id:string, visible:boolean)
     {
-        if (this._columnVisibility[id] !== undefined) {
-            this._columnVisibility[id] = visible;
+        // no previous action, need to init
+        if (this._columnVisibilityOverride === undefined) {
+            this._columnVisibilityOverride = resolveColumnVisibility(
+                this.columnVisibilityByColumnDefinition, this._columnVisibility);
+        }
+
+        // update visibility
+        if (this._columnVisibilityOverride[id] !== undefined) {
+            this._columnVisibilityOverride[id] = visible;
         }
     }
 
@@ -463,32 +575,15 @@ class LazyMobXTableStore<T> {
         return this.columnVisibility[column.name] || false;
     }
 
-    resolveColumnVisibility(columns:Array<Column<T>>): {[columnId: string]: boolean}
-    {
-        const colVis:{[columnId: string]: boolean} = {};
-
-        columns.forEach((column:Column<T>) => {
-            // every column is visible by default unless it is flagged otherwise
-            let visible:boolean = true;
-
-            if (column.visible !== undefined) {
-                visible = column.visible;
-            }
-
-            colVis[column.name] = visible;
-        });
-
-        return colVis;
-    }
-
     constructor(lazyMobXTableProps:LazyMobXTableProps<T>) {
-        this.filterString = "";
         this.sortColumn = lazyMobXTableProps.initialSortColumn || "";
         this.sortAscending = (lazyMobXTableProps.initialSortDirection !== "desc"); // default ascending
         this.setProps(lazyMobXTableProps);
 
         this._page = 0;
         this.itemsPerPage = lazyMobXTableProps.initialItemsPerPage || 50;
+
+        reaction(()=>this.displayData.length, ()=>{ this.page = this.clampPage(this.page); /* update for possibly reduced maxPage */});
     }
 }
 
@@ -505,13 +600,54 @@ export default class LazyMobXTable<T> extends React.Component<LazyMobXTableProps
         showCopyDownload: true,
         showPagination: true,
         showColumnVisibility: true,
-        highlightColor: "yellow",
-		showPaginationAtTop: false
+		showPaginationAtTop: false,
+        showCountHeader: false
     };
 
     public getDownloadData(): string
     {
         return serializeData(this.store.downloadData);
+    }
+
+    public getDownloadDataPromise(): Promise<ICopyDownloadData>
+    {
+        // returning a promise instead of a string allows us to prevent triggering fetchAndCacheAllLazyData
+        // until the copy/download button is clicked.
+        return new Promise<ICopyDownloadData>((resolve) => {
+            // we need to download all the lazy data before initiating the download process.
+            if (this.store.downloadDataFetcher) {
+                // populate the cache instances with all available data for the lazy loaded columns
+                this.store.downloadDataFetcher.fetchAndCacheAllLazyData().then(allLazyData => {
+                    // we don't use allData directly,
+                    // we rely on the data cached by the download data fetcher
+                    resolve({
+                        status: "complete",
+                        text: this.getDownloadData()
+                    });
+                }).catch(() => {
+                    // even if loading of all lazy data fails, resolve with partial data
+                    resolve({
+                        status: "incomplete",
+                        text: this.getDownloadData()
+                    });
+                });
+            }
+            // no lazy data to preload, just return the current download data
+            else {
+                resolve({
+                    status: "complete",
+                    text: this.getDownloadData()
+                });
+            }
+        });
+    }
+
+    protected updateColumnVisibility(id: string, visible: boolean)
+    {
+        // ignore undefined columns
+        if (this.store.columnVisibility[id] !== undefined) {
+            this.store.updateColumnVisibility(id, visible);
+        }
     }
 
     constructor(props:LazyMobXTableProps<T>) {
@@ -534,11 +670,8 @@ export default class LazyMobXTable<T> extends React.Component<LazyMobXTableProps
                 };
             })(),
             visibilityToggle:(columnId: string):void => {
-                // ignore undefined columns
-                if (this.store.columnVisibility[columnId] !== undefined) {
-                    // toggle visibility
-                    this.store.updateColumnVisibility(columnId, !this.store.columnVisibility[columnId]);
-                }
+                // toggle visibility
+                this.updateColumnVisibility(columnId, !this.store.columnVisibility[columnId]);
             },
             changeItemsPerPage:(ipp:number)=>{
                 this.store.itemsPerPage=ipp;
@@ -554,6 +687,7 @@ export default class LazyMobXTable<T> extends React.Component<LazyMobXTableProps
             }
         };
         this.getDownloadData = this.getDownloadData.bind(this);
+        this.getDownloadDataPromise = this.getDownloadDataPromise.bind(this);
         this.getTopToolbar = this.getTopToolbar.bind(this);
         this.getBottomToolbar = this.getBottomToolbar.bind(this);
         this.getTable = this.getTable.bind(this);
@@ -582,18 +716,22 @@ export default class LazyMobXTable<T> extends React.Component<LazyMobXTableProps
     }
 
     private getPaginationControls() {
-        if (this.props.showPagination) {
+        //if (this.props.showPagination) {
 			// default paginationProps
 			let paginationProps:IPaginationControlsProps = {
 				className:"text-center topPagination",
 				itemsPerPage:this.store.itemsPerPage,
+                totalItems:this.store.displayData.length,
 				currentPage:this.store.page,
 				onChangeItemsPerPage:this.handlers.changeItemsPerPage,
+                showItemsPerPageSelector: false,
 				onPreviousPageClick:this.handlers.decPage,
 				onNextPageClick:this.handlers.incPage,
 				previousPageDisabled:this.store.page === 0,
 				nextPageDisabled:this.store.page === this.store.maxPage,
-				textBeforeButtons:this.store.paginationStatusText
+				textBeforeButtons:this.store.paginationStatusText,
+                groupButtons: false,
+                bsStyle:"primary"
 			};
 			// override with given paginationProps if they exist
 			if (this.props.paginationProps) {
@@ -609,17 +747,26 @@ export default class LazyMobXTable<T> extends React.Component<LazyMobXTableProps
                     {...paginationProps}
                 />
             );
-        } else {
-            return null;
-        }
+        // } else {
+        //     return null;
+        // }
+    }
+
+    private get countHeader() {
+        return (
+            <span style={{float:"left", color:"black", fontSize: "16px", fontWeight: "bold"}}>
+                {this.store.displayData.length} {this.store.itemsLabel} (page {this.store.page + 1} of {this.store.maxPage + 1})
+            </span>
+        );
     }
 
     private getTopToolbar() {
-        return (
+        return (<div>
+            { this.props.showCountHeader && this.countHeader }
             <ButtonToolbar style={{marginLeft:0}} className="tableMainToolbar">
                 { this.props.showFilter ? (
                     <div className={`pull-right form-group has-feedback input-group-sm tableFilter`} style={{ display:'inline-block', marginLeft: 5}}>
-                        <input ref={this.handlers.filterInputRef} type="text" onInput={this.handlers.onFilterTextChange} className="form-control tableSearchInput" style={{ width:200 }}  />
+                        <input ref={this.handlers.filterInputRef} placeholder={this.props.filterPlaceholder || ""} type="text" onInput={this.handlers.onFilterTextChange} className="form-control tableSearchInput" style={{ width:200 }}  />
                         <span className="fa fa-search form-control-feedback" aria-hidden="true"></span>
                     </div>
                 ) : ""}
@@ -631,38 +778,53 @@ export default class LazyMobXTable<T> extends React.Component<LazyMobXTableProps
 						{...this.props.columnVisibilityProps}
 					/>) : ""}
                 {this.props.showCopyDownload ? (
-                    <CopyDownloadControls
-                        className="pull-right"
-                        downloadData={this.getDownloadData}
-                        downloadFilename="table.csv"
-                        {...this.props.copyDownloadProps}
-                    />) : ""}
-                {this.props.showPaginationAtTop ? (
+                    ( this.props.downloadDataFetcher ?
+                        <CopyDownloadControls
+                            className="pull-right"
+                            downloadData={this.getDownloadDataPromise}
+                            downloadFilename="table.tsv"
+                            {...this.props.copyDownloadProps}
+                        /> :
+                        <SimpleCopyDownloadControls
+                            className="pull-right"
+                            downloadData={this.getDownloadData}
+                            downloadFilename="table.tsv"
+                            controlsStyle="BUTTON"
+                            {...this.props.copyDownloadProps}
+                        />
+                    )
+                ) : ""}
+                {this.props.showPagination && this.props.showPaginationAtTop ? (
                     <Observer>
                         { this.getPaginationControls }
                     </Observer>
                 ) : null}
             </ButtonToolbar>
+            </div>
         );
     }
 
     private getBottomToolbar() {
         return (
             <ButtonToolbar style={{marginLeft:0, float:'none'}} className="tableMainToolbar center">
-                <Observer>
-                    { this.getPaginationControls }
-                </Observer>
+                {(this.props.showPagination) && (
+                    <Observer>
+                        { this.getPaginationControls }
+                    </Observer>
+                )}
             </ButtonToolbar>
         );
     }
 
     private getTable() {
         return (
-            <SimpleTable
-                headers={this.store.headers}
-                rows={this.store.rows}
-                className={this.props.className}
-            />
+            <div style={{overflowX: this.props.enableHorizontalScroll ? "auto" : "visible"}}>
+                <SimpleTable
+                    headers={this.store.headers}
+                    rows={this.store.rows}
+                    className={this.props.className}
+                />
+            </div>
         );
     }
 

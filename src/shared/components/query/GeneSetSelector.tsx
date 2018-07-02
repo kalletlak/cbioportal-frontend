@@ -1,5 +1,5 @@
 import * as React from 'react';
-import * as styles_any from './styles.module.scss';
+import * as styles_any from './styles/styles.module.scss';
 import {Modal} from 'react-bootstrap';
 import ReactSelect from 'react-select';
 import {observer} from "mobx-react";
@@ -13,6 +13,7 @@ import {QueryStoreComponent} from "./QueryStore";
 import MutSigGeneSelector from "./MutSigGeneSelector";
 import GisticGeneSelector from "./GisticGeneSelector";
 import SectionHeader from "../sectionHeader/SectionHeader";
+import AppConfig from "appConfig";
 
 const styles = styles_any as {
 	GeneSetSelector: string,
@@ -40,16 +41,21 @@ export default class GeneSetSelector extends QueryStoreComponent<GeneSetSelector
 
 	@computed get geneListOptions()
 	{
-		return [
-			{
-				label: 'User-defined List',
-				value: ''
-			},
-			...gene_lists.map(item => ({
-				label: `${item.id} (${item.genes.length} genes)`,
-				value: item.genes.join(' ')
-			}))
-		];
+	    let geneList: {"id": string, "genes": string[]}[] = gene_lists;
+	    if (AppConfig.querySetsOfGenes) {
+	        geneList = AppConfig.querySetsOfGenes;
+	    }
+
+	    return [
+	        {
+	            label: 'User-defined List',
+	            value: ''
+	        },
+	        ...geneList.map(item => ({
+	            label: `${item.id} (${item.genes.length} genes)`,
+	            value: item.genes.join(' ')
+	        }))
+	    ];
 	}
 
 	@computed get textAreaRef()
@@ -74,7 +80,7 @@ export default class GeneSetSelector extends QueryStoreComponent<GeneSetSelector
 							   secondaryComponent={<a target="_blank" href={getOncoQueryDocUrl()}>Advanced: Onco Query Language (OQL)</a>}
 							   promises={[this.store.mutSigForSingleStudy, this.store.gisticForSingleStudy, this.store.genes]}
 				>
-					Enter Gene Set:
+					Enter Genes:
 				</SectionHeader>
 
 				<FlexCol overflow>

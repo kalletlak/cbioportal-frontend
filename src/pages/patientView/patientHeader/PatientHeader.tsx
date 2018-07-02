@@ -5,12 +5,15 @@ import {OverlayTrigger, Popover} from 'react-bootstrap';
 import ClinicalInformationPatientTable from '../clinicalInformation/ClinicalInformationPatientTable';
 import {getSpanElements} from '../clinicalInformation/lib/clinicalAttributesUtil.js';
 import {placeArrowBottomLeft} from "shared/components/defaultTooltip/DefaultTooltip";
+import SampleManager from './../sampleManager';
 
 import styles from './styles.module.scss';
 import DefaultTooltip from "../../../shared/components/defaultTooltip/DefaultTooltip";
 
 export type IPatientHeaderProps = {
     patient:any;
+    studyId: string;
+    sampleManager?:SampleManager | null;
     handlePatientClick:any;
     darwinUrl?: string;
 }
@@ -19,7 +22,7 @@ export default class PatientHeader extends React.Component<IPatientHeaderProps, 
 
         return (
             <div className={styles.patientHeader}>
-                {this.props.patient && this.getOverlayTriggerPatient(this.props.patient)}
+                {this.props.patient && this.getOverlayTriggerPatient(this.props.patient, this.props.studyId, this.props.sampleManager)}
                 {this.getDarwinUrl(this.props.darwinUrl)}
             </div>
         );
@@ -27,7 +30,7 @@ export default class PatientHeader extends React.Component<IPatientHeaderProps, 
     }
 
     private getDarwinUrl(darwinUrl: string | null | undefined) {
-        // use JSP injected Darwin URL window.darwinAccessUrl
+        // use JSP injected Darwin URL window.frontendConfig.darwinAccessUrl
         // TODO: use internal API service instead, once this exists
         if (darwinUrl !== undefined && darwinUrl !== null && darwinUrl !== '') {
             // add link to darwin
@@ -47,7 +50,17 @@ export default class PatientHeader extends React.Component<IPatientHeaderProps, 
         );
     }
 
-    private getOverlayTriggerPatient(patient: any) {
+    private getOverlayTriggerPatient(patient: any, studyId:string, sampleManager?: SampleManager|null) {
+        const clinicalDataLegacy = fromPairs(patient.clinicalData.map(
+            (x: any) => [x.clinicalAttributeId, x.value])
+        );
+        // get common clinical attributes in all samples
+        if (sampleManager) {
+            Object.keys(sampleManager.commonClinicalDataLegacyCleanAndDerived).forEach((attr:string) => {
+                clinicalDataLegacy[attr] = sampleManager.commonClinicalDataLegacyCleanAndDerived[attr];
+            });
+        }
+
         return patient &&
         (
             <DefaultTooltip
@@ -60,7 +73,7 @@ export default class PatientHeader extends React.Component<IPatientHeaderProps, 
             >
                 <span className='clinical-spans' id='patient-attributes'>
                     <a href="javascript:void(0)" onClick={()=>this.props.handlePatientClick(patient.id)}>{patient.id}</a>
-                    {getSpanElements(fromPairs(patient.clinicalData.map((x: any) => [x.clinicalAttributeId, x.value])), 'lgg_ucsf_2014')}
+                    {getSpanElements(clinicalDataLegacy, studyId)}
                 </span>
             </DefaultTooltip>
         );

@@ -1,5 +1,6 @@
 import * as _ from 'lodash';
-import {PdbHeader, PdbUniprotAlignment} from "shared/api/generated/PdbAnnotationAPI";
+import {PdbHeader} from "shared/api/generated/GenomeNexusAPI";
+import {Alignment} from "shared/api/generated/Genome2StructureAPI";
 import {
     IPdbPositionRange, IPdbChain, PdbAlignmentIndex,
     ALIGNMENT_GAP, ALIGNMENT_MINUS, ALIGNMENT_PLUS, ALIGNMENT_SPACE,
@@ -32,7 +33,7 @@ export function generatePdbInfoSummary(pdbHeader:PdbHeader, chainId: string)
     return summary;
 }
 
-export function indexPdbAlignments(alignments: PdbUniprotAlignment[]): PdbAlignmentIndex
+export function indexPdbAlignments(alignments: Alignment[]): PdbAlignmentIndex
 {
     return groupAlignmentsByPdbIdAndChain(alignments);
 }
@@ -42,8 +43,8 @@ export function mergeIndexedPdbAlignments(indexedPdbData: PdbAlignmentIndex): IP
     const chains: IPdbChain[] = [];
 
     // generate chains
-    _.each(indexedPdbData, (map: {[chainId: string]: PdbUniprotAlignment[]}) => {
-        _.each(map, (chainAlignments: PdbUniprotAlignment[]) => {
+    _.each(indexedPdbData, (map: {[chainId: string]: Alignment[]}) => {
+        _.each(map, (chainAlignments: Alignment[]) => {
             const chain = mergeAlignments(chainAlignments);
 
             if (chain) {
@@ -55,11 +56,11 @@ export function mergeIndexedPdbAlignments(indexedPdbData: PdbAlignmentIndex): IP
     return chains;
 }
 
-function groupAlignmentsByPdbIdAndChain(alignments: PdbUniprotAlignment[])
+function groupAlignmentsByPdbIdAndChain(alignments: Alignment[])
 {
     const groupedAlignments: PdbAlignmentIndex = {};
 
-    alignments.forEach((alignment: PdbUniprotAlignment) => {
+    alignments.forEach((alignment: Alignment) => {
         if (!groupedAlignments[alignment.pdbId]) {
             groupedAlignments[alignment.pdbId] = {};
         }
@@ -78,25 +79,25 @@ function groupAlignmentsByPdbIdAndChain(alignments: PdbUniprotAlignment[])
  * Assuming that all the provided alignments have the same pdb id and chain,
  * merges multiple alignments into one.
  */
-export function mergeAlignments(alignments: PdbUniprotAlignment[]): IPdbChain|undefined
+export function mergeAlignments(alignments: Alignment[]): IPdbChain|undefined
 {
     let mergedAlignment = "";
     let start: number;
 
     if (alignments.length > 0) {
         // start with the first alignment
-        start = alignments[0].uniprotFrom;
+        start = alignments[0].seqFrom;
     }
     else {
         return undefined;
     }
 
-    alignments.forEach((alignment: PdbUniprotAlignment) => {
+    alignments.forEach((alignment: Alignment) => {
         const alignmentStr = generateAlignmentString(alignment) || "";
-        let diff = Math.abs(alignment.uniprotFrom - start);
+        const diff = Math.abs(alignment.seqFrom - start);
 
-        if (alignment.uniprotFrom < start) {
-            let gapOrOverlap = Math.abs(alignmentStr.length - diff);
+        if (alignment.seqFrom < start) {
+            const gapOrOverlap = Math.abs(alignmentStr.length - diff);
 
             // overlap: we need to append non-overlapping segment of mergedAlignment to the current alignment
             if (alignmentStr.length >= diff) {
@@ -107,8 +108,8 @@ export function mergeAlignments(alignments: PdbUniprotAlignment[]): IPdbChain|un
                 mergedAlignment = alignmentStr + alignmentGap(gapOrOverlap) + mergedAlignment;
             }
         }
-        else if (alignment.uniprotFrom >= start) {
-            let gapOrOverlap = Math.abs(mergedAlignment.length - diff);
+        else if (alignment.seqFrom >= start) {
+            const gapOrOverlap = Math.abs(mergedAlignment.length - diff);
 
             // overlap: we need to "insert" current alignment into merged alignment
             if (mergedAlignment.length >= diff) {
@@ -121,7 +122,7 @@ export function mergeAlignments(alignments: PdbUniprotAlignment[]): IPdbChain|un
             }
         }
 
-        start = Math.min(start, alignment.uniprotFrom);
+        start = Math.min(start, alignment.seqFrom);
     });
 
     return {
@@ -138,7 +139,7 @@ export function mergeAlignments(alignments: PdbUniprotAlignment[]): IPdbChain|un
 
 function alignmentGap(length: number)
 {
-    let gap: string[] = [];
+    const gap: string[] = [];
 
     // add gap characters (character count = distance)
     for (let i = 0; i < length; i++) {
@@ -148,13 +149,13 @@ function alignmentGap(length: number)
     return gap.join("");
 }
 
-export function generateAlignmentString(alignment: PdbUniprotAlignment): string|undefined
+export function generateAlignmentString(alignment: Alignment): string|undefined
 {
     let alignmentStr: string|undefined;
 
     // process 3 alignment strings and create a visualization string
     const midline = alignment.midlineAlign;
-    const uniprot = alignment.uniprotAlign;
+    const uniprot = alignment.seqAlign;
     const pdb = alignment.pdbAlign;
 
     if (midline.length === uniprot.length &&
@@ -199,9 +200,9 @@ function calcIdentityPerc(alignment: string): number
             // increment gap count (gaps excluded from ratio calculation)
             gap++;
         }
-        else if (symbol == ALIGNMENT_MINUS ||
-            symbol == ALIGNMENT_PLUS ||
-            symbol == ALIGNMENT_SPACE)
+        else if (symbol === ALIGNMENT_MINUS ||
+            symbol === ALIGNMENT_PLUS ||
+            symbol === ALIGNMENT_SPACE)
         {
             // any special symbol other than a gap is considered as a mismatch
             // TODO is it better to assign a different weight for each symbol?

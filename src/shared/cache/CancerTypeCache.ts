@@ -1,7 +1,7 @@
-import ClinicalDataCache from "./ClinicalDataCache";
+import ClinicalDataForAttributesCache from "./ClinicalDataForAttributesCache";
 
-export default class CancerTypeCache extends ClinicalDataCache {
-    constructor(studyId:string) {
-        super(studyId, ["CANCER_TYPE_DETAILED"], "SAMPLE", "SUMMARY");
+export default class CancerTypeCache extends ClinicalDataForAttributesCache {
+    constructor() {
+        super(["CANCER_TYPE_DETAILED"], "SAMPLE", "SUMMARY");
     }
 }

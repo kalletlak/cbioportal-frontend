@@ -1,4 +1,5 @@
 @import './variables.scss';
+@import './custom-icons.scss';
 
 /* locks scroll bar on to prevent horizontal jump when content render */
 body {
@@ -7,8 +8,19 @@ body {
   text-align:left;
 }
 
+//get rid of blue border around active button
+button:active, button:focus, div:focus, div:active {
+  outline: none !important;
+}
+
+.posRelative {
+  position:relative;
+}
+
+/* importants are necessary for override of legacy style */
 .btn-default {
-  background-image: linear-gradient(to bottom,#fff 0,#eee 100%);
+  background-image: linear-gradient(to bottom,#fff 0,#eee 100%) !important;
+  color:$text-color !important;
 }
 
 /* fix for legacy style isses. makes it bootstrap */
@@ -25,6 +37,15 @@ body {
 
 div {
   text-align:left;
+}
+
+a {
+  cursor:pointer;
+  text-decoration:none !important;
+}
+
+a:hover {
+  text-decoration:underline !important;
 }
 
 /* Buttons */
@@ -102,21 +123,36 @@ th.reactable-header-sort-asc:after {
 
 }
 
-.mainTabs {
 
-  > .nav {
-    @extend .portalWidth;
-    margin:0 auto;
+.secondaryTabs {
 
-    .active {
-      a {
-        border-top: 3px solid $brand-primary !important;
-        padding-top: 9px;
+  li {
+    a {
+
+      font-size: 12px;
+      padding: 4px 6px !important;
+      margin-right: 8px !important;
+      text-decoration: none;
+
+      &:hover {
+        text-decoration: none !important;
       }
+
+    }
+
+    &.active a {
+      background:#eee !important;
     }
 
   }
 
+  .tab-content {
+    margin-top:$standardMargin;
+  }
+
+}
+
+.pillTabs {
   > .nav.nav-pills {
 
     margin-bottom:5px;
@@ -135,8 +171,33 @@ th.reactable-header-sort-asc:after {
         }
       }
     }
+  }
 
+  li a {
+    font-size: 12px;
+    padding: 10px 6px !important;
+    cursor: pointer;
+    line-height: 0.8px;
+  }
 
+  .msk-tab {
+    margin-top:10px;
+  }
+
+}
+
+.mainTabs {
+
+  > .nav {
+    @extend .portalWidth;
+    margin:0 auto;
+
+    .active {
+      a {
+        border-top: 3px solid $brand-primary !important;
+        padding-top: 9px;
+      }
+    }
 
   }
 
@@ -199,13 +260,24 @@ th.reactable-header-sort-asc:after {
   left: -9999px;
 }
 
-// corrects for a problem with build of react-bootstrap (unicode corrupted when build on linux  machines)
-.modal-header .close {
+// corrects for a problem with build of react-bootstrap and react-select (unicode corrupted when build on linux  machines)
+.Select--multi .Select-value-icon {
 
+  text-indent: -9999px;
+  line-height: 0; /* Collapse the original line */
+
+  &::after {
+    content:"✖";
+    text-indent: 0;
+    display: block;
+    line-height: initial; /* New content takes up original line height */
+  }
+}
+
+.modal-header .close {
   &::before {
     content: "✖";
   }
-
   span {
     display:none;
   }
@@ -253,6 +325,15 @@ th.reactable-header-sort-asc:after {
   //}
 }
 
+.forceHeaderStyle {
+  margin-top:30px !important;
+  font-family:Helvetica Neue, Helvetica, Arial, sans-serif !important;
+  margin-bottom:10px !important;
+  color:$headerColor !important;
+  &:first-child {
+    margin-top:0 !important;
+  }
+}
 
 .contentWrapper {
 
@@ -261,12 +342,7 @@ th.reactable-header-sort-asc:after {
 
   //header styles
   h1, h2, h3, h4 {
-    margin-top:30;
-    margin-bottom:20px;
-    color:$headerColor;
-    &:first-child {
-      margin-top:0;
-    }
+    @extend .forceHeaderStyle;
   }
 
   h1 {
@@ -386,4 +462,31 @@ th.reactable-header-sort-asc:after {
   padding:10px;
   border-radius:$cornerBorderRadius;
   border:1px dashed $borderColor;
+}
+
+h3.hr {
+  margin:0 30px;
+  border:1px dashed $borderColor !important;
+}
+
+.popover {
+
+  &.cbioTooltip {
+
+    position:absolute !important;
+    display:block !important;
+    max-width:600px !important;
+    div:last-child {
+      white-space: nowrap;
+    }
+
+    .popover-content {
+      font-size:$font-size-small !important;
+    }
+  }
+
+}
+
+.inlineBlock {
+  display:inline-block;;
 }

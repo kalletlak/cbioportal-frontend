@@ -165,7 +165,7 @@ export default class CustomCaseSelection extends React.Component<ICustomCaseSele
                     disabled={this.invalidCases.length > 0 || this.validCases.length === 0}
                     className="btn btn-sm"
                     style={{ float: "right" }}
-                    onClick={event => null} >
+                    onClick={event => this.props.onSubmit(this.validCases)} >
                     Submit
                 </button>
             </div>
@@ -174,7 +174,7 @@ export default class CustomCaseSelection extends React.Component<ICustomCaseSele
 
     render() {
         return (
-            <Draggable handle={`.${styles.popupHeaderBar}`}>
+            <Draggable handle={`.${styles.header}`}>
                 <div className={styles.customCaseSelection}>
                     {this.header()}
                     {this.mainContent()}

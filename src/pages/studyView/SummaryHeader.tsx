@@ -7,13 +7,20 @@ import "./styles.scss";
 import { bind } from 'bind-decorator';
 import { buildCBioPortalUrl } from 'shared/api/urls';
 import CustomCaseSelection from 'pages/studyView/customCaseSelection/CustomCaseSelection';
+import GeneSymbolSelection from 'pages/studyView/geneSymbolSelection/GeneSymbolSelection';
+import { SingleGeneQuery } from 'shared/lib/oql/oql-parser';
+import { Gene } from 'shared/api/generated/CBioPortalAPI';
 
 export interface ISummaryHeaderProps {
     selectedSamples: Sample[];
+    updateCustomCasesFilter:(samples:Sample[]) => void;
+    updateSelectedGenes: (query: SingleGeneQuery[], genes: Gene[]) => void;
 }
 
 @observer
 export default class SummaryHeader extends React.Component<ISummaryHeaderProps, {}> {
+
+    @observable private isCustomCaseBoxOpen = false;
 
     @computed
     get selectedPatientsCount() {
@@ -39,7 +46,7 @@ export default class SummaryHeader extends React.Component<ISummaryHeaderProps, 
         }).join(',');
 
         //TODO: handle browser url length limitation
-        //TODO: somehow this is not working
+        //TODO: somehow below line is not working
         //window.open(buildCBioPortalUrl('patient', { sampleId:firstSample.sampleId, studyId:firstSample.studyId ,navCaseIds : navCaseIds}));
 
         window.open(buildCBioPortalUrl('case.do', {
@@ -49,17 +56,11 @@ export default class SummaryHeader extends React.Component<ISummaryHeaderProps, 
         }));
     }
 
-
-    @observable private isCustomCaseBoxOpen = false;
-
     @bind
     @action
-    private toggleCustomCaseSelection() {
-        if (this.isCustomCaseBoxOpen) {
-            this.isCustomCaseBoxOpen = false;
-        } else {
-            this.isCustomCaseBoxOpen = true;
-        }
+    private onSubmit(cases:Sample[]) {
+        this.props.updateCustomCasesFilter(cases);
+        this.isCustomCaseBoxOpen = false;
     }
 
     render() {
@@ -70,10 +71,10 @@ export default class SummaryHeader extends React.Component<ISummaryHeaderProps, 
                         <CustomCaseSelection
                             selectedSamples={this.props.selectedSamples}
                             onClose={()=>this.isCustomCaseBoxOpen = false}
-                            onSubmit={()=>null}/>
+                            onSubmit={this.onSubmit}/>
                     )
                 }
-                <div>
+                <div style={{display: "flex"}}>
                     <span>Selected:</span>
                     <span className="content">{this.props.selectedSamples.length} samples / {this.selectedPatientsCount} patients</span>
                     <button className="btn" onClick={() => null}>
@@ -85,6 +86,7 @@ export default class SummaryHeader extends React.Component<ISummaryHeaderProps, 
                     <button className="btn" onClick={() => null}>
                         <i className="fa fa-download" aria-hidden="true" title="Download clinical data for selected cases"></i>
                     </button>
+                    <GeneSymbolSelection updateSelectedGenes={this.props.updateSelectedGenes}/>
                     <button
                         className="btn btn-default btn-sm"
                         onClick={event=>this.isCustomCaseBoxOpen = true}

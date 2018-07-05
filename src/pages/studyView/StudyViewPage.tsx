@@ -11,6 +11,9 @@ import { StudyViewPageStore, ClinicalDataType, SurvivalType, ChartMeta, ChartTyp
 import { reaction } from 'mobx';
 import { If } from 'react-if';
 import SummaryHeader from 'pages/studyView/SummaryHeader';
+import { Sample, Gene } from 'shared/api/generated/CBioPortalAPI';
+import 'react-select/dist/react-select.css';
+import { SingleGeneQuery } from 'shared/lib/oql/oql-parser';
 
 export interface IStudyViewPageProps {
     routing: any;
@@ -43,6 +46,11 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
             },
             onDeleteChart: (uniqueKey: string) => {
                 this.store.changeChartVisibility(uniqueKey, false);
+            },
+            updateCustomCasesFilter: (cases: Sample[]) => {
+                this.store.updateCustomCasesFilter(cases);
+            },
+            updateSelectedGenes:(query: SingleGeneQuery[], genes: Gene[])=>{
             }
         }
 
@@ -122,7 +130,10 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
                         className="mainTabs">
 
                         <MSKTab key={0} id="summaryTab" linkText="Summary">
-                            <SummaryHeader selectedSamples={this.store.selectedSamples.result!}/>
+                            <SummaryHeader
+                                selectedSamples={this.store.selectedSamples.result!}
+                                updateCustomCasesFilter={this.handlers.updateCustomCasesFilter}
+                                updateSelectedGenes={this.handlers.updateSelectedGenes}/>
                             <div className={styles.studyViewFlexContainer}>
                                 {this.store.initialClinicalDataCounts.isComplete && 
                                     this.store.visibleAttributes.map(this.renderAttributeChart)}

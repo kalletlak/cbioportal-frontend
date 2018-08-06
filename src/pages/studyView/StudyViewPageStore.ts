@@ -20,7 +20,7 @@ import {
     ClinicalData,
     MolecularProfile,
     MolecularProfileFilter,
-    ClinicalDataMultiStudyFilter, MutationCount
+    ClinicalDataMultiStudyFilter, MutationCount, CancerStudy
 } from 'shared/api/generated/CBioPortalAPI';
 import { PatientSurvival } from 'shared/model/PatientSurvival';
 import { getPatientSurvivals } from 'pages/resultsView/SurvivalStoreHelper';
@@ -53,6 +53,10 @@ export type ChartMeta = {
     clinicalAttribute: ClinicalAttribute,
     uniqueKey: string,
     defaultChartType: ChartType
+}
+
+export type StudyWithSamples = CancerStudy & {
+    uniqueSampleKeys : string[]
 }
 
 export class StudyViewPageStore {
@@ -338,6 +342,18 @@ export class StudyViewPageStore {
         },
         default: []
     })
+
+    readonly studyWithSamples = remoteData<StudyWithSamples[]>({
+        await: () => [this.studies, this.samples],
+        invoke: async () => {
+            let studySampleSet = _.groupBy(this.samples.result,(sample)=>sample.studyId)
+            return this.studies.result.map(study=>{
+                let samples = studySampleSet[study.studyId]||[];
+                return {...study, uniqueSampleKeys:_.map(samples,sample=>sample.uniqueSampleKey)}
+            });
+        },
+        default: []
+    });
 
     readonly selectedSamples = remoteData<Sample[]>({
         invoke: () => {

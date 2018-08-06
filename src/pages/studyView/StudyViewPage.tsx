@@ -135,7 +135,9 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
                         <MSKTab key={0} id="summaryTab" linkText="Summary">
                             <SummaryHeader
                                 selectedSamples={this.store.selectedSamples.result!}
-                                updateCustomCasesFilter={this.handlers.updateCustomCasesFilter}/>
+                                updateCustomCasesFilter={this.handlers.updateCustomCasesFilter}
+                                studyWithSamples={this.store.studyWithSamples.result}
+                                filter={this.store.filters}/>
                             <div className={styles.studyViewFlexContainer}>
                                 {this.store.initialClinicalDataCounts.isComplete && 
                                     this.store.visibleAttributes.map(this.renderAttributeChart)}

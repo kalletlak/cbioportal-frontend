@@ -1,16 +1,22 @@
 import * as React from 'react';
 import * as _ from 'lodash';
-import { Sample } from 'shared/api/generated/CBioPortalAPIInternal';
+import { Sample, StudyViewFilter } from 'shared/api/generated/CBioPortalAPIInternal';
 import { observer } from "mobx-react";
 import { computed, observable, action } from 'mobx';
 import "./styles.scss";
 import { bind } from 'bind-decorator';
 import { buildCBioPortalUrl } from 'shared/api/urls';
 import CustomCaseSelection from 'pages/studyView/customCaseSelection/CustomCaseSelection';
+import DefaultTooltip from 'shared/components/defaultTooltip/DefaultTooltip';
+import VirtualStudy from 'pages/studyView/virtualStudy/VirtualStudy';
+import { StudyWithSamples } from 'pages/studyView/StudyViewPageStore';
 
 export interface ISummaryHeaderProps {
     selectedSamples: Sample[];
     updateCustomCasesFilter:(samples:Sample[]) => void;
+    showSaveIcon?:boolean;
+    studyWithSamples:StudyWithSamples[];
+    filter: StudyViewFilter;
 }
 
 @observer
@@ -62,12 +68,30 @@ export default class SummaryHeader extends React.Component<ISummaryHeaderProps, 
                             onSubmit={this.onSubmit}/>
                     )
                 }
+                    
                 <div style={{display: "flex"}}>
                     <span>Selected:</span>
                     <span className="content">{this.props.selectedSamples.length} samples / {this.selectedPatientsCount} patients</span>
-                    <button className="btn" onClick={() => null}>
-                        <i className="fa fa-bookmark" aria-hidden="true" title="Virtual Study"></i>
-                    </button>
+                    <DefaultTooltip
+                        mouseEnterDelay={0.5}
+                        trigger={['click']}
+                        destroyTooltipOnHide={true}
+                        overlay={
+                            <VirtualStudy
+                                showSaveIcon={this.props.showSaveIcon||false}
+                                showShareIcon={true}
+                                studyWithSamples={this.props.studyWithSamples}
+                                selectedSamples={this.props.selectedSamples}
+                                filter={this.props.filter}
+                            />
+                        }
+                        placement="bottom"
+                    >
+                        <span className="btn">
+                            <i className="fa fa-bookmark" aria-hidden="true" title="Virtual Study"/>
+                        </span>
+                    </DefaultTooltip>
+                    
                     <button className="btn" onClick={() => this.openCases()}>
                         <i className="fa fa-user-circle-o" aria-hidden="true" title="View selected cases"></i>
                     </button>

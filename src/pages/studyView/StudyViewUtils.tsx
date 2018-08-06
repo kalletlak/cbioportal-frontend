@@ -1,10 +1,11 @@
 import { ClinicalDataCount, StudyViewFilter } from "shared/api/generated/CBioPortalAPIInternal";
 import _ from "lodash";
 import internalClient from "shared/api/cbioportalInternalClientInstance";
-import { ClinicalAttribute } from "shared/api/generated/CBioPortalAPI";
+import { ClinicalAttribute, Sample } from "shared/api/generated/CBioPortalAPI";
 import * as React from "react";
 import {getSampleViewUrl, getStudySummaryUrl} from "../../shared/api/urls";
 import {IStudyViewScatterPlotData} from "./charts/scatterPlot/StudyViewScatterPlot";
+import { StudyWithSamples } from "pages/studyView/StudyViewPageStore";
 
 //TODO:cleanup
 export const COLORS = [
@@ -104,4 +105,64 @@ export function mutationCountVsCnaTooltip(d:{ data:Pick<IStudyViewScatterPlotDat
 
 export function isSelected(datum:{uniqueSampleKey:string}, selectedSamples:{[uniqueSampleKey:string]:any}) {
     return datum.uniqueSampleKey in selectedSamples;
+}
+
+export function getCurrentDate() {
+    return new Date().toISOString().slice(0, 10);
+}
+
+export function getVirtualStudyDescription(studyWithSamples: StudyWithSamples[], selectedSamples: Sample[], filter: StudyViewFilter, user?: string) {
+    let selectedSampleSet = _.groupBy(selectedSamples, (sample: Sample) => sample.studyId);
+    let descriptionLines: string[] = [];
+    //add to samples and studies count
+    descriptionLines.push(
+        selectedSamples.length +
+        " sample"+(selectedSamples.length > 1 ? 's' : '') +
+        " from " +
+        Object.keys(selectedSampleSet).length +
+        " " +
+        (Object.keys(selectedSampleSet).length > 1 ? 'studies:' : 'study:'));
+    //add individual studies sample count
+    studyWithSamples.forEach(studyObj => {
+        let selectedUniqueSampleKeys = _.map(selectedSampleSet[studyObj.studyId] || [], sample => sample.uniqueSampleKey);
+        let studySelectedSamples = _.intersection(studyObj.uniqueSampleKeys, selectedUniqueSampleKeys);
+        if(studySelectedSamples.length>0){
+            descriptionLines.push("- " + studyObj.name + " (" + studySelectedSamples.length + " samples)")
+        }
+    })
+    //add filters
+    let filterLines: string[] = [];
+    if (!_.isEmpty(filter)) {
+        if (filter.cnaGenes && filter.cnaGenes.length > 0) {
+            filterLines.push('- CNA Genes:')
+            filterLines = filterLines.concat(filter.cnaGenes.map(cnaGene => {
+                return cnaGene.alterations.map(alteration => alteration.entrezGeneId + "-" + alteration.alteration).join(', ');
+            }).map(line => ' - ' + line));
+        }
+        if (filter.mutatedGenes && filter.mutatedGenes.length > 0) {
+            filterLines.push('- Mutated Genes:')
+            filterLines = filterLines.concat(filter.mutatedGenes.map(mutatedGene => {
+                return mutatedGene.entrezGeneIds.join(', ');
+            }));
+        }
+        if (filter.clinicalDataEqualityFilters && filter.clinicalDataEqualityFilters.length > 0) {
+            filterLines = filterLines.concat(
+                filter.clinicalDataEqualityFilters.map(clinicalDataEqualityFilter => {
+                    //TODO: use attribute name instead of Id
+                    return '- ' + clinicalDataEqualityFilter.attributeId + ": " + clinicalDataEqualityFilter.values.join(', ');
+                }));
+        }
+        if (filter.sampleIdentifiers && filter.sampleIdentifiers.length > 0) {
+            filterLines.push('- Select by IDs: ' + filter.sampleIdentifiers.length + ' samples');
+        }
+    }
+    if (filterLines.length > 0) {
+        descriptionLines.push('');
+        descriptionLines.push('Filters:');
+        descriptionLines = descriptionLines.concat(filterLines);
+    }
+    descriptionLines.push('');
+    //add creation and user name
+    descriptionLines.push('Created on ' + getCurrentDate() + (user ? ' by ' + user : ''));
+    return descriptionLines.join('\n');
 }

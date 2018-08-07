@@ -258,6 +258,7 @@ export class StudyViewPageStore {
     });
 
     @computed get attributeNamesSet() {
+        //TODO: this should use _clinicalAttributesMetaSet once special charts are included in _clinicalAttributesMetaSet
         return _.reduce(this.clinicalAttributes.result, (acc: { [id: string]: string }, attribute) => {
             const uniqueKey = (attribute.patientAttribute ? 'PATIENT' : 'SAMPLE') + '_' + attribute.clinicalAttributeId;
             if (attribute.datatype === 'STRING') {

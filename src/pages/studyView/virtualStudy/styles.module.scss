@@ -6,6 +6,9 @@
         textarea {
             resize: none;
         }
+        .saveButton {
+            height:34px;
+        }
     }
     
     .studiesSummaryInfo {
@@ -13,6 +16,19 @@
         font-size: 12px;
         max-height: 200px;
         overflow-y: auto;
+    }
+
+    .result{
+        display: flex;
+        align-items: center;
+        .name {
+            flex-grow: 1;
+        }
+    
+        .controls {
+            flex-shrink: 0;
+            float: right;
+        }
     }
 
     .disabled {
@@ -47,10 +63,4 @@
     .studyDescription {
         padding: 7px;
     }
-}
-
-.virtualStudyResult{
-    display: flex;
-    align-items: center;
-    min-width: 350px; 
 }

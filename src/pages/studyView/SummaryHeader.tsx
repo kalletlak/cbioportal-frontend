@@ -14,10 +14,10 @@ import { StudyWithSamples } from 'pages/studyView/StudyViewPageStore';
 export interface ISummaryHeaderProps {
     selectedSamples: Sample[];
     updateCustomCasesFilter:(samples:Sample[]) => void;
-    showSaveIcon?:boolean;
     studyWithSamples:StudyWithSamples[];
     filter: StudyViewFilter;
     attributeNamesSet: {[id:string]:string};
+    user?: string;
 }
 
 @observer
@@ -58,6 +58,15 @@ export default class SummaryHeader extends React.Component<ISummaryHeaderProps, 
         this.isCustomCaseBoxOpen = false;
     }
 
+    @computed get virtualStudyButtonTooltip() {
+        //default value of userEmailAddress is anonymousUser. see my-index.ejs
+        return (
+            (_.isUndefined(this.props.user) ||
+                _.isEmpty(this.props.user) ||
+                _.isEqual(this.props.user.toLowerCase(), 'anonymoususer')
+            ) ? 'Save/' : '') + 'Share Virtual Study';
+    }
+
     render() {
         return (
             <div className="studyViewSummaryHeader">
@@ -74,13 +83,11 @@ export default class SummaryHeader extends React.Component<ISummaryHeaderProps, 
                     <span>Selected:</span>
                     <span className="content">{this.props.selectedSamples.length} samples / {this.selectedPatientsCount} patients</span>
                     <DefaultTooltip
-                        mouseEnterDelay={0.5}
                         trigger={['click']}
                         destroyTooltipOnHide={true}
                         overlay={
                             <VirtualStudy
-                                showSaveIcon={this.props.showSaveIcon||false}
-                                showShareIcon={true}
+                                user={this.props.user}
                                 studyWithSamples={this.props.studyWithSamples}
                                 selectedSamples={this.props.selectedSamples}
                                 filter={this.props.filter}
@@ -89,7 +96,7 @@ export default class SummaryHeader extends React.Component<ISummaryHeaderProps, 
                         }
                         placement="bottom"
                     >
-                        <span className="btn">
+                        <span className="btn" title={this.virtualStudyButtonTooltip}>
                             <i className="fa fa-bookmark" aria-hidden="true" title="Virtual Study"/>
                         </span>
                     </DefaultTooltip>

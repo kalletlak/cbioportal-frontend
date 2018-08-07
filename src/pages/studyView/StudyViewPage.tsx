@@ -14,6 +14,7 @@ import SummaryHeader from 'pages/studyView/SummaryHeader';
 import {Sample, SampleIdentifier} from 'shared/api/generated/CBioPortalAPI';
 import StudyViewScatterPlot from "./charts/scatterPlot/StudyViewScatterPlot";
 import {isSelected, mutationCountVsCnaTooltip} from "./StudyViewUtils";
+import AppConfig from 'appConfig';
 
 export interface IStudyViewPageProps {
     routing: any;
@@ -138,7 +139,8 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
                                 updateCustomCasesFilter={this.handlers.updateCustomCasesFilter}
                                 studyWithSamples={this.store.studyWithSamples.result}
                                 filter={this.store.filters}
-                                attributeNamesSet={this.store.attributeNamesSet}/>
+                                attributeNamesSet={this.store.attributeNamesSet}
+                                user={AppConfig.userEmailAddress}/>
                             <div className={styles.studyViewFlexContainer}>
                                 {this.store.initialClinicalDataCounts.isComplete && 
                                     this.store.visibleAttributes.map(this.renderAttributeChart)}

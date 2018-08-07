@@ -17,18 +17,11 @@ import autobind from 'autobind-decorator';
 
 const Clipboard = require('clipboard');
 
-export type StudySummary = {
-    id: string;
-    name: string;
-    description: string;
-}
 export interface IVirtualStudyProps {
-    showSaveIcon: boolean;
-    showShareIcon: boolean;
     studyWithSamples: StudyWithSamples[];
     selectedSamples: Sample[];
     filter: StudyViewFilter;
-    attributeNamesSet: {[id:string]:string};
+    attributeNamesSet: { [id: string]: string };
     user?: string;
 }
 
@@ -137,112 +130,121 @@ export default class VirtualStudy extends React.Component<IVirtualStudyProps, {}
         this.copied = !visible
     }
 
+    @computed get showSaveButton() {
+        //default value of userEmailAddress is anonymousUser. see my-index.ejs
+        return !(_.isUndefined(this.props.user) ||
+            _.isEmpty(this.props.user) ||
+            _.isEqual(this.props.user.toLowerCase(), 'anonymoususer')
+        );
+    }
+
     render() {
         return (
-            <If condition={this.virtualStudy.isError}>
-                <Then>
-                    <div>
-                        <i className="fa fa-exclamation-triangle" aria-hidden="true" style={{ color: "orange" }} />
-                        <span style={{ marginLeft: "5px" }}>{`Failed to ${this.saving ? 'save' : 'share'} virtual study, please try again later.`}</span>
-                    </div>
-                </Then>
-                <Else>
-                    <If condition={this.virtualStudy.isPending || _.isUndefined(this.virtualStudy.result)}>
-                        <Then>
-                            <div className={styles.virtualStudy}>
-                                <div className={classnames(styles.virtualStudyForm, this.virtualStudy.isPending ? styles.disabled : undefined)}>
-                                    <div className="input-group">
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            placeholder={this.namePlaceHolder || "Virtual study name"}
-                                            onInput={(event) => this.name = event.currentTarget.value} />
-                                        <div className="input-group-btn">
-                                            {this.props.showSaveIcon && <button
-                                                className="btn btn-default"
-                                                type="button"
-                                                disabled={this.buttonsDisabled}
-                                                onClick={(event) => { this.saving = true; }}>
-                                                {this.saving ? <i className="fa fa-spinner fa-spin" aria-hidden="true"></i> : "Save"}
-                                            </button>}
-                                            {this.props.showShareIcon && <button
-                                                className="btn btn-default share-cohort"
-                                                type="button"
-                                                disabled={this.buttonsDisabled}
-                                                onClick={(event) => { this.sharing = true; }}>
-                                                {this.sharing ? <i className="fa fa-spinner fa-spin" aria-hidden="true"></i> : "Share"}
-                                            </button>}
+            <div className={styles.virtualStudy}>
+                <If condition={this.virtualStudy.isError}>
+                    <Then>
+                        <div style={{ textAlign: 'center' }}>
+                            <i className="fa fa-exclamation-triangle" aria-hidden="true" style={{ color: "orange" }} />
+                            <span style={{ marginLeft: "5px" }}>{`Failed to ${this.saving ? 'save' : 'share'} virtual study, please try again later.`}</span>
+                        </div>
+                    </Then>
+                    <Else>
+                        <If condition={this.virtualStudy.isPending || _.isUndefined(this.virtualStudy.result)}>
+                            <Then>
+                                <div>
+                                    <div className={classnames(styles.virtualStudyForm, this.virtualStudy.isPending ? styles.disabled : undefined)}>
+                                        <div className="input-group">
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                placeholder={this.namePlaceHolder || "Virtual study name"}
+                                                onInput={(event) => this.name = event.currentTarget.value} />
+                                            <div className="input-group-btn">
+                                                {this.showSaveButton && <button
+                                                    className={classnames("btn btn-default", styles.saveButton)}
+                                                    type="button"
+                                                    disabled={this.buttonsDisabled}
+                                                    onClick={(event) => { this.saving = true; }}>
+                                                    {this.saving ? <i className="fa fa-spinner fa-spin" aria-hidden="true"></i> : "Save"}
+                                                </button>}
+                                                <button
+                                                    className={classnames("btn btn-default", styles.saveButton)}
+                                                    type="button"
+                                                    disabled={this.buttonsDisabled}
+                                                    onClick={(event) => { this.sharing = true; }}>
+                                                    {this.sharing ? <i className="fa fa-spinner fa-spin" aria-hidden="true"></i> : "Share"}
+                                                </button>
+                                            </div>
                                         </div>
+                                        <textarea
+                                            className="form-control"
+                                            rows={10}
+                                            placeholder="Virtual study description (Optional)"
+                                            value={this.description}
+                                            onChange={event => this.description = event.currentTarget.value}
+                                        />
                                     </div>
-                                    <textarea
-                                        className="form-control"
-                                        rows={10}
-                                        placeholder="Virtual study description (Optional)"
-                                        value={this.description}
-                                        onChange={event => this.description = event.currentTarget.value}
-                                    />
+                                    <span style={{ 'display': 'block', 'font-weight': 'bold' }}>This virtual study was derived from:</span>
+                                    <div className={styles.studiesSummaryInfo}>
+                                        {
+                                            this.props.studyWithSamples.map(study => <StudySummaryRecord {...study} />)
+                                        }
+                                    </div>
                                 </div>
-                                <span style={{ 'display': 'block', 'font-weight': 'bold' }}>This virtual study was derived from:</span>
-                                <div className={styles.studiesSummaryInfo}>
-                                    {
-                                        this.props.studyWithSamples.map(study => <StudySummaryRecord {...study} />)
-                                    }
-                                </div>
-                            </div>
-                        </Then>
-                        <Else>
-                            <div className={classnames(styles.virtualStudyResult)}>
-                                <a
-                                    target='_blank'
-                                    href={`${this.virtualStudyUrl}`}
-                                    style={{ 'margin-right': '10px' }}>
-                                    {this.virtualStudyUrl}
-                                </a>
-                                <div className="btn-group btn-group-xs">
-
-                                    <DefaultTooltip
-                                        overlay={
-                                            <If condition={this.copied}>
-                                                <Then>
-                                                    <span className="alert-success">Copied!</span>
-                                                </Then>
-                                                <Else>
-                                                    <span>Copy</span>
-                                                </Else>
-                                            </If>}
-                                        placement="top"
-                                        mouseLeaveDelay={0}
-                                        mouseEnterDelay={0.5}
-                                        onVisibleChange={this.onTooltipVisibleChange as any}
-                                    >
-                                        <span
-                                            className="btn btn-default"
-                                            ref={this.copyLinkRef}
-                                            onClick={this.onCopyClick}>
-                                            Copy
+                            </Then>
+                            <Else>
+                                <div className={classnames(styles.result)}>
+                                    <div className={styles.name}>
+                                        <a
+                                            target='_blank'
+                                            href={`${this.virtualStudyUrl}`}
+                                            style={{ width: '220px' }}>
+                                            {this.virtualStudyUrl}
+                                        </a>
+                                    </div>
+                                    <div className={classnames("btn-group btn-group-xs", styles.controls)}>
+                                        <DefaultTooltip
+                                            overlay={
+                                                <If condition={this.copied}>
+                                                    <Then>
+                                                        <span className="alert-success">Copied!</span>
+                                                    </Then>
+                                                    <Else>
+                                                        <span>Copy</span>
+                                                    </Else>
+                                                </If>}
+                                            placement="top"
+                                            onVisibleChange={this.onTooltipVisibleChange as any}
+                                        >
+                                            <span
+                                                className="btn btn-default"
+                                                ref={this.copyLinkRef}
+                                                onClick={this.onCopyClick}>
+                                                Copy
                                         </span>
-                                    </DefaultTooltip>
-                                    <span
-                                        className="btn btn-default"
-                                        onClick={(event) => window.open(this.virtualStudyUrl, "_blank")}>
-                                        View
-                                    </span>
-                                    {this.saving &&
+                                        </DefaultTooltip>
                                         <span
                                             className="btn btn-default"
-                                            onClick={(event) => {
-                                                if (this.virtualStudy.result) {
-                                                    window.open(buildCBioPortalUrl('index.do', { cancer_study_id: this.virtualStudy.result.id }), "_blank")
-                                                }
-                                            }}>
-                                            Query
+                                            onClick={(event) => window.open(this.virtualStudyUrl, "_blank")}>
+                                            View
+                                    </span>
+                                        {this.saving &&
+                                            <span
+                                                className="btn btn-default"
+                                                onClick={(event) => {
+                                                    if (this.virtualStudy.result) {
+                                                        window.open(buildCBioPortalUrl('index.do', { cancer_study_id: this.virtualStudy.result.id }), "_blank")
+                                                    }
+                                                }}>
+                                                Query
                                     </span>}
+                                    </div>
                                 </div>
-                            </div>
-                        </Else>
-                    </If>
-                </Else>
-            </If>
+                            </Else>
+                        </If>
+                    </Else>
+                </If>
+            </div>
         )
     }
 }

@@ -141,7 +141,7 @@ export function getVirtualStudyDescription(
         if (filter.cnaGenes && filter.cnaGenes.length > 0) {
             filterLines.push('- CNA Genes:')
             filterLines = filterLines.concat(filter.cnaGenes.map(cnaGene => {
-                return cnaGene.alterations.map(alteration => alteration.entrezGeneId + "-" + alteration.alteration).join(', ');
+                return cnaGene.alterations.map(alteration => alteration.entrezGeneId + "-" + (alteration.alteration === -2 ? 'DEL' : 'AMP')).join(', ');
             }).map(line => ' - ' + line));
         }
         if (filter.mutatedGenes && filter.mutatedGenes.length > 0) {
@@ -157,6 +157,10 @@ export function getVirtualStudyDescription(
                     return `- ${name}: ${clinicalDataEqualityFilter.values.join(', ')}`;
                 }));
         }
+        /*
+           TODO: currently sampleIdentifiers includes both custom cases and scatter
+           need to update this once the filter handled properly
+        */
         if (filter.sampleIdentifiers && filter.sampleIdentifiers.length > 0) {
             filterLines.push('- Select by IDs: ' + filter.sampleIdentifiers.length + ' samples');
         }

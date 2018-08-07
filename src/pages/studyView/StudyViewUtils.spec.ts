@@ -37,14 +37,14 @@ describe('StudyViewUtils', () => {
         }
 
         it('when all samples are selected', () => {
-            assert.isTrue(getVirtualStudyDescription(studies as any, selectedSamples as any, {} as any).startsWith('4 samples from 2 studies:\n- Study 1 (2 samples)\n- Study 2 (2 samples)'));
+            assert.isTrue(getVirtualStudyDescription(studies as any, selectedSamples as any, {} as any,  {} as any).startsWith('4 samples from 2 studies:\n- Study 1 (2 samples)\n- Study 2 (2 samples)'));
         });
         it('when filters are applied', () => {
-            assert.isTrue(getVirtualStudyDescription(studies as any, [{ studyId: 'study1', uniqueSampleKey: '1' }] as any, filter as any).startsWith('1 sample from 1 study:\n- Study 1 (1 samples)\n\nFilters:\n- attribute1: value1'));
+            assert.isTrue(getVirtualStudyDescription(studies as any, [{ studyId: 'study1', uniqueSampleKey: '1' }] as any, filter as any, {'SAMPLE_attribute1':'attribute1 name'}).startsWith('1 sample from 1 study:\n- Study 1 (1 samples)\n\nFilters:\n- attribute1 name: value1'));
         });
         it('when username is not null', () => {
-            assert.isTrue(getVirtualStudyDescription(studies as any, selectedSamples as any, {} as any, 'user1').startsWith('4 samples from 2 studies:\n- Study 1 (2 samples)\n- Study 2 (2 samples)'));
-            assert.isTrue(getVirtualStudyDescription(studies as any, selectedSamples as any, {} as any, 'user1').endsWith('by user1'));
+            assert.isTrue(getVirtualStudyDescription(studies as any, selectedSamples as any, {} as any, {} as any, 'user1').startsWith('4 samples from 2 studies:\n- Study 1 (2 samples)\n- Study 2 (2 samples)'));
+            assert.isTrue(getVirtualStudyDescription(studies as any, selectedSamples as any, {} as any, {} as any, 'user1').endsWith('by user1'));
         });
     });
 });

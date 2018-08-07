@@ -257,6 +257,16 @@ export class StudyViewPageStore {
         }
     });
 
+    @computed get attributeNamesSet() {
+        return _.reduce(this.clinicalAttributes.result, (acc: { [id: string]: string }, attribute) => {
+            const uniqueKey = (attribute.patientAttribute ? 'PATIENT' : 'SAMPLE') + '_' + attribute.clinicalAttributeId;
+            if (attribute.datatype === 'STRING') {
+                acc[uniqueKey] = attribute.displayName;
+            }
+            return acc
+        }, {})
+    }
+
     @computed get visibleAttributes(): ChartMeta[] {
         return _.reduce(this._chartVisibility.keys(), (acc: ChartMeta[], next) => {
             if (this._chartVisibility.get(next)) {

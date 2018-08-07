@@ -137,7 +137,8 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
                                 selectedSamples={this.store.selectedSamples.result!}
                                 updateCustomCasesFilter={this.handlers.updateCustomCasesFilter}
                                 studyWithSamples={this.store.studyWithSamples.result}
-                                filter={this.store.filters}/>
+                                filter={this.store.filters}
+                                attributeNamesSet={this.store.attributeNamesSet}/>
                             <div className={styles.studyViewFlexContainer}>
                                 {this.store.initialClinicalDataCounts.isComplete && 
                                     this.store.visibleAttributes.map(this.renderAttributeChart)}

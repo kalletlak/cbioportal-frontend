@@ -111,7 +111,12 @@ export function getCurrentDate() {
     return new Date().toISOString().slice(0, 10);
 }
 
-export function getVirtualStudyDescription(studyWithSamples: StudyWithSamples[], selectedSamples: Sample[], filter: StudyViewFilter, user?: string) {
+export function getVirtualStudyDescription(
+                                            studyWithSamples: StudyWithSamples[],
+                                            selectedSamples: Sample[],
+                                            filter: StudyViewFilter,
+                                            attributeNamesSet: {[id:string]:string},
+                                            user?: string) {
     let selectedSampleSet = _.groupBy(selectedSamples, (sample: Sample) => sample.studyId);
     let descriptionLines: string[] = [];
     //add to samples and studies count
@@ -148,8 +153,8 @@ export function getVirtualStudyDescription(studyWithSamples: StudyWithSamples[],
         if (filter.clinicalDataEqualityFilters && filter.clinicalDataEqualityFilters.length > 0) {
             filterLines = filterLines.concat(
                 filter.clinicalDataEqualityFilters.map(clinicalDataEqualityFilter => {
-                    //TODO: use attribute name instead of Id
-                    return '- ' + clinicalDataEqualityFilter.attributeId + ": " + clinicalDataEqualityFilter.values.join(', ');
+                    let name = attributeNamesSet[clinicalDataEqualityFilter.clinicalDataType+'_'+clinicalDataEqualityFilter.attributeId] || clinicalDataEqualityFilter.attributeId;
+                    return `- ${name}: ${clinicalDataEqualityFilter.values.join(', ')}`;
                 }));
         }
         if (filter.sampleIdentifiers && filter.sampleIdentifiers.length > 0) {

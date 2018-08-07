@@ -28,7 +28,8 @@ export interface IVirtualStudyProps {
     studyWithSamples: StudyWithSamples[];
     selectedSamples: Sample[];
     filter: StudyViewFilter;
-    user?: string
+    attributeNamesSet: {[id:string]:string};
+    user?: string;
 }
 
 @observer
@@ -70,7 +71,7 @@ export default class VirtualStudy extends React.Component<IVirtualStudyProps, {}
 
     constructor(props: IVirtualStudyProps) {
         super(props);
-        this.description = getVirtualStudyDescription(props.studyWithSamples, props.selectedSamples, props.filter, this.props.user);
+        this.description = getVirtualStudyDescription(props.studyWithSamples, props.selectedSamples, props.filter, this.props.attributeNamesSet, this.props.user);
     }
 
     @computed get namePlaceHolder() {

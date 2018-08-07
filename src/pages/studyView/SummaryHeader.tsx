@@ -17,6 +17,7 @@ export interface ISummaryHeaderProps {
     showSaveIcon?:boolean;
     studyWithSamples:StudyWithSamples[];
     filter: StudyViewFilter;
+    attributeNamesSet: {[id:string]:string};
 }
 
 @observer
@@ -83,6 +84,7 @@ export default class SummaryHeader extends React.Component<ISummaryHeaderProps, 
                                 studyWithSamples={this.props.studyWithSamples}
                                 selectedSamples={this.props.selectedSamples}
                                 filter={this.props.filter}
+                                attributeNamesSet={this.props.attributeNamesSet}
                             />
                         }
                         placement="bottom"

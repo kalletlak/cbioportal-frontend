@@ -8,7 +8,7 @@ import classnames from 'classnames';
 import { remoteData } from 'shared/api/remoteData';
 import sessionServiceClient from "shared/api//sessionServiceInstance";
 import { If, Then, Else } from 'react-if';
-import { getStudySummaryUrl } from 'shared/api/urls';
+import { getStudySummaryUrl, buildCBioPortalUrl } from 'shared/api/urls';
 import { StudyViewFilter } from 'shared/api/generated/CBioPortalAPIInternal';
 import { StudyWithSamples } from 'pages/studyView/StudyViewPageStore';
 import { getVirtualStudyDescription, getCurrentDate } from 'pages/studyView/StudyViewUtils';
@@ -101,7 +101,7 @@ export default class VirtualStudy extends React.Component<IVirtualStudyProps, {}
                     but eventually we need to save StudyViewFilter
                  */
                 let parameters = {
-                    name: this.name,
+                    name: this.name || this.namePlaceHolder,
                     description: this.description,
                     filters: filters,
                     origin: this.props.studyWithSamples.map(study => study.studyId),
@@ -227,7 +227,16 @@ export default class VirtualStudy extends React.Component<IVirtualStudyProps, {}
                                         onClick={(event) => window.open(this.virtualStudyUrl, "_blank")}>
                                         View
                                     </span>
-                                    {this.saving && <span className="btn btn-default" onClick={(event) => { /*TODO: implement query click event */ }}>Query</span>}
+                                    {this.saving &&
+                                        <span
+                                            className="btn btn-default"
+                                            onClick={(event) => {
+                                                if (this.virtualStudy.result) {
+                                                    window.open(buildCBioPortalUrl('index.do', { cancer_study_id: this.virtualStudy.result.id }), "_blank")
+                                                }
+                                            }}>
+                                            Query
+                                    </span>}
                                 </div>
                             </div>
                         </Else>

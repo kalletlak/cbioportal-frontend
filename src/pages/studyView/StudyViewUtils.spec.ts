@@ -1,5 +1,7 @@
 import { assert } from 'chai';
 import { getVirtualStudyDescription } from 'pages/studyView/StudyViewUtils';
+import { Gene } from 'shared/api/generated/CBioPortalAPI';
+import { StudyViewFilter } from 'shared/api/generated/CBioPortalAPIInternal';
 
 describe('StudyViewUtils', () => {
     describe('getVirtualStudyDescription', () => {
@@ -27,24 +29,59 @@ describe('StudyViewUtils', () => {
             uniqueSampleKey: '4'
         }];
 
-        let filter = {
-            'clinicalDataEqualityFilters': [{
-                'attributeId': 'attribute1',
-                'clinicalDataType': "SAMPLE",
-                'values': ['value1']
-            }],
-            'studyIds': ['study1', 'study2']
-        }
-
         it('when all samples are selected', () => {
-            assert.isTrue(getVirtualStudyDescription(studies as any, selectedSamples as any, {} as any,  {} as any).startsWith('4 samples from 2 studies:\n- Study 1 (2 samples)\n- Study 2 (2 samples)'));
+            assert.isTrue(
+                getVirtualStudyDescription(
+                    studies as any,
+                    selectedSamples as any,
+                    {} as any,
+                    {} as any,
+                    []
+                ).startsWith('4 samples from 2 studies:\n- Study 1 (2 samples)\n- Study 2 (2 samples)'));
         });
         it('when filters are applied', () => {
-            assert.isTrue(getVirtualStudyDescription(studies as any, [{ studyId: 'study1', uniqueSampleKey: '1' }] as any, filter as any, {'SAMPLE_attribute1':'attribute1 name'}).startsWith('1 sample from 1 study:\n- Study 1 (1 samples)\n\nFilters:\n- attribute1 name: value1'));
+            let filter = {
+                'clinicalDataEqualityFilters': [{
+                    'attributeId': 'attribute1',
+                    'clinicalDataType': "SAMPLE",
+                    'values': ['value1']
+                }],
+                "mutatedGenes": [{ "entrezGeneIds": [1] }],
+                "cnaGenes": [{ "alterations": [{ "entrezGeneId": 2, "alteration": -2 }] }],
+                'studyIds': ['study1', 'study2']
+            } as StudyViewFilter
+
+            let genes = [{ entrezGeneId: 1, hugoGeneSymbol: "GENE1" }, { entrezGeneId: 2, hugoGeneSymbol: "GENE2" }] as Gene[];
+
+            assert.isTrue(
+                getVirtualStudyDescription(
+                    studies as any,
+                    [{ studyId: 'study1', uniqueSampleKey: '1' }] as any,
+                    filter,
+                    { 'SAMPLE_attribute1': 'attribute1 name' },
+                    genes
+                ).startsWith('1 sample from 1 study:\n- Study 1 (1 samples)\n\nFilters:\n- CNA Genes:\n  ' +
+                    '- GENE2-DEL\n- Mutated Genes:\n  - GENE1\n  - attribute1 name: value1'));
         });
         it('when username is not null', () => {
-            assert.isTrue(getVirtualStudyDescription(studies as any, selectedSamples as any, {} as any, {} as any, 'user1').startsWith('4 samples from 2 studies:\n- Study 1 (2 samples)\n- Study 2 (2 samples)'));
-            assert.isTrue(getVirtualStudyDescription(studies as any, selectedSamples as any, {} as any, {} as any, 'user1').endsWith('by user1'));
+            assert.isTrue(
+                getVirtualStudyDescription(
+                    studies as any,
+                    selectedSamples as any,
+                    {} as any,
+                    {} as any,
+                    [],
+                    'user1'
+                ).startsWith('4 samples from 2 studies:\n- Study 1 (2 samples)\n- Study 2 (2 samples)'));
+            assert.isTrue(
+                getVirtualStudyDescription(
+                    studies as any,
+                    selectedSamples as any,
+                    {} as any,
+                    {} as any,
+                    [],
+                    'user1'
+                ).endsWith('by user1'));
         });
     });
 });

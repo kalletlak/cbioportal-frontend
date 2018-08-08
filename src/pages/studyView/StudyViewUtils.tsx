@@ -1,7 +1,6 @@
-import { ClinicalDataCount, StudyViewFilter } from "shared/api/generated/CBioPortalAPIInternal";
+import { StudyViewFilter } from "shared/api/generated/CBioPortalAPIInternal";
 import _ from "lodash";
-import internalClient from "shared/api/cbioportalInternalClientInstance";
-import { ClinicalAttribute, Sample } from "shared/api/generated/CBioPortalAPI";
+import { Sample, Gene } from "shared/api/generated/CBioPortalAPI";
 import * as React from "react";
 import {getSampleViewUrl, getStudySummaryUrl} from "../../shared/api/urls";
 import {IStudyViewScatterPlotData} from "./charts/scatterPlot/StudyViewScatterPlot";
@@ -115,14 +114,20 @@ export function getVirtualStudyDescription(
                                             studyWithSamples: StudyWithSamples[],
                                             selectedSamples: Sample[],
                                             filter: StudyViewFilter,
-                                            attributeNamesSet: {[id:string]:string},
+                                            attributeNamesSet: { [id: string]: string },
+                                            genes: Gene[],
                                             user?: string) {
     let selectedSampleSet = _.groupBy(selectedSamples, (sample: Sample) => sample.studyId);
     let descriptionLines: string[] = [];
+
+    let entrezIdSet: { [id: string]: string } = _.reduce(genes, (acc: { [id: string]: string }, next) => {
+        acc[next.entrezGeneId] = next.hugoGeneSymbol
+        return acc
+    }, {})
     //add to samples and studies count
     descriptionLines.push(
         selectedSamples.length +
-        " sample"+(selectedSamples.length > 1 ? 's' : '') +
+        " sample" + (selectedSamples.length > 1 ? 's' : '') +
         " from " +
         Object.keys(selectedSampleSet).length +
         " " +
@@ -131,7 +136,7 @@ export function getVirtualStudyDescription(
     studyWithSamples.forEach(studyObj => {
         let selectedUniqueSampleKeys = _.map(selectedSampleSet[studyObj.studyId] || [], sample => sample.uniqueSampleKey);
         let studySelectedSamples = _.intersection(studyObj.uniqueSampleKeys, selectedUniqueSampleKeys);
-        if(studySelectedSamples.length>0){
+        if (studySelectedSamples.length > 0) {
             descriptionLines.push("- " + studyObj.name + " (" + studySelectedSamples.length + " samples)")
         }
     })
@@ -141,20 +146,26 @@ export function getVirtualStudyDescription(
         if (filter.cnaGenes && filter.cnaGenes.length > 0) {
             filterLines.push('- CNA Genes:')
             filterLines = filterLines.concat(filter.cnaGenes.map(cnaGene => {
-                return cnaGene.alterations.map(alteration => alteration.entrezGeneId + "-" + (alteration.alteration === -2 ? 'DEL' : 'AMP')).join(', ');
-            }).map(line => ' - ' + line));
+
+                return cnaGene.alterations.map(alteration => {
+                    let geneSymbol = entrezIdSet[alteration.entrezGeneId] || alteration.entrezGeneId
+                    return geneSymbol + "-" + (alteration.alteration === -2 ? 'DEL' : 'AMP')
+                }).join(', ').trim();
+            }).map(line => '  - ' + line));
         }
         if (filter.mutatedGenes && filter.mutatedGenes.length > 0) {
             filterLines.push('- Mutated Genes:')
             filterLines = filterLines.concat(filter.mutatedGenes.map(mutatedGene => {
-                return mutatedGene.entrezGeneIds.join(', ');
-            }));
+                return mutatedGene.entrezGeneIds.map(entrezGeneId => {
+                    return entrezIdSet[entrezGeneId] || entrezGeneId;
+                }).join(', ').trim();
+            }).map(line => '  - ' + line));
         }
         if (filter.clinicalDataEqualityFilters && filter.clinicalDataEqualityFilters.length > 0) {
             filterLines = filterLines.concat(
                 filter.clinicalDataEqualityFilters.map(clinicalDataEqualityFilter => {
-                    let name = attributeNamesSet[clinicalDataEqualityFilter.clinicalDataType+'_'+clinicalDataEqualityFilter.attributeId] || clinicalDataEqualityFilter.attributeId;
-                    return `- ${name}: ${clinicalDataEqualityFilter.values.join(', ')}`;
+                    let name = attributeNamesSet[clinicalDataEqualityFilter.clinicalDataType + '_' + clinicalDataEqualityFilter.attributeId] || clinicalDataEqualityFilter.attributeId;
+                    return `  - ${name}: ${clinicalDataEqualityFilter.values.join(', ')}`;
                 }));
         }
         /*

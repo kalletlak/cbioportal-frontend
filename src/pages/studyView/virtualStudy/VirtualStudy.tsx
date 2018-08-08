@@ -14,6 +14,8 @@ import { StudyWithSamples } from 'pages/studyView/StudyViewPageStore';
 import { getVirtualStudyDescription, getCurrentDate } from 'pages/studyView/StudyViewUtils';
 import DefaultTooltip from 'shared/components/defaultTooltip/DefaultTooltip';
 import autobind from 'autobind-decorator';
+import client from "shared/api/cbioportalClientInstance";
+import LoadingIndicator from "shared/components/loadingIndicator/LoadingIndicator";
 
 const Clipboard = require('clipboard');
 
@@ -64,7 +66,6 @@ export default class VirtualStudy extends React.Component<IVirtualStudyProps, {}
 
     constructor(props: IVirtualStudyProps) {
         super(props);
-        this.description = getVirtualStudyDescription(props.studyWithSamples, props.selectedSamples, props.filter, this.props.attributeNamesSet, this.props.user);
     }
 
     @computed get namePlaceHolder() {
@@ -138,9 +139,52 @@ export default class VirtualStudy extends React.Component<IVirtualStudyProps, {}
         );
     }
 
+    @computed get entrezIds() {
+        let entrezIds:number[] = [];
+        if(this.props.filter) {
+            if(this.props.filter.mutatedGenes){
+                this.props.filter.mutatedGenes.forEach(mutatedGene=>{
+                    entrezIds.push(...mutatedGene.entrezGeneIds);
+                })
+            }
+            if(this.props.filter.cnaGenes){
+                this.props.filter.cnaGenes.forEach(cnaGene=>{
+                    cnaGene.alterations.forEach(alteration=>{
+                        entrezIds.push(alteration.entrezGeneId);
+                    })
+                })
+            }
+        }
+        return entrezIds;
+    }
+
+    readonly genes = remoteData({
+        invoke: async () => {
+            if(!_.isEmpty(this.entrezIds)){
+                return client.fetchGenesUsingPOST({geneIdType: "ENTREZ_GENE_ID", geneIds: this.entrezIds as any});
+            }
+            return [];
+        },
+        onResult: (genes) => {
+            this.description = getVirtualStudyDescription(
+                this.props.studyWithSamples,
+                this.props.selectedSamples,
+                this.props.filter,
+                this.props.attributeNamesSet,
+                genes,
+                this.props.user);
+        },
+        default: []
+    });
+
     render() {
         return (
             <div className={styles.virtualStudy}>
+                <LoadingIndicator
+                    isLoading={(this.genes.isPending)}
+                    style={{ display: 'block', textAlign: 'center'}}
+                />
+                {this.genes.isComplete &&
                 <If condition={this.virtualStudy.isError}>
                     <Then>
                         <div style={{ textAlign: 'center' }}>
@@ -243,7 +287,7 @@ export default class VirtualStudy extends React.Component<IVirtualStudyProps, {}
                             </Else>
                         </If>
                     </Else>
-                </If>
+                </If> }
             </div>
         )
     }

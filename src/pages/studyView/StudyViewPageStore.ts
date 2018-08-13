@@ -88,7 +88,7 @@ export class StudyViewPageStore {
 
     @observable private _chartVisibility = observable.map<boolean>();
 
-    private _clinicalAttributesMetaSet: { [id: string]: ChartMeta } = {} as any;
+    @observable.shallow clinicalAttributesMetaSet: { [id: string]: ChartMeta } = {} as any;
 
     @observable geneQueryStr: string;
 
@@ -110,6 +110,29 @@ export class StudyViewPageStore {
     @action updateSelectedGenes(query: SingleGeneQuery[], genesInQuery: Gene[]) {
         this.geneQueries = query;
         this.queriedGeneSet = new ObservableMap(stringListToSet(genesInQuery.map(gene => gene.hugoGeneSymbol)))
+    }
+
+    @action
+    clearGeneFilter() {
+        this._mutatedGeneFilter = { entrezGeneIds: [] };
+    }
+    @action
+    clearCNAGeneFilter() {
+        this._cnaGeneFilter = {
+            alterations: []
+        };
+    }
+    @action
+    clearCustomCasesFilter() {
+        this._sampleIdentifiers = []
+    }
+
+    @action
+    clearAllFilters() {
+        this._clinicalDataEqualityFilterSet.clear()
+        this.clearGeneFilter()
+        this.clearCNAGeneFilter()
+        this.clearCustomCasesFilter()
     }
 
     @action
@@ -281,7 +304,7 @@ export class StudyViewPageStore {
                 return acc
             }, {});
             //Reset the metaSet whenever the studies changes
-            this._clinicalAttributesMetaSet = newMap;
+            this.clinicalAttributesMetaSet = newMap;
         }
     });
 
@@ -299,7 +322,7 @@ export class StudyViewPageStore {
     @computed get visibleAttributes(): ChartMeta[] {
         return _.reduce(this._chartVisibility.keys(), (acc: ChartMeta[], next) => {
             if (this._chartVisibility.get(next)) {
-                let chartMeta = this._clinicalAttributesMetaSet[next];
+                let chartMeta = this.clinicalAttributesMetaSet[next];
                 if (chartMeta) {
                     acc.push(chartMeta)
                 }

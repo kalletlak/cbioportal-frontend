@@ -12,7 +12,8 @@ import { Gene } from 'shared/api/generated/CBioPortalAPI';
 import GeneSelectionBox, { GeneBoxType } from 'shared/components/GeneSelectionBox/GeneSelectionBox';
 import DefaultTooltip from 'shared/components/defaultTooltip/DefaultTooltip';
 import VirtualStudy from 'pages/studyView/virtualStudy/VirtualStudy';
-import { StudyWithSamples } from 'pages/studyView/StudyViewPageStore';
+import { StudyWithSamples, ChartMeta } from 'pages/studyView/StudyViewPageStore';
+import UserSelections from 'pages/studyView/UserSelections';
 
 export interface ISummaryHeaderProps {
     geneQuery:string;
@@ -21,8 +22,13 @@ export interface ISummaryHeaderProps {
     updateSelectedGenes: (query: SingleGeneQuery[], genesInQuery: Gene[]) => void;
     studyWithSamples:StudyWithSamples[];
     filter: StudyViewFilter;
-    attributeNamesSet: {[id:string]:string};
+    attributesMetaSet: {[id:string]:ChartMeta};
     user?: string;
+    updateClinicalDataEqualityFilter: (chartMeta: ChartMeta, value: string[]) => void;
+    clearGeneFilter: () => void;
+    clearCNAGeneFilter: () => void;
+    clearCustomCasesFilter: () => void;
+    clearAllFilters:() => void
 }
 
 export type GeneReplacement = {alias: string, genes: Gene[]};
@@ -93,6 +99,13 @@ export default class SummaryHeader extends React.Component<ISummaryHeaderProps, 
             ) ? 'Save/' : '') + 'Share Virtual Study';
     }
 
+    @computed get attributeNamesSet() {
+        return _.reduce(this.props.attributesMetaSet, (acc: { [id: string]: string }, next, key) => {
+            acc[key] = next.clinicalAttribute.displayName
+            return acc
+        }, {});
+    }
+
     render() {
         return (
             <div className="studyViewSummaryHeader">
@@ -117,7 +130,7 @@ export default class SummaryHeader extends React.Component<ISummaryHeaderProps, 
                                 studyWithSamples={this.props.studyWithSamples}
                                 selectedSamples={this.props.selectedSamples}
                                 filter={this.props.filter}
-                                attributeNamesSet={this.props.attributeNamesSet}
+                                attributeNamesSet={this.attributeNamesSet}
                             />
                         }
                         placement="bottom"
@@ -149,6 +162,16 @@ export default class SummaryHeader extends React.Component<ISummaryHeaderProps, 
                         Select cases
                     </button>
                 </div>
+
+                <UserSelections
+                    filter={this.props.filter}
+                    attributesMetaSet={this.props.attributesMetaSet}
+                    updateClinicalDataEqualityFilter={this.props.updateClinicalDataEqualityFilter}
+                    clearCNAGeneFilter={this.props.clearCNAGeneFilter}
+                    clearGeneFilter={this.props.clearGeneFilter}
+                    clearCustomCasesFilter={this.props.clearCustomCasesFilter}
+                    clearAllFilters={this.props.clearAllFilters}
+                />
             </div>
         )
     }

@@ -181,6 +181,7 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
                                 filter={this.store.filters}
                                 attributeNamesSet={this.store.attributeNamesSet}
                                 user={AppConfig.userEmailAddress}
+                                onSubmitQuery={()=> this.store.onSubmitQuery()}
                             />
                             <div className={styles.studyViewFlexContainer}>
                                 {this.store.initialClinicalDataCounts.isComplete &&

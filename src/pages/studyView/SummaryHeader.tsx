@@ -23,6 +23,7 @@ export interface ISummaryHeaderProps {
     filter: StudyViewFilter;
     attributeNamesSet: {[id:string]:string};
     user?: string;
+    onSubmitQuery:() => void
 }
 
 export type GeneReplacement = {alias: string, genes: Gene[]};
@@ -31,7 +32,7 @@ export type GeneReplacement = {alias: string, genes: Gene[]};
 export default class SummaryHeader extends React.Component<ISummaryHeaderProps, {}> {
 
     @observable private isCustomCaseBoxOpen = false;
-    @observable private isQueryButtonDisabled = false;
+    @observable private _isQueryButtonDisabled = false;
 
     @computed
     get selectedPatientsCount() {
@@ -78,7 +79,7 @@ export default class SummaryHeader extends React.Component<ISummaryHeaderProps, 
         },
         queryStr: string,
         status: "pending" | "error" | "complete") {
-        this.isQueryButtonDisabled = (status === 'pending') || !_.isUndefined(oql.error) || genes.suggestions.length === 0;
+        this._isQueryButtonDisabled = (status === 'pending') || !_.isUndefined(oql.error) || genes.suggestions.length !== 0;
         if (status === "complete") {
             this.props.updateSelectedGenes(oql.query, genes.found);
         }
@@ -138,10 +139,10 @@ export default class SummaryHeader extends React.Component<ISummaryHeaderProps, 
                         callback={this.updateSelectedGenes}
                         location={GeneBoxType.STUDY_VIEW_PAGE}
                     />
-                    {/* <span style={{ margin: "0px 5px" }}><i className="fa fa-arrow-right fa-lg" aria-hidden="true"></i></span>
-                    <button disabled={this.isQueryButtonDisabled} className="btn" onClick={() => null}>
+                    <span style={{ margin: "0px 5px" }}><i className="fa fa-arrow-right fa-lg" aria-hidden="true"></i></span>
+                    <button disabled={this._isQueryButtonDisabled} className="btn" onClick={() => this.props.onSubmitQuery()}>
                         Query
-                    </button> */}
+                    </button>
                     <button
                         className="btn"
                         onClick={()=>this.isCustomCaseBoxOpen = true}

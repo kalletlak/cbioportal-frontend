@@ -38,6 +38,9 @@ import { bind } from '../../../node_modules/bind-decorator';
 import { updateGeneQuery } from 'pages/studyView/StudyViewUtils';
 import { stringListToSet } from 'shared/lib/StringUtils';
 import client from "../../shared/api/cbioportalClientInstance";
+import { buildCBioPortalUrl } from 'shared/api/urls';
+import { unparseOQLQueryLine } from 'shared/lib/oql/oqlfilter';
+import formSubmit from 'shared/lib/formSubmit';
 
 export type ClinicalDataType = 'SAMPLE' | 'PATIENT'
 
@@ -309,7 +312,8 @@ export class StudyViewPageStore {
         await: ()=>[this.molecularProfiles],
         invoke:()=>Promise.resolve(
             this.molecularProfiles.result!.filter(profile => profile.molecularAlterationType === "MUTATION_EXTENDED")
-        )
+        ),
+        default: []
     });
 
     @computed
@@ -744,4 +748,63 @@ export class StudyViewPageStore {
             return Promise.resolve(data);
         }
     });
+
+    @bind
+    onSubmitQuery() {
+
+        //TODO: support virtual study. wait for https://github.com/cBioPortal/cbioportal-frontend/pull/1386
+        let formOps: { [id: string]: string } = {
+            cancer_study_list: this.studyIds.join(','),
+            tab_index: 'tab_visualize',
+        }
+
+        if (this.studyIds.length === 1) {
+            if (!_.isEmpty(this.mutationProfiles.result)) {
+                formOps['genetic_profile_ids_PROFILE_MUTATION_EXTENDED'] = this.mutationProfiles.result[0].molecularProfileId
+            }
+            if (!_.isEmpty(this.cnaProfileIds)) {
+                formOps['genetic_profile_ids_PROFILE_COPY_NUMBER_ALTERATION'] = this.cnaProfileIds[0]
+            }
+        } else {
+
+            let data_priority = '0';
+            let { mutation, cna } = {
+                mutation: !_.isEmpty(this.mutationProfiles.result),
+                cna: !_.isEmpty(this.cnaProfileIds)
+            };
+            if (mutation && cna)
+                data_priority = '0';
+            else if (mutation)
+                data_priority = '1';
+            else if (cna)
+                data_priority = '2';
+            formOps.data_priority = data_priority;
+        }
+
+        //TODO:clear this once https://github.com/cBioPortal/cbioportal-frontend/pull/1379 is merged 
+        if (!(_.isEmpty(this.filters) || (
+            _.isEmpty(this.filters.clinicalDataEqualityFilters) &&
+            _.isEmpty(this.filters.cnaGenes) &&
+            _.isEmpty(this.filters.mutatedGenes) &&
+            _.isEmpty(this.filters.sampleIdentifiers)
+        ))) {
+            formOps.case_set_id = '-1'
+            formOps.case_ids = _.map(this.selectedSamples.result, sample => {
+                return sample.studyId + ":" + sample.sampleId;
+            }).join('+');
+        } else {
+            if (this.studyIds.length === 1) {
+                formOps.case_set_id = this.studyIds[0] + '_all';
+            } else {
+                formOps.case_set_id = 'all';
+            }
+        }
+
+        if (!_.isEmpty(this.geneQueries)) {
+            formOps.Action = 'Submit';
+            formOps.gene_list = this.geneQueries.map(query => unparseOQLQueryLine(query)).join('\n');
+        }
+
+        formSubmit('index.do', formOps, "_blank", 'post');
+    }
 }

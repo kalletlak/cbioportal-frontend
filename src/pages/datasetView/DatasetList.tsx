@@ -33,7 +33,7 @@ interface IDataSetsTableProps {
 }
 
 interface IDataSetsTableState {
-    downloadable: string[];
+    downloadable: {[id:string]:string};
 }
 
 interface ICancerStudyCellProps {
@@ -87,7 +87,7 @@ export default class DataSetsPageTable extends React.Component <IDataSetsTablePr
         super();
 
         this.state = {
-            downloadable: []
+            downloadable: {}
         };
 
     }
@@ -95,7 +95,25 @@ export default class DataSetsPageTable extends React.Component <IDataSetsTablePr
     componentDidMount() {
 
         request(getStudyDownloadListUrl()).then(
-            (response:any)=> this.setState({downloadable:response.body})
+            (response:any)=> {
+                let downloadableStudies = response.body as string[]
+                let studiesLinkSet = _.reduce(downloadableStudies,(acc, studyId)=>{
+                    acc[studyId] = `http://download.cbioportal.org/${studyId}.tar.gz`;
+                    return acc;
+                },{} as {[id:string]:string});
+                this.setState({downloadable:{...this.state.downloadable, ...studiesLinkSet}})
+            }
+        );
+
+        request('api/download/studies_list').then(
+            (response:any)=> {
+                let downloadableStudies = response.body as string[]
+                let studiesLinkSet = _.reduce(downloadableStudies,(acc, studyId)=>{
+                    acc[studyId] = `api/download/${studyId}.tar.gz`;
+                    return acc;
+                },{} as {[id:string]:string});
+                this.setState({downloadable:{...this.state.downloadable, ...studiesLinkSet}})
+            }
         );
 
     }
@@ -139,10 +157,10 @@ export default class DataSetsPageTable extends React.Component <IDataSetsTablePr
 
                                 },
                                 {name:'', sortBy:false, togglable:false, download: false, type:'download', render:(data:IDataTableRow)=> {
-                                    const download = this.state.downloadable.indexOf(data.studyId) > -1;
+                                    const downloadLink = this.state.downloadable[data.studyId];
                                     return (
-                                        <a className="dataset-table-download-link" style={download ? {display:'block'} : {display:'none'}}
-                                           href={'http://download.cbioportal.org/' + data.studyId + '.tar.gz'} download>
+                                        <a className="dataset-table-download-link" style={downloadLink !== undefined? {display:'block'} : {display:'none'}}
+                                           href={downloadLink} download>
                                             <i className='fa fa-download'/>
                                         </a>
                                     );

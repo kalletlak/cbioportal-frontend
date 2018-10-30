@@ -342,7 +342,9 @@ export class StudySummaryTab extends React.Component<IStudySummaryTabProps, {}> 
                     )
                 }
                 <div className={styles.studyViewFlexContainer}>
-                    {this.store.defaultVisibleAttributes.isComplete && (
+                    {this.store.defaultVisibleAttributes.isComplete &&
+                    this.store.defaultVisibleAttributesClinicalCountData.isComplete &&
+                    this.store.initialLoad && (
                         <ReactGridLayout className="layout"
                                             style={{ width: this.store.containerWidth }}
                                             width={this.store.containerWidth}
@@ -357,7 +359,7 @@ export class StudySummaryTab extends React.Component<IStudySummaryTabProps, {}> 
                     )}
 
                      {/* Always show a loader when study view loading the initial data */}
-                    <LoadingIndicator isLoading={this.store.defaultVisibleAttributes.isComplete && this.store.defaultVisibleAttributesClinicalCountData.isPending} size={"small"} center={true}/>
+                    <LoadingIndicator isLoading={this.store.defaultVisibleAttributes.isComplete && this.store.defaultVisibleAttributesClinicalCountData.isPending &&!this.store.initialLoad} size={"small"} center={true}/>
 
                 </div>
             </div>

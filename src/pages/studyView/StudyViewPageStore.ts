@@ -264,11 +264,6 @@ export class StudyViewPageStore {
 
     constructor() {
         reaction(()=>this.filters, ()=>this.clearAnalysisGroupsSettings());
-        reaction(()=>this.studyViewPageLayoutProps, () => {
-            // if(this.defaultVisibleAttributesClinicalCountData.isComplete && this.initialLoadingClinicalDataCount) {
-            //     this.initialLoadingClinicalDataCount = false;
-            // }
-        });
     }
 
 
@@ -298,10 +293,7 @@ export class StudyViewPageStore {
 
     @observable private chartsType = observable.map<ChartType>();
 
-    // We use the flag to indicate the status. When in initial loading, we use different promise for the pie/bar charts
-    // This should not be an observable. You do not want to have any effect when the value is modified.
-    // when this should be set to false?
-    private initialLoadingClinicalDataCount = true;
+    @observable initialLoad: boolean = false;
 
     @action
     updateStoreFromURL(query: any) {
@@ -885,6 +877,8 @@ export class StudyViewPageStore {
         return filters as StudyViewFilter;
     }
 
+    defaultFilters:StudyViewFilter
+
     @computed
     get userSelections() {
 
@@ -962,10 +956,17 @@ export class StudyViewPageStore {
                 invoke: async () => {
                     let dataType = chartMeta.clinicalAttribute!.patientAttribute ? 'PATIENT' : 'SAMPLE';
                     let result = {};
-                    if (this.initialLoadingClinicalDataCount) {
-                        result = this.defaultVisibleAttributesClinicalCountData.result;
+                    let key = {
+                        attributeId: chartMeta.clinicalAttribute!.clinicalAttributeId,
+                        clinicalDataType: dataType,
+                        filters: this.filters
+                    }
+                    if(this.defaultVisibleAttributesClinicalCountDataCache[JSON.stringify(key)]) {
+                        result = this.defaultVisibleAttributesClinicalCountDataCache[JSON.stringify(key)];
+
                         console.log('Getting from initial');
                     } else {
+
                         console.log('Getting from second call');
                         if (this._clinicalDataEqualityFilterSet.has(uniqueKey)) {
                             result = await internalClient.fetchClinicalDataCountsUsingPOST({
@@ -1330,6 +1331,8 @@ export class StudyViewPageStore {
         }),
         default: [],
         onResult:(clinicalAttributes)=>{
+
+            this.defaultFilters = this.filters
             // TODO: this is a temorary solution util we figure out the chartVisibility logic
             let osStatusFlag = false;
             let osMonthsFlag = false;
@@ -1593,54 +1596,54 @@ export class StudyViewPageStore {
         default: []
     });
 
+    defaultVisibleAttributesClinicalCountDataCache:{[id:string]:ClinicalDataCountItem[]} = {};
+
     readonly defaultVisibleAttributesClinicalCountData = remoteData<ClinicalDataCountItem[]>({
         await: () => [this.defaultVisibleAttributes],
         invoke: async () => {
-            if (this.initialLoadingClinicalDataCount) {
-                return internalClient.fetchClinicalDataCountsUsingPOST({
-                    clinicalDataCountFilter: {
-                        attributes: _.filter(this.defaultVisibleAttributes.result, attr => attr.datatype === 'STRING').map(attr => {
-                            return {
-                                attributeId: attr.clinicalAttributeId,
-                                clinicalDataType: attr.patientAttribute ? 'PATIENT' : 'SAMPLE'
-                            } as ClinicalDataFilter
-                        }),
-                        studyViewFilter: this.filters
-                    } as ClinicalDataCountFilter
-                });
-            } else {
-                return [];
-            }
+            return internalClient.fetchClinicalDataCountsUsingPOST({
+                clinicalDataCountFilter: {
+                    attributes: _.filter(this.defaultVisibleAttributes.result, attr => attr.datatype === 'STRING').map(attr => {
+                        return {
+                            attributeId: attr.clinicalAttributeId,
+                            clinicalDataType: attr.patientAttribute ? 'PATIENT' : 'SAMPLE'
+                        } as ClinicalDataFilter
+                    }),
+                    studyViewFilter: this.defaultFilters
+                } as ClinicalDataCountFilter
+            });
         },
         onResult: (data) => {
-            this.initialClinicalDataCountCharts(data);
+            if (!this.initialLoad && !isFiltered(this.userSelections)) {
+                _.each(data, item => {
+                    let key = {
+                        attributeId: item.attributeId,
+                        clinicalDataType: item.clinicalDataType,
+                        filters: this.defaultFilters
+                    }
+                    this.defaultVisibleAttributesClinicalCountDataCache[JSON.stringify(key)] = [item]
+                    const uniqueKey = getClinicalAttributeUniqueKeyByDataTypeAttrId(item.clinicalDataType, item.attributeId);
+                    if (item.counts.length >= 2) {
+                        console.log('Changing visibility', uniqueKey);
+                        this._chartVisibility.set(uniqueKey, true);
+                    }
+                    let chartType = ChartTypeEnum.PIE_CHART;
+                    if (item.counts.length > STUDY_VIEW_CONFIG.thresholds.pieToTable || _.includes(STUDY_VIEW_CONFIG.tableAttrs, uniqueKey)) {
+                        chartType = ChartTypeEnum.TABLE;
+                    }
+                    this.chartsType.set(uniqueKey, chartType);
+    
+                    if (chartType === ChartTypeEnum.TABLE) {
+                        this.chartsDimension.set(uniqueKey, this.getTableDimensionByNumberOfRecords(item.counts.length));
+                    } else {
+                        this.chartsDimension.set(uniqueKey, DEFAULT_LAYOUT_PROPS.dimensions[chartType]);
+                    }
+                });
+                this.initialLoad = true
+            }
         },
         default: []
     });
-
-    @action
-    initialClinicalDataCountCharts(data: ClinicalDataCountItem[]) {
-        if (!isFiltered(this.userSelections)) {
-            _.each(data, item => {
-                const uniqueKey = getClinicalAttributeUniqueKeyByDataTypeAttrId(item.clinicalDataType, item.attributeId);
-                if (item.counts.length >= 2) {
-                    console.log('Changing visibility', uniqueKey);
-                    this._chartVisibility.set(uniqueKey, true);
-                }
-                let chartType = ChartTypeEnum.PIE_CHART;
-                if (item.counts.length > STUDY_VIEW_CONFIG.thresholds.pieToTable || _.includes(STUDY_VIEW_CONFIG.tableAttrs, uniqueKey)) {
-                    chartType = ChartTypeEnum.TABLE;
-                }
-                this.chartsType.set(uniqueKey, chartType);
-
-                if (chartType === ChartTypeEnum.TABLE) {
-                    this.chartsDimension.set(uniqueKey, this.getTableDimensionByNumberOfRecords(item.counts.length));
-                } else {
-                    this.chartsDimension.set(uniqueKey, DEFAULT_LAYOUT_PROPS.dimensions[chartType]);
-                }
-            });
-        }
-    }
 
     readonly samples = remoteData<Sample[]>({
         await: () => [this.clinicalAttributes, this.queriedSampleIdentifiers, this.queriedPhysicalStudyIds],

@@ -157,7 +157,7 @@ th.reactable-header-sort-asc:after {
 }
 
 .pillTabs {
-  > .nav.nav-pills {
+  > div > .nav.nav-pills {
 
     margin-bottom:$standardMargin;
 
@@ -195,7 +195,7 @@ th.reactable-header-sort-asc:after {
 
 .mainTabs {
 
-  > .nav {
+  > div > .nav {
     @extend .portalWidth;
     margin:0 auto;
     position:relative;

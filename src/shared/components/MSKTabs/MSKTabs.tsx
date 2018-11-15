@@ -215,7 +215,7 @@ export class MSKTabs extends React.Component<IMSKTabsProps, IMSKTabsState> {
             return (
                 <div
                     id={(this.props.id) ? this.props.id : ''}
-                    className={ classnames('msk-tabs', 'posRelative', this.props.className) }
+                    className={ classnames('msk-tabs', 'posRelative', this.props.className, !!this.props.vertical ? 'msk-tabs-left': '') }
                 >
                     {this.navTabs(children, targetTabId)}
 
@@ -266,6 +266,7 @@ export class MSKTabs extends React.Component<IMSKTabsProps, IMSKTabsState> {
         const navButtonStyle : string = this.props.tabButtonStyle || 'tabs';
 
         return (
+            <div className={classnames(!!this.props.vertical ? 'tabs-left': '')}>
             <ul
                 ref={this.navTabsRefHandler.bind(this)}
                 className={classnames('nav',`nav-${navButtonStyle}`)}
@@ -280,6 +281,7 @@ export class MSKTabs extends React.Component<IMSKTabsProps, IMSKTabsState> {
                 // )
                 }
             </ul>
+            </div>
         );
     }
 

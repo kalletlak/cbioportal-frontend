@@ -31,6 +31,9 @@ export interface IUserSelectionsProps {
     clearCNAGeneFilter: () => void;
     removeGeneFilter: (entrezGeneId: number) => void;
     removeCNAGeneFilter: (filter: CopyNumberGeneFilterElement) => void;
+    resetMutationCountVsCNAFilter: ()=>void;
+    removeWithMutationDataFilter: () => void;
+    removeWithCNADataFilter: () => void;
     clearChartSampleIdentifierFilter: (chartMeta: ChartMeta) => void;
     clearAllFilters: () => void
 }
@@ -83,7 +86,8 @@ export default class UserSelections extends React.Component<IUserSelectionsProps
     }
 
     @computed get showFilters() {
-        return isFiltered(this.props.filter)
+        //return isFiltered(this.props.filter)
+        return this.allComponents.length > 0;
     }
 
     @computed
@@ -191,19 +195,43 @@ export default class UserSelections extends React.Component<IUserSelectionsProps
                 })} operation={"and"} group={false}/></div>);
         }
 
-        // Select IDs by Case Selector, Scatter Plot
-        _.reduce((this.props.filter.sampleIdentifiersSet || []), (acc, sampleIdentifiers, chartUniqKey) => {
-            const chartMeta = this.props.attributesMetaSet[chartUniqKey];
-            if (chartMeta) {
-                let customChartName = chartMeta.uniqueKey === UniqueKey.SELECT_CASES_BY_IDS ? 'IDs' : chartMeta.displayName;
-                acc.push(<div className={styles.parentGroupLogic}><PillTag
-                    content={`Selected ${sampleIdentifiers.length} samples by ${customChartName}`}
+        // Mutation count vs FGA
+        if (this.props.filter.mutationCountVsCNASelection) {
+            const region = this.props.filter.mutationCountVsCNASelection;
+            components.push(
+                <div className={styles.parentGroupLogic}><GroupLogic
+                    components={[
+                        <span className={styles.filterClinicalAttrName}>Mutation Count vs FGA</span>,
+                        <PillTag
+                            content={`${Math.floor(region.yStart)} ≤ Mutation Count < ${Math.ceil(region.yEnd)} and ${region.xStart.toFixed(2)} ≤ FGA < ${region.xEnd.toFixed(2)}`}
+                            backgroundColor={STUDY_VIEW_CONFIG.colors.theme.clinicalFilterContent}
+                            onDelete={this.props.resetMutationCountVsCNAFilter}
+                        />
+                    ]}
+                    operation={':'}
+                    group={false}/></div>
+            );
+        }
+
+        if(this.props.filter.withMutationData) {
+            components.push(
+                <div className={styles.parentGroupLogic}><PillTag
+                    content={`Samples with mutation data`}
                     backgroundColor={STUDY_VIEW_CONFIG.colors.theme.clinicalFilterTitle}
-                    onDelete={() => this.props.clearChartSampleIdentifierFilter(chartMeta)}
-                /></div>);
-            }
-            return acc;
-        }, components);
+                    onDelete={this.props.removeWithMutationDataFilter}
+                /></div>
+            );
+        }
+
+        if(this.props.filter.withCNAData) {
+            components.push(
+                <div className={styles.parentGroupLogic}><PillTag
+                    content={`Samples with CNA data`}
+                    backgroundColor={STUDY_VIEW_CONFIG.colors.theme.clinicalFilterTitle}
+                    onDelete={this.props.removeWithCNADataFilter}
+                /></div>
+            );
+        }
         return components;
     }
 

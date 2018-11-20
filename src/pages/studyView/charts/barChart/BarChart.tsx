@@ -6,7 +6,7 @@ import _ from "lodash";
 import CBIOPORTAL_VICTORY_THEME from "shared/theme/cBioPoralTheme";
 import {ClinicalDataIntervalFilterValue, DataBin} from "shared/api/generated/CBioPortalAPIInternal";
 import { AbstractChart } from "pages/studyView/charts/ChartContainer";
-import { bind } from "bind-decorator";
+import autobind from 'autobind-decorator';
 import BarChartAxisLabel from "./BarChartAxisLabel";
 import {
     filterCategoryBins,
@@ -16,9 +16,12 @@ import {
     generateNumericalData
 } from "../../StudyViewUtils";
 import {STUDY_VIEW_CONFIG} from "../../StudyViewConfig";
+import {adjustedLongestLabelLength} from "../../../../shared/lib/VictoryChartUtils";
 
 export interface IBarChartProps {
     data: DataBin[];
+    width: number;
+    height: number;
     filters: ClinicalDataIntervalFilterValue[];
     onUserSelection: (dataBins: DataBin[]) => void;
 }
@@ -47,7 +50,7 @@ export default class BarChart extends React.Component<IBarChartProps, {}> implem
         super(props);
     }
 
-    @bind
+    @autobind
     private onSelection(bars: {data: BarDatum[]}[], bounds: {x: number, y: number}[], props: any) {
         const dataBins = _.flatten(bars.map(bar => bar.data.map(barDatum => barDatum.dataBin)));
         this.props.onUserSelection(dataBins);
@@ -118,6 +121,23 @@ export default class BarChart extends React.Component<IBarChartProps, {}> implem
         ];
     }
 
+    @computed get tilted() {
+        return this.tickValues.length > STUDY_VIEW_CONFIG.thresholds.escapeTick;
+    }
+
+    @computed
+    get bottomPadding(): number {
+        const MAX_PADDING = 30;
+        const padding = this.tilted ? adjustedLongestLabelLength(this.tickFormat.map((tick: string | string[]) => {
+            if (_.isArray(tick)) {
+                return tick.join();
+            } else {
+                return tick;
+            }
+        })) * 7: 20;
+        return padding > MAX_PADDING ? MAX_PADDING : padding;
+    }
+
     public render() {
 
         return (
@@ -132,11 +152,11 @@ export default class BarChart extends React.Component<IBarChartProps, {}> implem
                     }
                     style={{
                         parent: {
-                            width: 380, height: 180
+                            width: this.props.width, height: this.props.height
                         }
                     }}
-                    height={150}
-                    padding={{left: 40, right: 20, top: 10, bottom: 20}}
+                    height={this.props.height - 10 - this.bottomPadding}
+                    padding={{left: 40, right: 20, top: 10, bottom: this.bottomPadding}}
                     theme={VICTORY_THEME}
                 >
                     <VictoryAxis
@@ -144,7 +164,11 @@ export default class BarChart extends React.Component<IBarChartProps, {}> implem
                         tickFormat={(t: number) => this.tickFormat[t - 1]}
                         domain={[0, this.tickValues[this.tickValues.length -1] + 1]}
                         tickLabelComponent={<BarChartAxisLabel />}
-                        style={{tickLabels: {angle: this.tickValues.length > STUDY_VIEW_CONFIG.thresholds.escapeTick ? 315 : 0}}}
+                        style={{tickLabels: {
+                            angle: this.tilted ? 50 : 0,
+                            verticalAnchor:"start",
+                            textAnchor:"start"
+                        }}}
                     />
                     <VictoryAxis
                         dependentAxis={true}
@@ -154,7 +178,8 @@ export default class BarChart extends React.Component<IBarChartProps, {}> implem
                         style={{
                             data: {
                                 fill: (d: BarDatum) =>
-                                    this.isDataBinSelected(d.dataBin, this.props.filters) ? STUDY_VIEW_CONFIG.colors.theme.selectedGroup : STUDY_VIEW_CONFIG.colors.theme.unselectedGroup
+                                    (this.isDataBinSelected(d.dataBin, this.props.filters) || this.props.filters.length === 0) ?
+                                        STUDY_VIEW_CONFIG.colors.theme.primary : STUDY_VIEW_CONFIG.colors.na
                             }
                         }}
                         data={this.barData}

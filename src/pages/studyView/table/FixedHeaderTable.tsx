@@ -4,6 +4,7 @@ import {
     Column as RVColumn,
     SortDirection as RVSortDirection,
     Table as RVTable,
+    TableHeaderProps,
     TableCellProps
 } from 'react-virtualized';
 import 'react-virtualized/styles.css';
@@ -14,8 +15,9 @@ import * as _ from 'lodash';
 import {observer} from "mobx-react";
 import classnames from 'classnames';
 import {If} from 'react-if';
-import {bind} from "bind-decorator";
+import autobind from 'autobind-decorator';
 import {inputBoxChangeTimeoutEvent} from "../../../shared/lib/EventUtils";
+import DefaultTooltip from "../../../shared/components/defaultTooltip/DefaultTooltip";
 
 export type IFixedHeaderTableProps<T> = {
     columns: Column<T>[],
@@ -77,7 +79,7 @@ export default class FixedHeaderTable<T> extends React.Component<IFixedHeaderTab
         this._store = new LazyMobXTableStore<T>(this.storeProps);
     }
 
-    @bind
+    @autobind
     rowClassName({index}: any) {
         if (index > -1 && this.isSelectedRow(this._store.dataStore.sortedFilteredData[index])) {
             return styles.highlightedRow;
@@ -88,17 +90,17 @@ export default class FixedHeaderTable<T> extends React.Component<IFixedHeaderTab
         }
     }
 
-    @bind
+    @autobind
     rowGetter({index}: any) {
         return this._store.dataStore.sortedFilteredData[index];
     }
 
-    @bind
+    @autobind
     getColumn(columnKey: string) {
         return _.keyBy(this.props.columns, column => column.name)[columnKey];
     }
 
-    @bind
+    @autobind
     @action
     sort({sortBy}: any) {
         this._store.defaultHeaderClick(this.getColumn(sortBy));
@@ -106,7 +108,7 @@ export default class FixedHeaderTable<T> extends React.Component<IFixedHeaderTab
         this._sortDirection = this._store.dataStore.sortAscending ? 'asc' as 'asc' : 'desc' as 'desc';
     }
 
-    @bind
+    @autobind
     @action
     onFilterTextChange() {
         return inputBoxChangeTimeoutEvent((filterValue) => {
@@ -114,14 +116,14 @@ export default class FixedHeaderTable<T> extends React.Component<IFixedHeaderTab
         }, 400);
     }
 
-    @bind
+    @autobind
     afterSelectingRows() {
         if (_.isFunction(this.props.afterSelectingRows)) {
             this.props.afterSelectingRows();
         }
     }
 
-    @bind
+    @autobind
     isSelectedRow(data: T) {
         if (_.isFunction(this.props.isSelectedRow)) {
             return this.props.isSelectedRow(data);
@@ -150,7 +152,26 @@ export default class FixedHeaderTable<T> extends React.Component<IFixedHeaderTab
 
                     {
                         this.props.columns.map(column => {
-                            return <RVColumn key={column.name} label={column.name} dataKey={column.name} width={Number(column.width)}
+                            return <RVColumn key={column.name} label={column.name} dataKey={column.name}
+                                             width={Number(column.width)}
+                                             headerRenderer={(props: TableHeaderProps) => {
+                                                 let label;
+                                                 if (column.headerRender) {
+                                                     label = column.headerRender(column.name);
+                                                 } else {
+                                                     label = (<span>{column.name}</span>);
+                                                 }
+
+                                                 if (column.tooltip) {
+                                                     return (
+                                                         <DefaultTooltip placement="top" overlay={column.tooltip}>
+                                                             {label}
+                                                         </DefaultTooltip>
+                                                     );
+                                                 } else {
+                                                     return label;
+                                                 }
+                                             }}
                                              cellRenderer={(props: TableCellProps) => {
                                                  return column.render(props.rowData);
                                              }}/>;

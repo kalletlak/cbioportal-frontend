@@ -1,23 +1,51 @@
-import { assert } from 'chai';
+import {assert} from 'chai';
 import {
-    calcIntervalBinValues, filterCategoryBins, filterIntervalBins, filterNumericalBins,
-    generateCategoricalData, generateNumericalData, isLogScaleByDataBins, isLogScaleByValues,
-    getClinicalDataIntervalFilterValues, makePatientToClinicalAnalysisGroup, updateGeneQuery, formatNumericalTickValues,
-    intervalFiltersDisplayValue, isEveryBinDistinct, toFixedDigit, getExponent, clinicalDataCountComparator,
+    calcIntervalBinValues,
+    calculateLayout,
+    clinicalDataCountComparator,
+    filterCategoryBins,
+    filterIntervalBins,
+    filterNumericalBins,
+    findSpot,
+    formatFrequency,
+    formatNumericalTickValues,
+    generateCategoricalData,
+    generateNumericalData,
+    getClinicalDataCountWithColorByClinicalDataCount,
+    getClinicalDataIntervalFilterValues,
     getCNAByAlteration,
     getDefaultChartTypeByClinicalAttribute,
-    getVirtualStudyDescription, calculateLayout, getLayoutMatrix, LayoutMatrixItem, getQValue, pickClinicalDataColors,
-    getSamplesByExcludingFiltersOnChart, getFilteredSampleIdentifiers,
-    getFilteredStudiesWithSamples, showOriginStudiesInSummaryDescription, getFrequencyStr,
-    formatFrequency
+    getExponent,
+    getFilteredSampleIdentifiers,
+    getFilteredStudiesWithSamples,
+    getFrequencyStr,
+    getQValue,
+    getSamplesByExcludingFiltersOnChart,
+    getVirtualStudyDescription,
+    intervalFiltersDisplayValue,
+    isEveryBinDistinct,
+    isLogScaleByDataBins,
+    isLogScaleByValues,
+    isOccupied,
+    makePatientToClinicalAnalysisGroup,
+    pickClinicalDataColors,
+    showOriginStudiesInSummaryDescription,
+    toFixedDigit,
+    updateGeneQuery
 } from 'pages/studyView/StudyViewUtils';
 import {DataBin, StudyViewFilter, ClinicalDataIntervalFilterValue, Sample} from 'shared/api/generated/CBioPortalAPIInternal';
 import {ClinicalAttribute, Gene, CancerStudy} from 'shared/api/generated/CBioPortalAPI';
-import {ChartMeta, ChartTypeEnum, StudyViewFilterWithSampleIdentifierFilters} from "./StudyViewPageStore";
+import {
+    ChartMeta,
+    ChartMetaDataTypeEnum,
+    StudyViewFilterWithSampleIdentifierFilters, UniqueKey
+} from "./StudyViewPageStore";
 import {Layout} from 'react-grid-layout';
 import sinon from 'sinon';
 import internalClient from 'shared/api/cbioportalInternalClientInstance';
 import { VirtualStudy } from 'shared/model/VirtualStudy';
+import {ChartTypeEnum} from "./StudyViewConfig";
+import {STUDY_VIEW_CONFIG} from "./StudyViewConfig";
 
 describe('StudyViewUtils', () => {
 
@@ -82,7 +110,13 @@ describe('StudyViewUtils', () => {
                         'sampleId': 'sample 1',
                         'studyId': 'study2'
                     }]
-                }
+                },
+                mutationCountVsCNASelection: {
+                    xEnd: 0, xStart: 0, yEnd: 0, yStart: 0
+                },
+                numberOfSamplesPerPatient: [],
+                withCNAData: false,
+                withMutationData: false
             } as StudyViewFilterWithSampleIdentifierFilters;
 
             let genes = [{ entrezGeneId: 1, hugoGeneSymbol: "GENE1" }, { entrezGeneId: 2, hugoGeneSymbol: "GENE2" }] as Gene[];
@@ -1096,57 +1130,46 @@ describe('StudyViewUtils', () => {
         });
     });
 
-    describe("getLayoutMatrix", () => {
-        it("The result is not expected, the chart should only occupy the first element of the matrix", () => {
-            let result: LayoutMatrixItem[] = getLayoutMatrix([], 'test', {w: 1, h: 1});
-            assert.equal(result.length, 1);
-            assert.isTrue(result[0].notFull);
-            assert.equal(result[0].matrix[0], 'test');
-            assert.equal(result[0].matrix[1], '');
+    describe("isOccupied", () => {
+        it("Return false if the matrix is empty", () => {
+            assert.isFalse(isOccupied([], {x: 0, y: 0}, {w: 1, h: 1}));
         });
+        it("Check the bigger chart starts from even index", () => {
+            // x
+            assert.isTrue(isOccupied([['1', '', '', '2', '', '']], {x: 1, y: 0}, {w: 2, h: 1},));
+            assert.isTrue(isOccupied([['1', '', '', '2', '', '']], {x: 2, y: 0}, {w: 2, h: 1}));
+            assert.isFalse(isOccupied([['1', '', '', '2', '', '']], {x: 4, y: 0}, {w: 2, h: 1}));
 
-        it("The result is not expected, the chart should occupy the first and second elements of the matrix", () => {
-            let result: LayoutMatrixItem[] = getLayoutMatrix([], 'test', {w: 2, h: 1});
-            assert.equal(result.length, 1);
-            assert.isTrue(result[0].notFull);
-            assert.equal(result[0].matrix[0], 'test');
-            assert.equal(result[0].matrix[1], 'test');
-            assert.equal(result[0].matrix[2], '');
+            // y
+            assert.isTrue(isOccupied([['1', '1', '', ''], ['2', '2', '', '']], {x: 2, y: 1}, {w: 2, h: 2}));
         });
+        it("Return proper value", () => {
+            assert.isTrue(isOccupied([['1', '2', '']], {x: 0, y: 0}, {w: 1, h: 1}));
+            assert.isTrue(isOccupied([['1', '2', '']], {x: 1, y: 0}, {w: 1, h: 1}));
+            assert.isFalse(isOccupied([['1', '2', '']], {x: 2, y: 0}, {w: 1, h: 1}));
 
-        it("The result is not expected, the chart should only occupy the first and third element of the matrix", () => {
-            let result: LayoutMatrixItem[] = getLayoutMatrix([], 'test', {w: 1, h: 2});
-            assert.equal(result.length, 1);
-            assert.isTrue(result[0].notFull);
-            assert.equal(result[0].matrix[0], 'test');
-            assert.equal(result[0].matrix[1], '');
-            assert.equal(result[0].matrix[2], 'test');
+            assert.isTrue(isOccupied([['1', '2', '']], {x: 2, y: 0}, {w: 2, h: 1}));
+
+            assert.isTrue(isOccupied([['1', '1', ''], ['2', '2', '']], {x: 0, y: 0}, {w: 1, h: 1}));
+            assert.isTrue(isOccupied([['1', '1', ''], ['2', '2', '']], {x: 0, y: 1}, {w: 1, h: 1}));
+
+            assert.isFalse(isOccupied([['1', '1', '', ''], ['2', '2', '', '']], {x: 2, y: 0}, {w: 2, h: 2}));
+            assert.isFalse(isOccupied([['1', '1', '', ''], ['2', '2', '', ''], ['3', '3', '', '']], {x: 2, y: 2}, {w: 2, h: 2}));
         });
+    });
 
-        it("The result is not expected, the chart should only occupy the third and forth element of the matrix", () => {
-            let result: LayoutMatrixItem[] = getLayoutMatrix([{
-                notFull: true,
-                matrix: ['key', 'key', '', '']
-            }], 'test', {w: 2, h: 1});
-            assert.equal(result.length, 1);
-            assert.isFalse(result[0].notFull);
-            assert.equal(result[0].matrix[0], 'key');
-            assert.equal(result[0].matrix[1], 'key');
-            assert.equal(result[0].matrix[2], 'test');
-            assert.equal(result[0].matrix[3], 'test');
+    describe("findSpot", () => {
+        it("0,0 should be returned if the matrix is empty", () => {
+            assert.deepEqual(findSpot([], {w: 1, h: 1}), {x: 0, y: 0});
         });
-
-        it("The result is not expected, the additional matrix should be added when the new chart cannot fit in the original matrix", () => {
-            let result: LayoutMatrixItem[] = getLayoutMatrix([{
-                notFull: true,
-                matrix: ['key', 'key', 'key', '']
-            }], 'test', {w: 2, h: 1});
-            assert.equal(result.length, 2);
-            assert.isTrue(result[0].notFull);
-            assert.equal(result[0].matrix[3], '');
-            assert.equal(result[1].matrix[0], 'test');
-            assert.equal(result[1].matrix[1], 'test');
-            assert.equal(result[1].matrix[2], '');
+        it("The first index in next row should be returned if the matrix is fully occupied", () => {
+            assert.deepEqual(findSpot([['1', '2']], {w: 1, h: 1}), {x: 0, y: 1});
+        });
+        it("Return proper position", () => {
+            assert.deepEqual(findSpot([['1', '2', '']], {w: 1, h: 1}), {x: 2, y: 0});
+            assert.deepEqual(findSpot([['1', '2', '']], {w: 2, h: 1}), {x: 0, y: 1});
+            assert.deepEqual(findSpot([['1', '1', ''], ['2', '2', '']], {w: 1, h: 1}), {x: 2, y: 0});
+            assert.deepEqual(findSpot([['1', '1', ''], ['2', '2', '']], {w: 2, h: 1}), {x: 0, y: 2});
         });
     });
 
@@ -1154,7 +1177,6 @@ describe('StudyViewUtils', () => {
         let visibleAttrs: ChartMeta[] = [];
         const clinicalAttr: ClinicalAttribute = {
             'clinicalAttributeId': 'test',
-            'count': 0,
             'datatype': 'STRING',
             'description': '',
             'displayName': '',
@@ -1168,6 +1190,7 @@ describe('StudyViewUtils', () => {
                 displayName: clinicalAttr.displayName,
                 description: clinicalAttr.description,
                 uniqueKey: 'test' + i,
+                dataType: ChartMetaDataTypeEnum.CLINICAL,
                 chartType: ChartTypeEnum.PIE_CHART,
                 dimension: {w: 1, h: 1},
                 priority: 1,
@@ -1180,7 +1203,7 @@ describe('StudyViewUtils', () => {
             assert.equal(layout.length, 0);
         });
 
-        it("The layout is not expected", () => {
+        it("The layout is not expected - 1", () => {
             let layout: Layout[] = calculateLayout(visibleAttrs, 6);
             assert.equal(layout.length, 8);
             assert.equal(layout[0].i, 'test0');
@@ -1190,26 +1213,26 @@ describe('StudyViewUtils', () => {
             assert.equal(layout[1].x, 1);
             assert.equal(layout[1].y, 0);
             assert.equal(layout[2].i, 'test2');
-            assert.equal(layout[2].x, 0);
-            assert.equal(layout[2].y, 1);
+            assert.equal(layout[2].x, 2);
+            assert.equal(layout[2].y, 0);
             assert.equal(layout[3].i, 'test3');
-            assert.equal(layout[3].x, 1);
-            assert.equal(layout[3].y, 1);
+            assert.equal(layout[3].x, 3);
+            assert.equal(layout[3].y, 0);
             assert.equal(layout[4].i, 'test4');
-            assert.equal(layout[4].x, 2);
+            assert.equal(layout[4].x, 4);
             assert.equal(layout[4].y, 0);
             assert.equal(layout[5].i, 'test5');
-            assert.equal(layout[5].x, 3);
+            assert.equal(layout[5].x, 5);
             assert.equal(layout[5].y, 0);
             assert.equal(layout[6].i, 'test6');
-            assert.equal(layout[6].x, 2);
+            assert.equal(layout[6].x, 0);
             assert.equal(layout[6].y, 1);
             assert.equal(layout[7].i, 'test7');
-            assert.equal(layout[7].x, 3);
+            assert.equal(layout[7].x, 1);
             assert.equal(layout[7].y, 1);
         });
 
-        it("The layout is not expected", () => {
+        it("The layout is not expected - 2", () => {
             let layout: Layout[] = calculateLayout(visibleAttrs, 2);
             assert.equal(layout.length, 8);
             assert.equal(layout[0].i, 'test0');
@@ -1244,6 +1267,7 @@ describe('StudyViewUtils', () => {
                 displayName: clinicalAttr.displayName,
                 description: clinicalAttr.description,
                 uniqueKey: 'test0',
+                dataType: ChartMetaDataTypeEnum.CLINICAL,
                 chartType: ChartTypeEnum.TABLE,
                 dimension: {w: 2, h: 2},
                 priority: 10,
@@ -1253,6 +1277,7 @@ describe('StudyViewUtils', () => {
                 description: clinicalAttr.description,
                 uniqueKey: 'test1',
                 chartType: ChartTypeEnum.PIE_CHART,
+                dataType: ChartMetaDataTypeEnum.CLINICAL,
                 dimension: {w: 1, h: 1},
                 priority: 20,
             }];
@@ -1275,6 +1300,7 @@ describe('StudyViewUtils', () => {
                 description: clinicalAttr.description,
                 uniqueKey: 'test0',
                 chartType: ChartTypeEnum.BAR_CHART,
+                dataType: ChartMetaDataTypeEnum.CLINICAL,
                 dimension: {w: 2, h: 1},
                 priority: 10,
             }, {
@@ -1283,6 +1309,7 @@ describe('StudyViewUtils', () => {
                 description: clinicalAttr.description,
                 uniqueKey: 'test1',
                 chartType: ChartTypeEnum.TABLE,
+                dataType: ChartMetaDataTypeEnum.CLINICAL,
                 dimension: {w: 2, h: 2},
                 priority: 5,
             }, {
@@ -1291,6 +1318,7 @@ describe('StudyViewUtils', () => {
                 description: clinicalAttr.description,
                 uniqueKey: 'test2',
                 chartType: ChartTypeEnum.PIE_CHART,
+                dataType: ChartMetaDataTypeEnum.CLINICAL,
                 dimension: {w: 1, h: 1},
                 priority: 2,
             }];
@@ -1301,15 +1329,90 @@ describe('StudyViewUtils', () => {
             assert.equal(layout[0].x, 0);
             assert.equal(layout[0].y, 0);
 
-            assert.equal(layout[1].i, 'test2');
-            assert.equal(layout[1].x, 0);
-            assert.equal(layout[1].y, 1);
+            assert.equal(layout[1].i, 'test1');
+            assert.equal(layout[1].x, 2);
+            assert.equal(layout[1].y, 0);
 
-            assert.equal(layout[2].i, 'test1');
-            assert.equal(layout[2].x, 2);
-            assert.equal(layout[2].y, 0);
+
+            assert.equal(layout[2].i, 'test2');
+            assert.equal(layout[2].x, 0);
+            assert.equal(layout[2].y, 1);
         });
 
+        it("The chart should utilize the horizontal space in the last row", () => {
+            visibleAttrs = [{
+                clinicalAttribute: clinicalAttr,
+                displayName: clinicalAttr.displayName,
+                description: clinicalAttr.description,
+                uniqueKey: 'test0',
+                chartType: ChartTypeEnum.BAR_CHART,
+                dataType: ChartMetaDataTypeEnum.CLINICAL,
+                dimension: {w: 2, h: 2},
+                priority: 1,
+            }, {
+                clinicalAttribute: clinicalAttr,
+                displayName: clinicalAttr.displayName,
+                description: clinicalAttr.description,
+                uniqueKey: 'test1',
+                chartType: ChartTypeEnum.TABLE,
+                dataType: ChartMetaDataTypeEnum.CLINICAL,
+                dimension: {w: 2, h: 2},
+                priority: 1,
+            }, {
+                clinicalAttribute: clinicalAttr,
+                displayName: clinicalAttr.displayName,
+                description: clinicalAttr.description,
+                uniqueKey: 'test2',
+                chartType: ChartTypeEnum.PIE_CHART,
+                dataType: ChartMetaDataTypeEnum.CLINICAL,
+                dimension: {w: 2, h: 1},
+                priority: 1,
+            }, {
+                clinicalAttribute: clinicalAttr,
+                displayName: clinicalAttr.displayName,
+                description: clinicalAttr.description,
+                uniqueKey: 'test3',
+                chartType: ChartTypeEnum.PIE_CHART,
+                dataType: ChartMetaDataTypeEnum.CLINICAL,
+                dimension: {w: 1, h: 1},
+                priority: 1,
+            }, {
+                clinicalAttribute: clinicalAttr,
+                displayName: clinicalAttr.displayName,
+                description: clinicalAttr.description,
+                uniqueKey: 'test4',
+                chartType: ChartTypeEnum.PIE_CHART,
+                dataType: ChartMetaDataTypeEnum.CLINICAL,
+                dimension: {w: 1, h: 1},
+                priority: 1,
+            }];
+
+            let layout: Layout[] = calculateLayout(visibleAttrs, 4);
+            assert.equal(layout.length, 5);
+            assert.equal(layout[0].i, 'test0');
+            assert.equal(layout[0].x, 0);
+            assert.equal(layout[0].y, 0);
+
+            assert.equal(layout[1].i, 'test1');
+            assert.equal(layout[1].x, 2);
+            assert.equal(layout[1].y, 0);
+
+            assert.equal(layout[2].i, 'test2');
+            assert.equal(layout[2].x, 0);
+            assert.equal(layout[2].y, 2);
+
+            assert.equal(layout[3].i, 'test3');
+            assert.equal(layout[3].x, 2);
+            assert.equal(layout[3].y, 2);
+
+            assert.equal(layout[4].i, 'test4');
+            assert.equal(layout[4].x, 3);
+            assert.equal(layout[4].y, 2);
+        });
+
+    });
+
+    describe('getSamplesByExcludingFiltersOnChart', () => {
         it("Test getQValue", () => {
             assert.equal(getQValue(0), '0');
             assert.equal(getQValue(0.00001), '1.000e-5');
@@ -1336,7 +1439,7 @@ describe('StudyViewUtils', () => {
 
         it('no filters selected', (done) => {
             getSamplesByExcludingFiltersOnChart(
-                'WITH_MUTATION_DATA',
+                UniqueKey.SAMPLES_PER_PATIENT,
                 emptyStudyViewFilter,
                 {},
                 [{ sampleId: 'sample1', studyId: 'study1' }],
@@ -1350,9 +1453,9 @@ describe('StudyViewUtils', () => {
 
         it('has filter for one chart', (done) => {
             getSamplesByExcludingFiltersOnChart(
-                'WITH_MUTATION_DATA',
+                UniqueKey.SAMPLES_PER_PATIENT,
                 emptyStudyViewFilter,
-                { 'WITH_MUTATION_DATA': [{ sampleId: 'sample1', studyId: 'study1' }], 'WITH_CNA_DATA': [{ sampleId: 'sample1', studyId: 'study1' }] },
+                { [UniqueKey.SAMPLES_PER_PATIENT]: [{ sampleId: 'sample1', studyId: 'study1' }], [UniqueKey.CANCER_STUDIES]: [{ sampleId: 'sample1', studyId: 'study1' }] },
                 [{ sampleId: 'sample1', studyId: 'study1' }, { sampleId: 'sample2', studyId: 'study1' }],
                 ['study1']
             ).then(() => {
@@ -1363,7 +1466,7 @@ describe('StudyViewUtils', () => {
 
         it('no filters selected and queriedSampleIdentifiers is empty', (done) => {
             getSamplesByExcludingFiltersOnChart(
-                'WITH_MUTATION_DATA',
+                UniqueKey.SAMPLES_PER_PATIENT,
                 emptyStudyViewFilter,
                 {},
                 [],
@@ -1376,9 +1479,9 @@ describe('StudyViewUtils', () => {
 
         it('has filter for one chart and queriedSampleIdentifiers is empty', (done) => {
             getSamplesByExcludingFiltersOnChart(
-                'WITH_MUTATION_DATA',
+                UniqueKey.SAMPLES_PER_PATIENT,
                 emptyStudyViewFilter,
-                { 'WITH_MUTATION_DATA': [{ sampleId: 'sample1', studyId: 'study1' }], 'WITH_CNA_DATA': [{ sampleId: 'sample1', studyId: 'study1' }] },
+                { [UniqueKey.SAMPLES_PER_PATIENT]: [{ sampleId: 'sample1', studyId: 'study1' }], [UniqueKey.CANCER_STUDIES]: [{ sampleId: 'sample1', studyId: 'study1' }] },
                 [],
                 ['study1']
             ).then(() => {
@@ -1517,16 +1620,16 @@ describe('StudyViewUtils', () => {
             666.666
         ];
 
-        it ('handles negative values properly', () => {
+        it('handles negative values properly', () => {
             assert.equal(formatFrequency(negativeValues[0]), -1);
             assert.equal(formatFrequency(negativeValues[1]), -1);
         });
 
-        it ('handles zero properly', () => {
+        it('handles zero properly', () => {
             assert.equal(formatFrequency(0), 0);
         });
 
-        it ('handles positive values properly', () => {
+        it('handles positive values properly', () => {
             assert.equal(formatFrequency(positiveValues[0]), 0.05);
             assert.equal(formatFrequency(positiveValues[1]), 0.6);
             assert.equal(formatFrequency(positiveValues[2]), 1);
@@ -1537,6 +1640,34 @@ describe('StudyViewUtils', () => {
             assert.equal(formatFrequency(positiveValues[7]), 16.7);
             assert.equal(formatFrequency(positiveValues[8]), 16.7);
             assert.equal(formatFrequency(positiveValues[9]), 666.6);
+        });
+    });
+
+    describe('getClinicalDataCountWithColorByClinicalDataCount', () => {
+        it('NA should be placed at the last and also get predefined color for NA', () => {
+            const result = getClinicalDataCountWithColorByClinicalDataCount([{
+                count: 50,
+                value: 'NA'
+            }, {
+                count: 10,
+                value: 'Stage I'
+            }]);
+            assert.equal(result.length, 2);
+            assert.equal(result[0].value, 'Stage I');
+            assert.equal(result[1].color, STUDY_VIEW_CONFIG.colors.na);
+        });
+
+        it('Test the reserved value', () => {
+            const result = getClinicalDataCountWithColorByClinicalDataCount([{
+                count: 50,
+                value: 'Male'
+            }, {
+                count: 10,
+                value: 'F'
+            }]);
+            assert.equal(result.length, 2);
+            assert.equal(result[0].color, STUDY_VIEW_CONFIG.colors.reservedValue.MALE);
+            assert.equal(result[1].color, STUDY_VIEW_CONFIG.colors.reservedValue.F);
         });
     });
 

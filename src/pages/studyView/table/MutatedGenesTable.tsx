@@ -11,13 +11,13 @@ import classnames from 'classnames';
 import DefaultTooltip from "shared/components/defaultTooltip/DefaultTooltip";
 import FixedHeaderTable from "./FixedHeaderTable";
 import {action, computed, observable} from "mobx";
-import {bind} from "bind-decorator";
+import autobind from 'autobind-decorator';
 import {getFrequencyStr, getQValue} from "../StudyViewUtils";
 
 export interface IMutatedGenesTablePros {
     promise: MobxPromise<MutatedGenesData>;
-    width?: number;
-    height?: number;
+    width: number;
+    height: number;
     filters: number[];
     onUserSelection: (value: number[]) => void;
     numOfSelectedSamples: number;
@@ -44,13 +44,14 @@ export class MutatedGenesTable extends React.Component<IMutatedGenesTablePros, {
     private _tableColumns = [
         {
             name: 'Gene',
+            tooltip:(<span>Gene</span>),
             render: (data: MutationCountByGene) => {
                 const addGeneOverlay = () =>
-                    <span>{`Click ${data.hugoGeneSymbol} to ${_.includes(this.props.selectedGenes, data.hugoGeneSymbol) ? 'remove' : 'add'} from your query`}</span>;
+                    <span>{`Click ${data.hugoGeneSymbol} to ${_.includes(this.props.selectedGenes, data.hugoGeneSymbol) ? 'remove from' : 'add to'} your query`}</span>;
                 const qvalOverlay = () =>
                     <div><b>MutSig</b><br/><i>Q-value: </i><span>{getQValue(data.qValue)}</span></div>;
                 return (
-                    <div className={styles.ellipsisText}>
+                    <div className={styles.displayFlex}>
                         <DefaultTooltip
                             placement="left"
                             overlay={addGeneOverlay}
@@ -68,7 +69,7 @@ export class MutatedGenesTable extends React.Component<IMutatedGenesTablePros, {
                                 overlay={qvalOverlay}
                                 destroyTooltipOnHide={true}
                             >
-                                <img src={require("./images/mutsig.png")} className={styles.mutSig}></img>
+                                <span><img src={require("./images/mutsig.png")} className={styles.mutSig}></img></span>
                             </DefaultTooltip>
                         </If>
                     </div>
@@ -83,7 +84,8 @@ export class MutatedGenesTable extends React.Component<IMutatedGenesTablePros, {
         },
         {
             name: '# Mut',
-            render: (data: MutationCountByGene) => <span>{data.totalCount}</span>,
+            tooltip:(<span>Total number of mutations</span>),
+            render: (data: MutationCountByGene) => <span>{data.totalCount.toLocaleString()}</span>,
             sortBy: (data: MutationCountByGene) => data.totalCount,
             defaultSortDirection: 'desc' as 'desc',
             filter: (data: MutationCountByGene, filterString: string, filterStringUpper: string) => {
@@ -93,13 +95,14 @@ export class MutatedGenesTable extends React.Component<IMutatedGenesTablePros, {
         },
         {
             name: '#',
+            tooltip:(<span>Number of samples with one or more mutations</span>),
             render: (data: MutationCountByGene) =>
                 <LabeledCheckbox
                     checked={this.isChecked(data.entrezGeneId)}
                     disabled={this.isDisabled(data.entrezGeneId)}
                     onChange={event => this.togglePreSelectRow(data.entrezGeneId)}
                 >
-                    {data.countByEntity}
+                    {data.countByEntity.toLocaleString()}
                 </LabeledCheckbox>,
             sortBy: (data: MutationCountByGene) => data.countByEntity,
             defaultSortDirection: 'desc' as 'desc',
@@ -110,6 +113,7 @@ export class MutatedGenesTable extends React.Component<IMutatedGenesTablePros, {
         },
         {
             name: 'Freq',
+            tooltip:(<span>Percentage of samples with one or more mutations</span>),
             render: (data: MutationCountByGene) => <span>{getFrequencyStr(data.frequency)}</span>,
             sortBy: (data: MutationCountByGene) => data.frequency,
             defaultSortDirection: 'desc' as 'desc',
@@ -120,7 +124,7 @@ export class MutatedGenesTable extends React.Component<IMutatedGenesTablePros, {
         }
     ];
 
-    @bind
+    @autobind
     isChecked(entrezGeneId: number) {
         let record = _.find(this.preSelectedRows, (row: MutatedGenesTableUserSelectionWithIndex) => row.entrezGeneId === entrezGeneId);
         if (_.isUndefined(record)) {
@@ -130,12 +134,12 @@ export class MutatedGenesTable extends React.Component<IMutatedGenesTablePros, {
         }
     }
 
-    @bind
+    @autobind
     isDisabled(entrezGeneId: number) {
         return !_.isUndefined(_.find(this.selectedRows, (row: MutatedGenesTableUserSelectionWithIndex) => row.entrezGeneId === entrezGeneId));
     }
 
-    @bind
+    @autobind
     togglePreSelectRow(entrezGeneId: number) {
         let record: MutatedGenesTableUserSelectionWithIndex | undefined = _.find(this.preSelectedRows, (row: MutatedGenesTableUserSelectionWithIndex) => row.entrezGeneId === entrezGeneId);
         if (_.isUndefined(record)) {
@@ -161,7 +165,7 @@ export class MutatedGenesTable extends React.Component<IMutatedGenesTablePros, {
     }
 
 
-    @bind
+    @autobind
     @action
     afterSelectingRows() {
         this.props.onUserSelection(this.preSelectedRows.map(row => row.entrezGeneId));
@@ -185,7 +189,7 @@ export class MutatedGenesTable extends React.Component<IMutatedGenesTablePros, {
         }
     }
 
-    @bind
+    @autobind
     isSelectedRow(data:MutationCountByGene) {
         return !_.isUndefined(_.find(_.union(this.selectedRows, this.preSelectedRows), function (row) {
             return row.entrezGeneId === data.entrezGeneId;
@@ -195,6 +199,8 @@ export class MutatedGenesTable extends React.Component<IMutatedGenesTablePros, {
     public render() {
         return (
             <MutatedGenesTableComponent
+                width={this.props.width}
+                height={this.props.height}
                 data={this.props.promise.result || []}
                 columns={this._tableColumns}
                 showSelectSamples={true && this.preSelectedRows.length > 0}

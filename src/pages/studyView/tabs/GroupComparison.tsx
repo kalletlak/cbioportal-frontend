@@ -4,7 +4,7 @@ import * as _ from 'lodash';
 import { Group, SurvivalType, AnalysisGroup } from "pages/studyView/StudyViewPageStore";
 import { MSKTabs, MSKTab } from "shared/components/MSKTabs/MSKTabs";
 import { observable, action, computed } from "mobx";
-import styles from "./styles.module.scss";
+import styles from "./groupComparison.module.scss";
 import classNames from 'classnames';
 import { bind } from "bind-decorator";
 import SurvivalChart, { LegendLocation } from "pages/resultsView/survival/SurvivalChart";

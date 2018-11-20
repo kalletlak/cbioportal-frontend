@@ -1,15 +1,15 @@
 .groupPill {
     padding: 2px 5px;
     border-radius: 5px;
-    color: $study-view-primary-color;
+    color: #2986E2;
     background-color: white;
-    border: 1px solid $study-view-primary-color;
+    border: 1px solid #2986E2;
     cursor: pointer;
     margin: 0 5px;
 }
 
 .groupPill.active {
-    background-color: $study-view-primary-color;
+    background-color: #2986E2;
     color: #fff;
 }
 

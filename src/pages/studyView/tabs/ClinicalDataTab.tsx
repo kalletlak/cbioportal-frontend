@@ -4,12 +4,14 @@ import {observer} from "mobx-react";
 import * as _ from 'lodash';
 import {ClinicalAttribute} from "../../../shared/api/generated/CBioPortalAPI";
 import {getPatientViewUrl, getSampleViewUrl} from "shared/api/urls";
-import SelectedInfo from "../SelectedInfo/SelectedInfo";
 import {getClinicalAttributeUniqueKey} from "../StudyViewUtils";
 import LoadingIndicator from "shared/components/loadingIndicator/LoadingIndicator";
 import {StudyViewPageStore} from "pages/studyView/StudyViewPageStore";
 import {remoteData} from "shared/api/remoteData";
 import {Else, If, Then} from 'react-if';
+import {
+    sortByClinicalAttributePriorityThenName
+} from "../../../shared/lib/SortUtils";
 
 export interface IClinicalDataTabTable {
     store: StudyViewPageStore
@@ -52,15 +54,8 @@ export class ClinicalDataTab extends React.Component<IClinicalDataTabTable, {}> 
                 name: 'Cancer Study'
             }];
             // Descent sort priority then ascent sort by display name
-            return _.reduce(this.props.store.clinicalAttributes.result.sort( (a, b) => {
-                let _a = Number(a.priority) || 0;
-                let _b = Number(b.priority) || 0;
-                let priorityDiff = _b - _a;
-                if (priorityDiff === 0) {
-                    return (a.displayName === undefined ? "" : a.displayName).localeCompare(b.displayName);
-                }
-                return priorityDiff;
-            }), (acc: Column<{ [id: string]: string }>[], attr: ClinicalAttribute, index: number) => {
+            return _.reduce(this.props.store.clinicalAttributes.result.sort(sortByClinicalAttributePriorityThenName),
+                (acc: Column<{ [id: string]: string }>[], attr: ClinicalAttribute, index: number) => {
                 acc.push({
                     ...this.getDefaultColumnConfig(getClinicalAttributeUniqueKey(attr)),
                     name: attr.displayName,
@@ -75,14 +70,6 @@ export class ClinicalDataTab extends React.Component<IClinicalDataTabTable, {}> 
     public render() {
         return (
             <div>
-                <If condition={this.props.store.selectedSamples.isPending}>
-                    <Then>
-                        <LoadingIndicator isLoading={this.props.store.selectedSamples.isPending}/>
-                    </Then>
-                    <Else>
-                        <SelectedInfo selectedSamples={this.props.store.selectedSamples.result}/>
-                    </Else>
-                </If>
                 <If condition={this.columns.isPending || this.props.store.getDataForClinicalDataTab.isPending}>
                     <Then>
                         <LoadingIndicator

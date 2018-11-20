@@ -1,7 +1,7 @@
 import * as React from "react";
 import {observer} from "mobx-react";
 import {computed, toJS} from "mobx";
-import {bind} from "bind-decorator";
+import autobind from 'autobind-decorator';
 import _ from "lodash";
 import LabeledCheckbox from "shared/components/labeledCheckbox/LabeledCheckbox";
 import {ChartMeta, ClinicalDataCountWithColor} from "pages/studyView/StudyViewPageStore";
@@ -70,7 +70,7 @@ export default class ClinicalTable extends React.Component<IClinicalTableProps, 
             <LabeledCheckbox
                 checked={_.includes(this.props.filters, data.value)}
                 onChange={event => this.onUserSelection(data.value)}>
-                {data.count}
+                {data.count.toLocaleString()}
             </LabeledCheckbox>,
         filter: (d: ClinicalDataCountWithColor, f: string, filterStringUpper: string) => (d.count.toString().indexOf(f) > -1),
         sortBy: (d: ClinicalDataCountWithColor) => d.count,
@@ -89,7 +89,7 @@ export default class ClinicalTable extends React.Component<IClinicalTableProps, 
         width: this.columnWidth[2]
     }];
 
-    @bind
+    @autobind
     private onUserSelection(filter: string) {
         let filters = toJS(this.props.filters)
         if (_.includes(filters, filter)) {
@@ -100,14 +100,14 @@ export default class ClinicalTable extends React.Component<IClinicalTableProps, 
         this.props.onUserSelection(filters);
     }
 
-    @bind
+    @autobind
     private tooltipLabelMouseEnter(value: string): void {
         if (this.props.highlightedRow) {
             this.props.highlightedRow(value);
         }
     }
 
-    @bind
+    @autobind
     private tooltipLabelMouseLeave(): void {
         if (this.props.highlightedRow) {
             this.props.highlightedRow(undefined);
@@ -119,7 +119,7 @@ export default class ClinicalTable extends React.Component<IClinicalTableProps, 
         return _.sumBy(this.props.data, obj => obj.count);
     }
 
-    @bind
+    @autobind
     private compareCohorts() {
         this.props.compareCohorts(this.props.filters);
     }

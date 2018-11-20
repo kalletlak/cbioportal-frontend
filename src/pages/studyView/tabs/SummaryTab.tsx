@@ -1,29 +1,32 @@
 import * as React from 'react';
 import styles from "./studySummaryTabStyles.module.scss";
 import {ChartContainer, IChartContainerProps} from 'pages/studyView/charts/ChartContainer';
-import { observable } from 'mobx';
+import {observable} from 'mobx';
 import {
+    AnalysisGroup,
     ChartMeta,
     ChartType,
-    ChartTypeEnum,
-    DataBinMethodConstants,
-    StudyViewPageStore,
-    AnalysisGroup,
     CUSTOM_CHART_KEYS,
+    StudyViewPageStore,
     UniqueKey
 } from 'pages/studyView/StudyViewPageStore';
-import SummaryHeader from 'pages/studyView/SummaryHeader';
-import {Gene, SampleIdentifier, ClinicalAttribute} from 'shared/api/generated/CBioPortalAPI';
-import { SingleGeneQuery } from 'shared/lib/oql/oql-parser';
-import AppConfig from 'appConfig';
-import {ClinicalDataIntervalFilterValue, DataBin, CopyNumberGeneFilterElement} from "shared/api/generated/CBioPortalAPIInternal";
+import {ClinicalAttribute, Gene, SampleIdentifier} from 'shared/api/generated/CBioPortalAPI';
+import {SingleGeneQuery} from 'shared/lib/oql/oql-parser';
+import {
+    ClinicalDataIntervalFilterValue,
+    CopyNumberGeneFilterElement,
+    DataBin,
+    RectangleBounds
+} from "shared/api/generated/CBioPortalAPIInternal";
 import LoadingIndicator from "shared/components/loadingIndicator/LoadingIndicator";
 import * as _ from 'lodash';
 import ReactGridLayout from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
 import 'react-resizable/css/styles.css';
-import { observer } from 'mobx-react';
-import {ServerConfigHelpers} from "../../../config/config";
+import {observer} from 'mobx-react';
+import UserSelections from "../UserSelections";
+import AddChartButton from "../addChartButton/AddChartButton";
+import {ChartTypeEnum, STUDY_VIEW_CONFIG} from "../StudyViewConfig";
 
 export interface IStudySummaryTabProps {
     store: StudyViewPageStore;
@@ -73,6 +76,9 @@ export class StudySummaryTab extends React.Component<IStudySummaryTabProps, {}> 
             removeCNAGeneFilter: (filter:CopyNumberGeneFilterElement) => {
                 this.store.removeCNAGeneFilters(filter);
             },
+            resetMutationCountVsCNAFilter: ()=>{
+                this.store.resetMutationCountVsCNAFilter();
+            },
             addCNAGeneFilters: (filters:CopyNumberGeneFilterElement[]) => {
                 this.store.addCNAGeneFilters(filters);
             },
@@ -95,6 +101,9 @@ export class StudySummaryTab extends React.Component<IStudySummaryTabProps, {}> 
             updateSelectedGenes:(query: SingleGeneQuery[], genesInQuery: Gene[])=>{
                 this.store.updateSelectedGenes(query, genesInQuery);
             },
+            updateMutationCountVsCNAFilter:(bounds:RectangleBounds)=>{
+                this.store.setMutationCountVsCNAFilter(bounds);
+            },
             clearCNAGeneFilter: () => {
                 this.store.clearCNAGeneFilter();
             },
@@ -106,9 +115,6 @@ export class StudySummaryTab extends React.Component<IStudySummaryTabProps, {}> 
             },
             clearAllFilters: () => {
                 this.store.clearAllFilters();
-            },
-            updateChartsVisibility: (visibleChartIds: string[]) => {
-                this.store.updateChartsVisibility(visibleChartIds);
             },
             setCustomChartFilters: (chartMeta: ChartMeta, values: string[]) => {
                 this.store.setCustomChartFilters(chartMeta, values);
@@ -145,11 +151,14 @@ export class StudySummaryTab extends React.Component<IStudySummaryTabProps, {}> 
 
                     if (chartMeta.uniqueKey === UniqueKey.SAMPLES_PER_PATIENT) {
                         props.promise = this.store.samplesPerPatientData;
-                    } else if (chartMeta.uniqueKey === UniqueKey.WITH_MUTATION_DATA) {
-                        props.promise = this.store.withMutationData;
-                    } else if (chartMeta.uniqueKey === UniqueKey.WITH_CNA_DATA) {
-                        props.promise = this.store.withCnaData;
+                    } else if (chartMeta.uniqueKey === UniqueKey.CANCER_STUDIES) {
+                        props.promise = this.store.cancerStudiesData;
                     }
+                } else if(this.store.isCustomChart(chartMeta.uniqueKey)) {
+                    props.filters = this.store.getCustomChartFilters(props.chartMeta!.uniqueKey);
+                    props.onValueSelection = this.handlers.setCustomChartFilters;
+                    props.onResetSelection = this.handlers.setCustomChartFilters;
+                    props.promise = this.store.getCustomChartDataCount(chartMeta);
                 } else {
                     props.promise = this.store.getClinicalDataCount(chartMeta);
                     props.filters = this.store.getClinicalDataFiltersByUniqueKey(chartMeta.uniqueKey);
@@ -157,9 +166,10 @@ export class StudySummaryTab extends React.Component<IStudySummaryTabProps, {}> 
                     props.onResetSelection = this.handlers.onValueSelection;
                 }
                 props.onChangeChartType = this.handlers.onChangeChartType;
+                props.onCompareCohorts = this.handlers.onCompareCohorts;
                 props.download = [
                     {
-                        initDownload: () => this.store.getClinicalData(chartMeta),
+                        initDownload: () => this.store.isCustomChart(chartMeta.uniqueKey) ? this.store.getCustomChartDownloadData(chartMeta) : this.store.getClinicalData(chartMeta),
                         type: 'TSV'
                     }, {
                         type: 'SVG'
@@ -191,10 +201,27 @@ export class StudySummaryTab extends React.Component<IStudySummaryTabProps, {}> 
                 break;
             }
             case ChartTypeEnum.TABLE: {
-                props.filters = this.store.getClinicalDataFiltersByUniqueKey(chartMeta.uniqueKey);
-                props.promise = this.store.getClinicalDataCount(chartMeta);
-                props.onValueSelection = this.handlers.onValueSelection;
-                props.onResetSelection = this.handlers.onValueSelection;
+                if (_.includes(CUSTOM_CHART_KEYS, chartMeta.uniqueKey)) {
+                    props.filters = this.store.getCustomChartFilters(props.chartMeta ? props.chartMeta.uniqueKey : '');
+                    props.onValueSelection = this.handlers.setCustomChartFilters;
+                    props.onResetSelection = this.handlers.setCustomChartFilters;
+
+                    if (chartMeta.uniqueKey === UniqueKey.SAMPLES_PER_PATIENT) {
+                        props.promise = this.store.samplesPerPatientData;
+                    } else if (chartMeta.uniqueKey === UniqueKey.CANCER_STUDIES) {
+                        props.promise = this.store.cancerStudiesData;
+                    }
+                } else if (this.store.isCustomChart(chartMeta.uniqueKey)) {
+                    props.filters = this.store.getCustomChartFilters(props.chartMeta!.uniqueKey);
+                    props.onValueSelection = this.handlers.setCustomChartFilters;
+                    props.onResetSelection = this.handlers.setCustomChartFilters;
+                    props.promise = this.store.getCustomChartDataCount(chartMeta);
+                } else {
+                    props.filters = this.store.getClinicalDataFiltersByUniqueKey(chartMeta.uniqueKey);
+                    props.promise = this.store.getClinicalDataCount(chartMeta);
+                    props.onValueSelection = this.handlers.onValueSelection;
+                    props.onResetSelection = this.handlers.onValueSelection;
+                }
                 props.onChangeChartType = this.handlers.onChangeChartType;
                 props.onCompareCohorts = this.handlers.onCompareCohorts;
                 props.download = [
@@ -255,25 +282,25 @@ export class StudySummaryTab extends React.Component<IStudySummaryTabProps, {}> 
                 break;
             }
             case ChartTypeEnum.SCATTER: {
-                props.filters = this.store.getChartSampleIdentifiersFilter(props.chartMeta?props.chartMeta.uniqueKey:'');
-                props.promise = this.store.mutationCountVsFractionGenomeAlteredData;
-                props.selectedSamplesMap = this.store.selectedSamplesMap;
-                props.selectedSamples = this.store.selectedSamples;
-                props.onValueSelection = (cases: SampleIdentifier[], keepCurrent?:boolean)=>{
-                    this.handlers.updateChartSampleIdentifierFilter(props.chartMeta?props.chartMeta.uniqueKey:'',cases,keepCurrent);
+                if (this.store.getMutationCountVsCNAFilter()) {
+                    props.filters = [this.store.getMutationCountVsCNAFilter()];
+                }
+                props.promise = this.store.mutationCountVsCNADensityData;
+                props.onValueSelection = (bounds:RectangleBounds)=>{
+                    this.handlers.updateMutationCountVsCNAFilter(bounds);
                 }
                 props.onResetSelection = ()=>{
-                    this.handlers.updateChartSampleIdentifierFilter(props.chartMeta?props.chartMeta.uniqueKey:'',[]);
+                    this.handlers.resetMutationCountVsCNAFilter();
                 }
                 props.sampleToAnalysisGroup = this.store.sampleToAnalysisGroup;
                 props.download = [
                     {
-                        initDownload: () => this.store.getScatterDownloadData(chartMeta),
+                        initDownload: () => this.store.getScatterDownloadData(),
                         type: 'TSV'
                     }, {
                         type: 'SVG'
                     }, {
-                        type: 'PDF'
+                        type: 'PNG'
                     }
                 ];
 
@@ -319,52 +346,49 @@ export class StudySummaryTab extends React.Component<IStudySummaryTabProps, {}> 
                         </div>
                     </div>
                 }
-                {
-                    (this.store.selectedSamples.isComplete) && (
-                        <SummaryHeader
-                            geneQuery={this.store.geneQueryStr}
-                            selectedSamples={this.store.selectedSamples.result!}
-                            updateCustomCasesFilter={(cases: SampleIdentifier[], keepCurrent?: boolean) => {
-                                this.handlers.updateChartSampleIdentifierFilter(UniqueKey.SELECT_CASES_BY_IDS, cases, keepCurrent);
-                            }}
-                            updateSelectedGenes={this.handlers.updateSelectedGenes}
-                            studyWithSamples={this.store.studyWithSamples.result}
-                            filter={this.store.userSelections}
-                            attributesMetaSet={this.store.chartMetaSet}
-                            user={ServerConfigHelpers.getUserEmailAddress()}
-                            getClinicalData={this.store.getDownloadDataPromise}
-                            onSubmitQuery={() => this.store.onSubmitQuery()}
-                            updateClinicalDataEqualityFilter={this.handlers.onValueSelection}
-                            updateClinicalDataIntervalFilter={this.handlers.onUpdateIntervalFilters}
-                            removeGeneFilter={this.handlers.removeGeneFilter}
-                            removeCNAGeneFilter={this.handlers.removeCNAGeneFilter}
-                            clearCNAGeneFilter={this.handlers.clearCNAGeneFilter}
-                            clearGeneFilter={this.handlers.clearGeneFilter}
-                            clearChartSampleIdentifierFilter={this.handlers.clearChartSampleIdentifierFilter}
-                            clearAllFilters={this.handlers.clearAllFilters}
-                            clinicalAttributesWithCountPromise={this.store.clinicalAttributesWithCount}
-                            visibleAttributeIds={this.store.visibleAttributes}
-                            onChangeChartsVisibility={this.handlers.updateChartsVisibility}
-                            groups={this.store.groups}
-                        />
-                    )
-                }
+
+                    <UserSelections
+                            filter={this.props.store.userSelections}
+                            attributesMetaSet={this.props.store.chartMetaSet}
+                            updateClinicalDataEqualityFilter={this.props.store.updateClinicalDataEqualityFilters}
+                            updateClinicalDataIntervalFilter={ this.props.store.updateClinicalDataIntervalFiltersByValues}
+                            removeGeneFilter={this.props.store.removeGeneFilter}
+                            removeCNAGeneFilter={this.props.store.removeCNAGeneFilters}
+                            resetMutationCountVsCNAFilter={this.handlers.resetMutationCountVsCNAFilter}clearCNAGeneFilter={this.props.store.clearCNAGeneFilter}
+                            clearGeneFilter={this.props.store.clearGeneFilter}
+                            removeWithMutationDataFilter={this.props.store.removeWithMutationDataFilter}
+                            removeWithCNADataFilter={this.props.store.removeWithCNADataFilter}
+                            clearChartSampleIdentifierFilter={this.props.store.clearChartSampleIdentifierFilter}
+                            clearAllFilters={this.props.store.clearAllFilters}
+                />
+                
                 <div className={styles.studyViewFlexContainer}>
                     {this.store.defaultVisibleAttributes.isComplete && (
                         <ReactGridLayout className="layout"
                                             style={{ width: this.store.containerWidth }}
                                             width={this.store.containerWidth}
                                             cols={this.store.studyViewPageLayoutProps.cols}
-                                            rowHeight={this.store.studyViewPageLayoutProps.rowHeight}
+                                            rowHeight={this.store.studyViewPageLayoutProps.grid.h}
                                             layout={this.store.studyViewPageLayoutProps.layout}
-                                            margin={[5, 5]}
+                                            margin={[STUDY_VIEW_CONFIG.layout.gridMargin.x, STUDY_VIEW_CONFIG.layout.gridMargin.y]}
                                             useCSSTransforms={false}
                                             draggableHandle={'.fa-arrows'}>
                             {this.store.visibleAttributes.map(this.renderAttributeChart)}
                         </ReactGridLayout>
                     )}
 
+                     {/* Always show a loader when study view loading the initial data */}
+                    <LoadingIndicator isLoading={
+                        this.store.defaultVisibleAttributes.isComplete && (
+                            this.store.initialVisibleAttributesClinicalDataCountData.isPending
+                            || this.store.initialVisibleAttributesClinicalDataBinCountData.isPending
+                            || this.store.samplesPerPatientData.isPending
+                            || this.store.cancerStudiesData.isPending
+                        )
+                    } size={"big"} center={false}/>
+
                 </div>
+                <AddChartButton store={this.store}/>
             </div>
         )
     }

@@ -11,7 +11,7 @@ import classnames from 'classnames';
 import DefaultTooltip from "shared/components/defaultTooltip/DefaultTooltip";
 import LabeledCheckbox from "shared/components/labeledCheckbox/LabeledCheckbox";
 import FixedHeaderTable from "./FixedHeaderTable";
-import {bind} from "bind-decorator";
+import autobind from 'autobind-decorator';
 import {getCNAByAlteration, getCNAColorByAlteration, getFrequencyStr, getQValue} from "../StudyViewUtils";
 
 
@@ -21,8 +21,8 @@ export type  CNAGenesTableUserSelectionWithIndex = CopyNumberGeneFilterElement &
 
 export interface ICNAGenesTablePros {
     promise: MobxPromise<CNAGenesData>;
-    width?: number;
-    height?: number;
+    width: number;
+    height: number;
     filters: CopyNumberGeneFilterElement[];
     onUserSelection: (selection: CopyNumberGeneFilterElement[]) => void;
     numOfSelectedSamples: number;
@@ -44,13 +44,14 @@ export class CNAGenesTable extends React.Component<ICNAGenesTablePros, {}> {
     private _columns = [
         {
             name: 'Gene',
+            tooltip:(<span>Gene</span>),
             render: (data: CopyNumberCountByGene) => {
                 const addGeneOverlay = () =>
-                    <span>{`Click ${data.hugoGeneSymbol} to ${_.includes(this.props.selectedGenes, data.hugoGeneSymbol) ? 'remove' : 'add'} from your query`}</span>;
+                    <span>{`Click ${data.hugoGeneSymbol} to ${_.includes(this.props.selectedGenes, data.hugoGeneSymbol) ? 'remove from' : 'add to'} your query`}</span>;
                 const qvalOverlay = () =>
                     <div><b>Gistic</b><br/><i>Q-value: </i><span>{getQValue(data.qValue)}</span></div>;
                 return (
-                    <div className={classnames(styles.noFlexShrink, styles.displayFlex)}>
+                    <div className={classnames(styles.displayFlex)}>
                         <DefaultTooltip
                             placement="left"
                             overlay={addGeneOverlay}
@@ -68,7 +69,7 @@ export class CNAGenesTable extends React.Component<ICNAGenesTablePros, {}> {
                                 overlay={qvalOverlay}
                                 destroyTooltipOnHide={true}
                             >
-                                <img src={require("./images/gistic.png")} className={styles.mutSig}></img>
+                                <span><img src={require("./images/gistic.png")} className={styles.gistic}></img></span>
                             </DefaultTooltip>
                         </If>
                     </div>
@@ -83,6 +84,7 @@ export class CNAGenesTable extends React.Component<ICNAGenesTablePros, {}> {
         },
         {
             name: 'Cytoband',
+            tooltip:(<span>Cytoband</span>),
             render: (data: CopyNumberCountByGene) => <span>{data.cytoband}</span>,
             sortBy: (data: CopyNumberCountByGene) => data.cytoband,
             defaultSortDirection: 'asc' as 'asc',
@@ -93,6 +95,7 @@ export class CNAGenesTable extends React.Component<ICNAGenesTablePros, {}> {
         },
         {
             name: 'CNA',
+            tooltip:(<span>Copy number alteration, only amplifications and deep deletions are shown</span>),
             render: (data: CopyNumberCountByGene) =>
                 <span style={{color: getCNAColorByAlteration(data.alteration)}}>
                     {getCNAByAlteration(data.alteration)}
@@ -106,13 +109,14 @@ export class CNAGenesTable extends React.Component<ICNAGenesTablePros, {}> {
         },
         {
             name: '#',
+            tooltip:(<span>Number of samples with the listed copy number alteration</span>),
             render: (data: CopyNumberCountByGene) =>
                 <LabeledCheckbox
                     checked={this.isChecked(data.entrezGeneId, data.alteration)}
                     disabled={this.isDisabled(data.entrezGeneId, data.alteration)}
                     onChange={event => this.togglePreSelectRow(data.entrezGeneId, data.alteration)}
                 >
-                    {data.countByEntity}
+                    {data.countByEntity.toLocaleString()}
                 </LabeledCheckbox>,
             sortBy: (data: CopyNumberCountByGene) => data.countByEntity,
             defaultSortDirection: 'desc' as 'desc',
@@ -123,6 +127,7 @@ export class CNAGenesTable extends React.Component<ICNAGenesTablePros, {}> {
         },
         {
             name: 'Freq',
+            tooltip:(<span>Percentage of samples with the listed copy number alteration</span>),
             render: (data: CopyNumberCountByGene) => <span>{getFrequencyStr(data.frequency)}</span>,
             sortBy: (data: CopyNumberCountByGene) => data.frequency,
             defaultSortDirection: 'desc' as 'desc',
@@ -133,7 +138,7 @@ export class CNAGenesTable extends React.Component<ICNAGenesTablePros, {}> {
         }
     ];
 
-    @bind
+    @autobind
     isChecked(entrezGeneId: number, alteration: number) {
         let record = _.find(this.preSelectedRows, (row: CNAGenesTableUserSelectionWithIndex) => row.entrezGeneId === entrezGeneId && row.alteration === alteration);
         if (_.isUndefined(record)) {
@@ -143,12 +148,12 @@ export class CNAGenesTable extends React.Component<ICNAGenesTablePros, {}> {
         }
     }
 
-    @bind
+    @autobind
     isDisabled(entrezGeneId: number, alteration: number) {
         return !_.isUndefined(_.find(this.selectedRows, (row: CNAGenesTableUserSelectionWithIndex) => row.entrezGeneId === entrezGeneId && row.alteration === alteration));
     }
 
-    @bind
+    @autobind
     @action
     togglePreSelectRow(entrezGeneId: number, alteration: number) {
         let record: CNAGenesTableUserSelectionWithIndex | undefined = _.find(this.preSelectedRows, (row: CNAGenesTableUserSelectionWithIndex) => row.entrezGeneId === entrezGeneId && row.alteration === alteration);
@@ -175,7 +180,7 @@ export class CNAGenesTable extends React.Component<ICNAGenesTablePros, {}> {
         }
     }
 
-    @bind
+    @autobind
     @action
     afterSelectingRows() {
         this.props.onUserSelection(this.preSelectedRows.map(row => {
@@ -205,7 +210,7 @@ export class CNAGenesTable extends React.Component<ICNAGenesTablePros, {}> {
         }
     }
 
-    @bind
+    @autobind
     isSelectedRow(data: CopyNumberCountByGene) {
         return !_.isUndefined(_.find(_.union(this.selectedRows, this.preSelectedRows), function (row) {
             return row.entrezGeneId === data.entrezGeneId && row.alteration === data.alteration;
@@ -215,6 +220,8 @@ export class CNAGenesTable extends React.Component<ICNAGenesTablePros, {}> {
     public render() {
         return (
             <CNAGenesTableComponent
+                width={this.props.width}
+                height={this.props.height}
                 data={this.props.promise.result || []}
                 columns={this._columns}
                 showSelectSamples={true && this.preSelectedRows.length > 0}

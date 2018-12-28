@@ -115,9 +115,6 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
     private chartDataPromises = remoteData({
         await:()=>{
            return [
-               ..._.values(this.store.clinicalDataBinPromises),
-               ..._.values(this.store.clinicalDataCountPromises),
-               ..._.values(this.store.customChartsPromises),
                this.store.mutationProfiles,
                this.store.cnaProfiles,
                this.store.selectedSamples,

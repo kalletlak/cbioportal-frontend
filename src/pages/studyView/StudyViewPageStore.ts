@@ -240,6 +240,7 @@ export class StudyViewPageStore {
 
     constructor() {
         reaction(()=>this.filters, ()=>this.clearAnalysisGroupsSettings()); // whenever any data filters change, reset survival analysis settings
+        reaction(()=>this.filters, (filters)=>this.previousFilter = filters);
         reaction(()=>this.loadingInitialDataForSummaryTab, ()=>{
             if(!this.loadingInitialDataForSummaryTab){
                 this.updateChartStats();
@@ -306,7 +307,9 @@ export class StudyViewPageStore {
 
     private newlyAddedCharts = observable.array<string>();
 
-    private unfilteredClinicalDataCountCache: { [uniqueKey: string]: ClinicalDataCountItem } = {};
+    private previousFilter:StudyViewFilter = {} as any
+
+    private unfilteredDefaultClinicalDataCountCache: { [uniqueKey: string]: ClinicalDataCountItem } = {};
     private unfilteredClinicalDataBinCountCache: { [uniqueKey: string]: DataBin[] } = {};
 
     @observable currentTab: StudyViewPageTabKey;
@@ -1156,14 +1159,42 @@ export class StudyViewPageStore {
             });
         },
         onError: (error => {}),
-        default: []
+        default: [],
+        onResult: (data) => {
+            data.forEach(item => {
+                const uniqueKey = getClinicalAttributeUniqueKeyByDataTypeAttrId(item.clinicalDataType, item.attributeId);
+                this.unfilteredClinicalDataCountCache[uniqueKey] = item;
+            });
+            this.attributesTofetchDefaultData = {}
+        }
     });
+
+    private attributesTofetchDefaultData:{[id:string]:{
+        attributeId: string;
+        clinicalDataType: string;
+    }} = {};
+    private unfilteredClinicalDataCountCache: { [uniqueKey: string]: ClinicalDataCountItem } = {};
 
     readonly newlyAddedUnfilteredClinicalDataCount = remoteData<ClinicalDataCountItem[]>({
         invoke: () => {
+            let attributes : {
+                attributeId: string;
+                clinicalDataType: string;
+            }[] = this.newlyAddedUnfilteredAttrsForNonNumerical;
+
+            if (this.chartsAreFiltered) {
+                attributes = _.filter(attributes, attribute=>{
+                    const uniqueKey = getClinicalAttributeUniqueKeyByDataTypeAttrId(getClinicalDataType(attribute.clinicalDataType === 'PATIENT'), attribute.attributeId);
+                    if(this.attributesTofetchDefaultData.hasOwnProperty(uniqueKey)){
+                        return false;
+                    }
+                    return true;
+                })
+            }
+
             return internalClient.fetchClinicalDataCountsUsingPOST({
                 clinicalDataCountFilter: {
-                    attributes: this.newlyAddedUnfilteredAttrsForNonNumerical,
+                    attributes: attributes,
                     studyViewFilter: this.filters
                 } as ClinicalDataCountFilter
             });
@@ -1173,8 +1204,18 @@ export class StudyViewPageStore {
         onResult: (data) => {
             data.forEach(item => {
                 const uniqueKey = getClinicalAttributeUniqueKeyByDataTypeAttrId(item.clinicalDataType, item.attributeId);
-                this.unfilteredClinicalDataCountCache[uniqueKey] = item;
-                this.newlyAddedCharts.remove(uniqueKey);
+                if (!this.chartsAreFiltered) {
+                    this.unfilteredDefaultClinicalDataCountCache[uniqueKey] = item;
+                    this.newlyAddedCharts.remove(uniqueKey);
+                    _.omit(this.attributesTofetchDefaultData,uniqueKey)
+                    
+                } else {
+                    this.unfilteredClinicalDataCountCache[uniqueKey] = item;
+                    this.attributesTofetchDefaultData[uniqueKey] = {
+                        attributeId: item.attributeId,
+                        clinicalDataType: item.clinicalDataType
+                    }
+                }
             });
         }
     });
@@ -1229,7 +1270,9 @@ export class StudyViewPageStore {
                         this.isInitialFilterState, this.chartsAreFiltered,
                         this._clinicalDataEqualityFilterSet.has(uniqueKey),
                         this.unfilteredClinicalDataCount, this.newlyAddedUnfilteredClinicalDataCount,
-                        this.initialVisibleAttributesClinicalDataCountData);
+                        this.initialVisibleAttributesClinicalDataCountData,
+                        JSON.stringify(this.previousFilter) === JSON.stringify(this.filters) && (this.unfilteredClinicalDataCountCache.hasOwnProperty(uniqueKey) || this.unfilteredDefaultClinicalDataCountCache.hasOwnProperty(uniqueKey))
+                        );
                 },
                 invoke: async () => {
                     let dataType = chartMeta.clinicalAttribute!.patientAttribute ? 'PATIENT' : 'SAMPLE';
@@ -1252,9 +1295,9 @@ export class StudyViewPageStore {
                                 } as ClinicalDataCountFilter
                             });
                         } else if (!this.chartsAreFiltered) {
-                            result = [this.unfilteredClinicalDataCountCache[uniqueKey]];
+                            result = [this.unfilteredDefaultClinicalDataCountCache[uniqueKey]];
                         } else{
-                            result = this.unfilteredClinicalDataCount.result;
+                            result = [this.unfilteredClinicalDataCountCache[uniqueKey]];
                         }
                     }
                     let data = _.find(result, {
@@ -1283,7 +1326,9 @@ export class StudyViewPageStore {
                         _.find(this.defaultVisibleAttributes.result, attr => getClinicalAttributeUniqueKey(attr) === uniqueKey) !== undefined, this.isInitialFilterState, this.chartsAreFiltered,
                         this._clinicalDataIntervalFilterSet.has(uniqueKey),
                         this.unfilteredClinicalDataBinCount, this.newlyAddedUnfilteredClinicalDataBinCount,
-                        this.initialVisibleAttributesClinicalDataBinCountData);
+                        this.initialVisibleAttributesClinicalDataBinCountData,
+                        JSON.stringify(this.previousFilter) === JSON.stringify(this.filters) && (this.unfilteredClinicalDataCountCache.hasOwnProperty(uniqueKey) || this.unfilteredDefaultClinicalDataCountCache.hasOwnProperty(uniqueKey))
+                        );
                 },
                 invoke: async () => {
                     const clinicalDataType = chartMeta.clinicalAttribute!.patientAttribute ? 'PATIENT' : 'SAMPLE';

@@ -21,6 +21,7 @@ export interface IPieChartProps {
     data: ClinicalDataCountWithColor[];
     filters: string[];
     onUserSelection: (values: string[]) => void;
+    compareCohorts: (selectedValues: string[]) => void;
     placement: 'left' | 'right';
     patientAttribute: boolean;
     label?: string;
@@ -254,6 +255,7 @@ export default class PieChart extends React.Component<IPieChartProps, {}> implem
                         filters={this.props.filters}
                         highlightedRow={this.highlightedRow}
                         onUserSelection={this.props.onUserSelection}
+                        compareCohorts={this.props.compareCohorts}
                     />)}
                 destroyTooltipOnHide={true}
                 trigger={["hover"]}

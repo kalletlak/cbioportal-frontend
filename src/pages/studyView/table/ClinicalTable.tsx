@@ -21,6 +21,7 @@ export interface IClinicalTableProps {
     filters: string[];
     highlightedRow?: (value: string | undefined) => void;
     onUserSelection: (values: string[]) => void;
+    compareCohorts: (selectedValues: string[]) => void;
     label?: string,
     labelDescription?: string,
     patientAttribute: boolean,
@@ -233,6 +234,11 @@ export default class ClinicalTable extends React.Component<IClinicalTableProps, 
         this.sortDirection = sortDirection;
     }
 
+    @autobind
+    private compareCohorts() {
+        this.props.compareCohorts(this.props.filters);
+    }
+
     componentWillReceiveProps() {
         this.updateCellMargin();
     }
@@ -254,6 +260,8 @@ export default class ClinicalTable extends React.Component<IClinicalTableProps, 
                 sortBy={this.sortBy}
                 sortDirection={this.sortDirection}
                 afterSorting={this.afterSorting}
+                afterSelectingRows={this.compareCohorts}
+                showCohortComparison={this.props.filters.length > 0}
             />
         )
     }

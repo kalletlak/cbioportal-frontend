@@ -59,6 +59,7 @@ export interface IChartContainerProps {
     onResetSelection?: any;
     onDeleteChart: (chartMeta: ChartMeta) => void;
     onChangeChartType: (chartMeta: ChartMeta, newChartType: ChartType) => void;
+    onCompareCohorts: (chartMeta: ChartMeta, selectedRows: string[]) => void;
     onToggleLogScale?:any;
     logScaleChecked?:boolean;
     showLogScaleToggle?:boolean;
@@ -136,6 +137,9 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
             },
             onDeleteChart: () => {
                 this.props.onDeleteChart(this.props.chartMeta);
+            },
+            compareCohorts: (selectedValues: string[]) => {
+                this.props.onCompareCohorts(this.props.chartMeta, selectedValues);
             }
         };
     }
@@ -257,6 +261,7 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                     label={this.props.title}
                     labelDescription={this.props.chartMeta.description}
                     patientAttribute={this.props.chartMeta.patientAttribute}
+                    compareCohorts={this.handlers.compareCohorts}
                 />);
             }
             case ChartTypeEnum.BAR_CHART: {
@@ -282,6 +287,7 @@ export class ChartContainer extends React.Component<IChartContainerProps, {}> {
                     labelDescription={this.props.chartMeta.description}
                     patientAttribute={this.props.chartMeta.patientAttribute}
                     showAddRemoveAllButtons={this.mouseInChart}
+                    compareCohorts={this.handlers.compareCohorts}
                 />);
             }
             case ChartTypeEnum.MUTATED_GENES_TABLE: {

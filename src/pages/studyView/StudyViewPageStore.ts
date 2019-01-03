@@ -236,6 +236,11 @@ export type CopyNumberAlterationIdentifier = CopyNumberGeneFilterElement & {
     hugoGeneSymbol: string
 }
 
+export type Group = {
+    name: string,
+    samples: Sample[]
+}
+
 export class StudyViewPageStore {
 
     constructor() {
@@ -303,6 +308,8 @@ export class StudyViewPageStore {
     @observable private chartsDimension: { [uniqueKey: string]: ChartDimension } = {};
 
     @observable private chartsType = observable.map<ChartType>();
+
+    @observable groups:Group[] = [];
 
     private newlyAddedCharts = observable.array<string>();
 
@@ -3051,6 +3058,63 @@ export class StudyViewPageStore {
             });
         }
         return this.customChartsPromises[uniqueKey];
+    }
+
+    @action
+    async onCompareCohort(chartMeta: ChartMeta, selectedRows: string[]) {
+        const clinicalDataList = await defaultClient.fetchClinicalDataUsingPOST({
+            clinicalDataType: chartMeta.clinicalAttribute!.patientAttribute ? 'PATIENT' : 'SAMPLE',
+            clinicalDataMultiStudyFilter: {
+                attributeIds: [chartMeta.clinicalAttribute!.clinicalAttributeId],
+                identifiers: this.samples.result.map(sample => ({
+                    entityId: chartMeta.clinicalAttribute!.patientAttribute ? sample.patientId : sample.sampleId,
+                    studyId: sample.studyId
+                }))
+            }
+        });
+        let groups = {} as any;
+
+        _.reduce(clinicalDataList, (acc, next: ClinicalData, index) => {
+            if (!_.has(acc, next.value)) {
+                groups[next.value] = [];
+            }
+            if (chartMeta.clinicalAttribute!.patientAttribute) {
+                acc[next.value] = _.concat(acc[next.value], this.getSelectedSamplesByUniquePatientKey(next.uniquePatientKey));
+            } else {
+                acc[next.value].push(this.getSelectedSamplesByUniquePatientKey(next.uniqueSampleKey));
+            }
+            return acc;
+        }, groups as any);
+
+        this.groups = _.reduce(groups, (acc, next, key) => {
+            if(_.includes(selectedRows, key)) {
+                acc.push({
+                    name: key,
+                    samples: next
+                });
+            }
+            return acc;
+        }, [] as Group[]);
+    }
+
+    @autobind
+    private getSelectedSamplesByUniquePatientKey(uniquePatientKey:string):Sample[] {
+        return _.reduce(this.selectedSamples.result, (acc, next:Sample) => {
+            if(next.uniquePatientKey === uniquePatientKey) {
+                acc.push(next);
+            }
+            return acc;
+        }, [] as Sample[]);
+    }
+
+    @autobind
+    private getSelectedSamplesByUniqueSampleKey(uniqueSampleKey:string):Sample[] {
+        return _.reduce(this.selectedSamples.result, (acc, next:Sample) => {
+            if(next.uniqueSampleKey === uniqueSampleKey) {
+                acc.push(next);
+            }
+            return acc;
+        }, [] as Sample[]);
     }
 
 }

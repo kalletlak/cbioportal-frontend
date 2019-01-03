@@ -37,6 +37,7 @@ export type IFixedHeaderTableProps<T> = {
     isSelectedRow?: (data: T) => boolean;
     autoFocusSearchAfterRendering?:boolean;
     afterSorting?: (sortBy: string, sortDirection: SortDirection) => void;
+    showCohortComparison?: boolean;
 };
 
 const RVSDTtoStrType = {
@@ -224,6 +225,12 @@ export default class FixedHeaderTable<T> extends React.Component<IFixedHeaderTab
                                 data-test="fixed-header-table-remove-all"
                                 onClick={this.onRemoveAll}>Deselect all</button>
                     )}
+                    {this.props.showCohortComparison &&
+                        <button
+                            className="btn btn-default btn-xs"
+                            onClick={this.afterSelectingRows}
+                        >Compare Groups</button>
+                    }
                 </div>
             </If>
 

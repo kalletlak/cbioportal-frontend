@@ -229,7 +229,8 @@
     "webpack": "^3.10.0",
     "webpack-fail-plugin": "^1.0.5",
     "webpack-raphael": "^2.1.4",
-    "word-wrap": "^1.2.3"
+    "word-wrap": "^1.2.3",
+    "venn.js": "^0.2.20"
   },
   "devDependencies": {
     "argparse": "^1.0.9",

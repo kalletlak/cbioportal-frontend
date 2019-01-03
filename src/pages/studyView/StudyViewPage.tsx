@@ -31,6 +31,8 @@ import {remoteData} from "../../shared/api/remoteData";
 import {Else, If, Then} from 'react-if';
 import DefaultTooltip from "../../shared/components/defaultTooltip/DefaultTooltip";
 import CustomCaseSelection from "./addChartButton/customCaseSelection/CustomCaseSelection";
+import { GroupComparison } from 'pages/studyView/tabs/GroupComparison';
+import autobind from "autobind-decorator";
 
 export interface IStudyViewPageProps {
     routing: any;
@@ -108,6 +110,7 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
         );
     }
 
+    @autobind
     private handleTabChange(id: string) {
         this.props.routing.updateRoute({tab: id});
     }
@@ -178,7 +181,7 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
                                          unmountOnHide={false}>
 
                                     <MSKTab key={0} id={StudyViewPageTabKeyEnum.SUMMARY} linkText={StudyViewPageTabDescriptions.SUMMARY}>
-                                        <StudySummaryTab store={this.store}></StudySummaryTab>
+                                        <StudySummaryTab store={this.store} handleTabChange={this.handleTabChange}></StudySummaryTab>
                                     </MSKTab>
                                     <MSKTab key={1} id={StudyViewPageTabKeyEnum.CLINICAL_DATA} linkText={StudyViewPageTabDescriptions.CLINICAL_DATA}>
                                         <ClinicalDataTab store={this.store}/>
@@ -187,6 +190,13 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
                                             hide={this.store.MDACCHeatmapStudyMeta.result.length === 0}>
                                         <IFrameLoader height={700}
                                                       url={`//bioinformatics.mdanderson.org/TCGA/NGCHMPortal/?${this.store.MDACCHeatmapStudyMeta.result[0]}`}/>
+                                    </MSKTab>
+                                    <MSKTab key={3} id={"groupComparison"} linkText={"Group Comparison"}>
+                                        <GroupComparison
+                                            groups={this.store.groups}
+                                            survivalPlotData={this.store.survivalPlotData}
+                                            clinicalAttributes={this.store.clinicalAttributes.result}
+                                        />
                                     </MSKTab>
                                 </MSKTabs>
 

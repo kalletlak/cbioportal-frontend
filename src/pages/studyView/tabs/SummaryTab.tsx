@@ -29,7 +29,8 @@ import ProgressIndicator, {IProgressIndicatorItem} from "../../../shared/compone
 import autobind from 'autobind-decorator';
 
 export interface IStudySummaryTabProps {
-    store: StudyViewPageStore
+    store: StudyViewPageStore,
+    handleTabChange:(id:string)=>void
 }
 
 // making this an observer (mobx-react) causes this component to re-render any time
@@ -121,6 +122,10 @@ export class StudySummaryTab extends React.Component<IStudySummaryTabProps, {}> 
             setCustomChartFilters: (chartMeta: ChartMeta, values: string[]) => {
                 this.store.setCustomChartFilters(chartMeta, values);
             },
+            onCompareCohorts: (chartMeta:ChartMeta, selectedValues: string[]) => {
+                this.props.handleTabChange('groupComparison');
+                this.store.onCompareCohort(chartMeta, selectedValues);
+}
         }
     }
 
@@ -141,6 +146,7 @@ export class StudySummaryTab extends React.Component<IStudySummaryTabProps, {}> 
         switch (chartMeta.chartType) {
             case ChartTypeEnum.PIE_CHART: {
 
+                props.onCompareCohorts = this.handlers.onCompareCohorts;
                 //if the chart is one of the custom charts then get the appropriate promise
                 if(this.store.isCustomChart(chartMeta.uniqueKey)) {
                     props.filters = this.store.getCustomChartFilters(props.chartMeta!.uniqueKey);

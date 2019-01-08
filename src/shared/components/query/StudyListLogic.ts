@@ -82,7 +82,7 @@ export default class StudyListLogic
 					map_node_searchResult.set(node, {match: false, forced: false} as SearchResult);
 				} else {
 					let study = node as CancerStudy;
-					if(study.isAdultCancer != filterPediatric) {
+					if(study.isPediatricCancer === filterPediatric) {
 						map_node_searchResult.set(node, {
 							match: true,
 							forced: false

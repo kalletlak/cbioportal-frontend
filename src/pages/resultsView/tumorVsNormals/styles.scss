@@ -1,0 +1,73 @@
+.tumor-vs-normals--form-controls {
+    > table {
+      > tr {
+        > td {
+          padding: 10px 0px;
+        }
+      }
+    }
+}
+
+.tvnTab {
+
+  margin-top:$standardMargin;
+
+  .leftColumn {
+    width:304px;
+
+    margin-right:$standardMargin;
+
+
+    > div > div {
+      padding:10px;
+    }
+
+    .axisBlock {
+      background:#eee;
+      border-radius:4px;
+      padding: 10px;
+    }
+
+    .axisBlock:not(:first-child) {
+      margin-top: 20px;
+    }
+
+  }
+
+}
+
+.Select {
+
+  padding: 0px !important;
+
+  .Select-control {
+    height:32px;
+  }
+
+  .Select-input {
+    height:32px;
+  }
+
+  /* .Select-menu-outer {
+    width: 300px;
+  } */
+}
+
+.tissue-track-selector .Select {
+
+  .Select-menu-outer {
+    max-height: 400px;
+  }
+
+  .Select-menu {
+    max-height: 398px; // needs to be 2 less than Select-menu-outer height to not hide border. Irrelevant
+                      //    as long as & > div > div:nth-child(2) max-height is less
+    overflow:hidden;
+
+    & > div > div:nth-child(2){
+      max-height:350px !important;
+      overflow-x:hidden !important;
+      overflow-y:scroll !important;
+    }
+  }
+}

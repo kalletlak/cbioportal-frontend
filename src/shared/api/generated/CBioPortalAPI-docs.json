@@ -3719,7 +3719,7 @@
           "type": "string",
           "example": "yyyy-MM-dd HH:mm:ss"
         },
-        "isAdultCancer": {
+        "isPediatricCancer": {
           "type": "boolean"
         },
         "methylationHm27SampleCount": {
@@ -4358,9 +4358,6 @@
           "type": "string"
         },
         "name": {
-          "type": "string"
-        },
-        "normalsTissueReferenceId": {
           "type": "string"
         },
         "showProfileInAnalysisTab": {

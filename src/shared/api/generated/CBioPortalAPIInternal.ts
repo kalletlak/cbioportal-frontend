@@ -470,9 +470,7 @@ export type StudyViewFilter = {
 
 };
 export type TumorVsNormalsData = {
-    'color': string
-
-        'data': Array < TumorVsNormalsDataSampleDataObject >
+    'data': Array < TumorVsNormalsDataSampleDataObject >
 
         'isTumorData': boolean
 
@@ -483,10 +481,10 @@ export type TumorVsNormalsData = {
         'studyId': string
 
 };
-export type TumorVsNormalsDataIdentifiers = {
-    'geneticProfileId': string
+export type TumorVsNormalsDataFilter = {
+    'sampleIds': Array < string >
 
-        'sampleIds': Array < string >
+        'sampleListId': string
 
 };
 export type TumorVsNormalsDataSampleDataObject = {
@@ -1321,120 +1319,6 @@ export default class CBioPortalAPIInternal {
         }): Promise < Array < Sample >
         > {
             return this.fetchFilteredSamplesUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
-                return response.body;
-            });
-        };
-    getTumorVsNormalsDataUsingPOSTURL(parameters: {
-        'geneSymbol': string,
-        'normalsReferenceId': string,
-        'zScore' ? : boolean,
-        'tvnDataIdentifiers': Array < TumorVsNormalsDataIdentifiers > ,
-        $queryParameters ? : any
-    }): string {
-        let queryParameters: any = {};
-        let path = '/gene-symbol/{geneSymbol}/normals-reference/{normalsReferenceId}/data/{zScore}';
-
-        path = path.replace('{geneSymbol}', parameters['geneSymbol'] + '');
-
-        path = path.replace('{normalsReferenceId}', parameters['normalsReferenceId'] + '');
-
-        path = path.replace('{zScore}', parameters['zScore'] + '');
-
-        if (parameters.$queryParameters) {
-            Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                var parameter = parameters.$queryParameters[parameterName];
-                queryParameters[parameterName] = parameter;
-            });
-        }
-        let keys = Object.keys(queryParameters);
-        return this.domain + path + (keys.length > 0 ? '?' + (keys.map(key => key + '=' + encodeURIComponent(queryParameters[key])).join('&')) : '');
-    };
-
-    /**
-     * Get tumor vs normals data
-     * @method
-     * @name CBioPortalAPIInternal#getTumorVsNormalsDataUsingPOST
-     * @param {string} geneSymbol - Gene Symbol e.g. MYC
-     * @param {string} normalsReferenceId - Normals Tissue reference id e.g. gtex
-     * @param {boolean} zScore - z-Score e.g. true/false
-     * @param {} tvnDataIdentifiers - List of identifiers
-     */
-    getTumorVsNormalsDataUsingPOSTWithHttpInfo(parameters: {
-        'geneSymbol': string,
-        'normalsReferenceId': string,
-        'zScore' ? : boolean,
-        'tvnDataIdentifiers': Array < TumorVsNormalsDataIdentifiers > ,
-        $queryParameters ? : any,
-        $domain ? : string
-    }): Promise < request.Response > {
-        const domain = parameters.$domain ? parameters.$domain : this.domain;
-        const errorHandlers = this.errorHandlers;
-        const request = this.request;
-        let path = '/gene-symbol/{geneSymbol}/normals-reference/{normalsReferenceId}/data/{zScore}';
-        let body: any;
-        let queryParameters: any = {};
-        let headers: any = {};
-        let form: any = {};
-        return new Promise(function(resolve, reject) {
-            headers['Accept'] = 'application/json';
-            headers['Content-Type'] = 'application/json';
-
-            path = path.replace('{geneSymbol}', parameters['geneSymbol'] + '');
-
-            if (parameters['geneSymbol'] === undefined) {
-                reject(new Error('Missing required  parameter: geneSymbol'));
-                return;
-            }
-
-            path = path.replace('{normalsReferenceId}', parameters['normalsReferenceId'] + '');
-
-            if (parameters['normalsReferenceId'] === undefined) {
-                reject(new Error('Missing required  parameter: normalsReferenceId'));
-                return;
-            }
-
-            path = path.replace('{zScore}', parameters['zScore'] + '');
-
-            if (parameters['tvnDataIdentifiers'] !== undefined) {
-                body = parameters['tvnDataIdentifiers'];
-            }
-
-            if (parameters['tvnDataIdentifiers'] === undefined) {
-                reject(new Error('Missing required  parameter: tvnDataIdentifiers'));
-                return;
-            }
-
-            if (parameters.$queryParameters) {
-                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                    var parameter = parameters.$queryParameters[parameterName];
-                    queryParameters[parameterName] = parameter;
-                });
-            }
-
-            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-        });
-    };
-
-    /**
-     * Get tumor vs normals data
-     * @method
-     * @name CBioPortalAPIInternal#getTumorVsNormalsDataUsingPOST
-     * @param {string} geneSymbol - Gene Symbol e.g. MYC
-     * @param {string} normalsReferenceId - Normals Tissue reference id e.g. gtex
-     * @param {boolean} zScore - z-Score e.g. true/false
-     * @param {} tvnDataIdentifiers - List of identifiers
-     */
-    getTumorVsNormalsDataUsingPOST(parameters: {
-            'geneSymbol': string,
-            'normalsReferenceId': string,
-            'zScore' ? : boolean,
-            'tvnDataIdentifiers': Array < TumorVsNormalsDataIdentifiers > ,
-            $queryParameters ? : any,
-            $domain ? : string
-        }): Promise < Array < TumorVsNormalsData >
-        > {
-            return this.getTumorVsNormalsDataUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
@@ -2752,6 +2636,128 @@ export default class CBioPortalAPIInternal {
         }): Promise < Array < MutationSpectrum >
         > {
             return this.fetchMutationSpectrumsUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
+                return response.body;
+            });
+        };
+    fetchTumorVsNormalsDataUsingPOSTURL(parameters: {
+        'molecularProfileId': string,
+        'tumorVsNormalsDataFilter': TumorVsNormalsDataFilter,
+        'entrezGeneId': number,
+        'zScore' ? : boolean,
+        $queryParameters ? : any
+    }): string {
+        let queryParameters: any = {};
+        let path = '/molecular-profiles/{molecularProfileId}/tvn/fetch';
+
+        path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
+
+        if (parameters['entrezGeneId'] !== undefined) {
+            queryParameters['entrezGeneId'] = parameters['entrezGeneId'];
+        }
+
+        if (parameters['zScore'] !== undefined) {
+            queryParameters['zScore'] = parameters['zScore'];
+        }
+
+        if (parameters.$queryParameters) {
+            Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                var parameter = parameters.$queryParameters[parameterName];
+                queryParameters[parameterName] = parameter;
+            });
+        }
+        let keys = Object.keys(queryParameters);
+        return this.domain + path + (keys.length > 0 ? '?' + (keys.map(key => key + '=' + encodeURIComponent(queryParameters[key])).join('&')) : '');
+    };
+
+    /**
+     * Fetch tumor vs normals data
+     * @method
+     * @name CBioPortalAPIInternal#fetchTumorVsNormalsDataUsingPOST
+     * @param {string} molecularProfileId - Molecular Profile ID e.g. acc_tcga_rna_seq_v2_mrna
+     * @param {} tumorVsNormalsDataFilter - List of Sample IDs/Sample List ID
+     * @param {integer} entrezGeneId - Entrez Gene ID
+     * @param {boolean} zScore - zScore
+     */
+    fetchTumorVsNormalsDataUsingPOSTWithHttpInfo(parameters: {
+        'molecularProfileId': string,
+        'tumorVsNormalsDataFilter': TumorVsNormalsDataFilter,
+        'entrezGeneId': number,
+        'zScore' ? : boolean,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/molecular-profiles/{molecularProfileId}/tvn/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
+
+            if (parameters['molecularProfileId'] === undefined) {
+                reject(new Error('Missing required  parameter: molecularProfileId'));
+                return;
+            }
+
+            if (parameters['tumorVsNormalsDataFilter'] !== undefined) {
+                body = parameters['tumorVsNormalsDataFilter'];
+            }
+
+            if (parameters['tumorVsNormalsDataFilter'] === undefined) {
+                reject(new Error('Missing required  parameter: tumorVsNormalsDataFilter'));
+                return;
+            }
+
+            if (parameters['entrezGeneId'] !== undefined) {
+                queryParameters['entrezGeneId'] = parameters['entrezGeneId'];
+            }
+
+            if (parameters['entrezGeneId'] === undefined) {
+                reject(new Error('Missing required  parameter: entrezGeneId'));
+                return;
+            }
+
+            if (parameters['zScore'] !== undefined) {
+                queryParameters['zScore'] = parameters['zScore'];
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Fetch tumor vs normals data
+     * @method
+     * @name CBioPortalAPIInternal#fetchTumorVsNormalsDataUsingPOST
+     * @param {string} molecularProfileId - Molecular Profile ID e.g. acc_tcga_rna_seq_v2_mrna
+     * @param {} tumorVsNormalsDataFilter - List of Sample IDs/Sample List ID
+     * @param {integer} entrezGeneId - Entrez Gene ID
+     * @param {boolean} zScore - zScore
+     */
+    fetchTumorVsNormalsDataUsingPOST(parameters: {
+            'molecularProfileId': string,
+            'tumorVsNormalsDataFilter': TumorVsNormalsDataFilter,
+            'entrezGeneId': number,
+            'zScore' ? : boolean,
+            $queryParameters ? : any,
+            $domain ? : string
+        }): Promise < Array < TumorVsNormalsData >
+        > {
+            return this.fetchTumorVsNormalsDataUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };

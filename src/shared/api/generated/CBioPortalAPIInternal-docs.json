@@ -458,67 +458,6 @@
         }
       }
     },
-    "/gene-symbol/{geneSymbol}/normals-reference/{normalsReferenceId}/data/{zScore}": {
-      "post": {
-        "tags": [
-          "Tumor vs Normals Data"
-        ],
-        "summary": "Get tumor vs normals data",
-        "operationId": "getTumorVsNormalsDataUsingPOST",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "geneSymbol",
-            "in": "path",
-            "description": "Gene Symbol e.g. MYC",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "normalsReferenceId",
-            "in": "path",
-            "description": "Normals Tissue reference id e.g. gtex",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "zScore",
-            "in": "path",
-            "description": "z-Score e.g. true/false",
-            "required": false,
-            "type": "boolean"
-          },
-          {
-            "in": "body",
-            "name": "tvnDataIdentifiers",
-            "description": "List of identifiers",
-            "required": true,
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/TumorVsNormalsDataIdentifiers"
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/TumorVsNormalsData"
-              }
-            }
-          }
-        }
-      }
-    },
     "/geneset-hierarchy/fetch": {
       "post": {
         "tags": [
@@ -1216,6 +1155,66 @@
               "type": "array",
               "items": {
                 "$ref": "#/definitions/MutationSpectrum"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/molecular-profiles/{molecularProfileId}/tvn/fetch": {
+      "post": {
+        "tags": [
+          "Tumor vs Normals Data"
+        ],
+        "summary": "Fetch tumor vs normals data",
+        "operationId": "fetchTumorVsNormalsDataUsingPOST",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "parameters": [
+          {
+            "name": "molecularProfileId",
+            "in": "path",
+            "description": "Molecular Profile ID e.g. acc_tcga_rna_seq_v2_mrna",
+            "required": true,
+            "type": "string"
+          },
+          {
+            "in": "body",
+            "name": "tumorVsNormalsDataFilter",
+            "description": "List of Sample IDs/Sample List ID",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/TumorVsNormalsDataFilter"
+            }
+          },
+          {
+            "name": "entrezGeneId",
+            "in": "query",
+            "description": "Entrez Gene ID",
+            "required": true,
+            "type": "integer",
+            "format": "int32"
+          },
+          {
+            "name": "zScore",
+            "in": "query",
+            "description": "zScore",
+            "required": false,
+            "type": "boolean",
+            "default": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/TumorVsNormalsData"
               }
             }
           }
@@ -2616,9 +2615,6 @@
     "TumorVsNormalsData": {
       "type": "object",
       "properties": {
-        "color": {
-          "type": "string"
-        },
         "data": {
           "type": "array",
           "items": {
@@ -2641,20 +2637,20 @@
       },
       "title": "TumorVsNormalsData"
     },
-    "TumorVsNormalsDataIdentifiers": {
+    "TumorVsNormalsDataFilter": {
       "type": "object",
       "properties": {
-        "geneticProfileId": {
-          "type": "string"
-        },
         "sampleIds": {
           "type": "array",
           "items": {
             "type": "string"
           }
+        },
+        "sampleListId": {
+          "type": "string"
         }
       },
-      "title": "TumorVsNormalsDataIdentifiers"
+      "title": "TumorVsNormalsDataFilter"
     },
     "TumorVsNormalsDataSampleDataObject": {
       "type": "object",

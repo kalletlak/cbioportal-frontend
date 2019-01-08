@@ -20,7 +20,7 @@ export type CancerStudy = {
 
         'importDate': string
 
-        'isAdultCancer': boolean
+        'isPediatricCancer': boolean
 
         'methylationHm27SampleCount': number
 
@@ -287,8 +287,6 @@ export type MolecularProfile = {
         'molecularProfileId': string
 
         'name': string
-
-        'normalsTissueReferenceId': string
 
         'showProfileInAnalysisTab': boolean
 

@@ -24,7 +24,8 @@ export enum ResultsViewTab {
     CN_SEGMENTS="cnSegments",
     NETWORK="network",
     EXPRESSION="expression",
-    DOWNLOAD="download"
+    DOWNLOAD="download",
+    TUMOR_VS_NORMALS="tumorVsNormals"
 }
 
 export function getTabId(pathname:string) {

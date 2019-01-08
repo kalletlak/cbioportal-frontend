@@ -757,6 +757,41 @@ export class ResultsViewPageStore {
         }
     });
 
+    readonly normalStudySet = remoteData<{[id:string]:MolecularProfile[]}>({
+        await:()=>[this.molecularProfilesInStudies],
+        invoke:()=>{
+            let normalStudySet:{[id:string]:MolecularProfile[]} = {};
+
+            _.each(this.molecularProfilesInStudies.result, molecularProfile => {
+                if(molecularProfile.molecularAlterationType === "MRNA_EXPRESSION" && molecularProfile.datatype === "CONTINUOUS") {
+                    if((molecularProfile.studyId + '_mrna_U133') === molecularProfile.molecularProfileId) {
+                        if(normalStudySet['hgu133plus2'] === undefined) {
+                            normalStudySet['hgu133plus2'] = [molecularProfile]; 
+                        } else {
+                            normalStudySet['hgu133plus2'].push(molecularProfile);
+                        }
+                    } else if(_.includes([molecularProfile.studyId+'_rna_seq_mrna', molecularProfile.studyId+'_rna_seq_v2_mrna', molecularProfile.studyId+'_rna_seq_mrna_capture'], molecularProfile.molecularProfileId)) {
+                        if(normalStudySet['gtex'] === undefined) {
+                            normalStudySet['gtex'] = [molecularProfile]; 
+                        } else {
+                            normalStudySet['gtex'].push(molecularProfile);
+                        }
+                    }
+                }
+            })
+
+            return Promise.resolve(normalStudySet);
+        },
+        default:{}
+    });
+
+    readonly isThereDataForTumorVsNormalsTab = remoteData<boolean>({
+        await:()=>[this.studies, this.normalStudySet],
+        invoke:()=>{
+            return Promise.resolve(Object.keys(this.studies.result.length === 1 && this.normalStudySet.result).length === 1);
+        }
+    });
+
     readonly molecularProfilesWithData = remoteData<MolecularProfile[]>({
         await:()=>[
             this.molecularProfilesInStudies,

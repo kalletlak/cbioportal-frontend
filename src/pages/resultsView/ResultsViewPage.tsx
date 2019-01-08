@@ -33,6 +33,7 @@ import {bind} from "bind-decorator";
 import {updateResultsViewQuery} from "./ResultsViewQuery";
 import {trackQuery} from "../../shared/lib/tracking";
 import {onMobxPromise} from "../../shared/lib/onMobxPromise";
+import TumorVsNormalsTab from "./tumorVsNormals/TumorVsNormalsTab";
 
 function initStore() {
 
@@ -275,6 +276,24 @@ export default class ResultsViewPage extends React.Component<IResultsViewPagePro
                 getTab: () => {
                     return <MSKTab key={7} id={ResultsViewTab.COEXPRESSION} linkText={'Co-expression'}>
                         <CoExpressionTab
+                            store={store}
+                        />
+                    </MSKTab>
+                }
+            },
+
+            {
+                id:ResultsViewTab.TUMOR_VS_NORMALS,
+                hide:()=>{
+                    if (!this.resultsViewPageStore.isThereDataForTumorVsNormalsTab.isComplete) {
+                        return true;
+                    } else {
+                        return !this.resultsViewPageStore.isThereDataForTumorVsNormalsTab.result;
+                    }
+                },
+                getTab: () => {
+                    return <MSKTab key={13} id={ResultsViewTab.TUMOR_VS_NORMALS} linkText={'Tumor vs Normals'}>
+                        <TumorVsNormalsTab
                             store={store}
                         />
                     </MSKTab>

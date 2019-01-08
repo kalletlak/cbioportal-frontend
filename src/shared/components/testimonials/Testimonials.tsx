@@ -1,7 +1,7 @@
 import * as React from 'react';
-import CSSTransitionGroup from 'react-transition-group/CSSTransitionGroup';
 import {observable, action} from "mobx";
 import {observer} from "mobx-react";
+import { Link } from 'react-router';
 
 import styles from './testimonials.module.scss';
 
@@ -101,18 +101,16 @@ export default class Testimonials extends React.Component <{}, {}> {
         const activeTestimonial = testimonials[testimonialIndex];
         return (
             <div className={styles.testimonial}>
-                <CSSTransitionGroup transitionName="test-trans" transitionEnterTimeout={2000} transitionLeaveTimeout={2000}>
-                    <div className='testimonial-blockquote' key={testimonialIndex}>
-                        <p>"{activeTestimonial.quote}"</p>
-                        <cite>--{activeTestimonial.cite}</cite>
-                        <div className="testimonial-links">
-                            <a href="what_people_are_saying.jsp" >View All</a>
-                            <a href="mailto:cbioportal@cbio.mskcc.org?subject=cBioPortal Testimonial&body=Job Title:%0D%0APlace of Employment:%0D%0ATestimonial:%0D%0A%0D%0AThank you for taking the time to submit your opinion.">
-                                Tell Us What You Think
-                            </a>
-                        </div>
+                <div className='testimonial-blockquote' key={testimonialIndex}>
+                    <p>"{activeTestimonial.quote}"</p>
+                    <cite>--{activeTestimonial.cite}</cite>
+                    <div className="testimonial-links">
+                        <Link to={'/testimonials'}>View All</Link>
+                        <a href="mailto:cbioportal@cbio.mskcc.org?subject=cBioPortal Testimonial&body=Job Title:%0D%0APlace of Employment:%0D%0ATestimonial:%0D%0A%0D%0AThank you for taking the time to submit your opinion.">
+                            Tell Us What You Think
+                        </a>
                     </div>
-                </CSSTransitionGroup>
+                </div>
             </div>
         );
     }

@@ -3,17 +3,20 @@ import {Circle} from "better-react-spinkit";
 import classNames from 'classnames';
 import DefaultTooltip from 'shared/components/defaultTooltip/DefaultTooltip';
 import 'rc-tooltip/assets/bootstrap_white.css';
-import GenomeNexusCache, {GenomeNexusCacheDataType} from "shared/cache/GenomeNexusEnrichment";
 import {Mutation, DiscreteCopyNumberData} from "shared/api/generated/CBioPortalAPI";
 import {default as TableCellStatusIndicator, TableCellStatus} from "shared/components/TableCellStatus";
 import MutationAssessor from "shared/components/annotation/genomeNexus/MutationAssessor";
-import {MutationAssessor as MutationAssessorData} from 'shared/api/generated/GenomeNexusAPIInternal';
+import {MutationAssessor as MutationAssessorData} from 'shared/api/generated/GenomeNexusAPI';
 import Sift from "shared/components/annotation/genomeNexus/Sift";
 import PolyPhen2 from "shared/components/annotation/genomeNexus/PolyPhen2";
 import siftStyles from "shared/components/annotation/genomeNexus/styles/siftTooltip.module.scss";
 import polyPhen2Styles from "shared/components/annotation/genomeNexus/styles/polyPhen2Tooltip.module.scss";
 import mutationAssessorStyles from "shared/components/annotation/genomeNexus/styles/mutationAssessorColumn.module.scss";
 import annotationStyles from "shared/components/annotation/styles/annotation.module.scss";
+import MobxPromise from 'mobxpromise';
+import { VariantAnnotation } from 'shared/api/generated/GenomeNexusAPI';
+import { extractGenomicLocation, genomicLocationString } from 'shared/lib/MutationUtils';
+import GenomeNexusCache, { GenomeNexusCacheDataType } from "shared/cache/GenomeNexusCache";
 
 
 type FunctionalImpactColumnTooltipProps = {
@@ -204,7 +207,7 @@ export default class FunctionalImpactColumnFormatter {
             <div>
                 {name}<br />
                 <div style={{height:14}}>
-                    {/* <DefaultTooltip
+                    <DefaultTooltip
                         overlay={<FunctionalImpactColumnTooltip active='mutationAssessor' />}
                         placement="topLeft"
                         trigger={['hover', 'focus']}
@@ -220,7 +223,7 @@ export default class FunctionalImpactColumnFormatter {
                                 alt='Sift'
                             />
                         </span>
-                    </DefaultTooltip> */}
+                    </DefaultTooltip>
                     <DefaultTooltip
                         overlay={<FunctionalImpactColumnTooltip active='sift' />}
                         placement="topLeft"
@@ -260,21 +263,19 @@ export default class FunctionalImpactColumnFormatter {
         );
     }
 
-    public static getData(genomeNexusData: GenomeNexusCacheDataType | null): IFunctionalImpactData | null
+    public static getData(genomeNexusData: VariantAnnotation | null): IFunctionalImpactData | null
     {
-        if (genomeNexusData === null ||
-            genomeNexusData.status === "error" ||
-            genomeNexusData.data === null)
+        if (!genomeNexusData)
         {
             return null;
         }
 
         // TODO: handle multiple transcripts instead of just picking the first one
-        const mutationAssessor = genomeNexusData.data.mutation_assessor && genomeNexusData.data.mutation_assessor.annotation;
-        const siftScore = genomeNexusData.data.transcript_consequences[0].sift_score;
-        const siftPrediction = genomeNexusData.data.transcript_consequences[0].sift_prediction;
-        const polyPhenScore = genomeNexusData.data.transcript_consequences[0].polyphen_score;
-        const polyPhenPrediction = genomeNexusData.data.transcript_consequences[0].polyphen_prediction;
+        const mutationAssessor = genomeNexusData.mutation_assessor && genomeNexusData.mutation_assessor.annotation;
+        const siftScore = genomeNexusData.transcript_consequences[0].sift_score;
+        const siftPrediction = genomeNexusData.transcript_consequences[0].sift_prediction;
+        const polyPhenScore = genomeNexusData.transcript_consequences[0].polyphen_score;
+        const polyPhenPrediction = genomeNexusData.transcript_consequences[0].polyphen_prediction;
 
         return {
             mutationAssessor,
@@ -285,19 +286,20 @@ export default class FunctionalImpactColumnFormatter {
         };
     }
 
-    public static renderFunction(data:Mutation[], genomeNexusCache:GenomeNexusCache) {
-        const genomeNexusData = FunctionalImpactColumnFormatter.getGenomeNexusData(data, genomeNexusCache);
+    public static renderFunction(data:Mutation[],
+                                 genomeNexusCache:GenomeNexusCache|undefined) {
+        const genomeNexusCacheData = FunctionalImpactColumnFormatter.getGenomeNexusDataFromCache(data, genomeNexusCache);
         return (
                 <div>
-                    {FunctionalImpactColumnFormatter.makeFuncionalImpactViz(genomeNexusData)}
+                    {FunctionalImpactColumnFormatter.makeFunctionalImpactViz(genomeNexusCacheData)}
                 </div>
         );
     }
 
     public static download(data:Mutation[], genomeNexusCache:GenomeNexusCache): string
     {
-        const genomeNexusData = FunctionalImpactColumnFormatter.getGenomeNexusData(data, genomeNexusCache);
-        const functionalImpactData = FunctionalImpactColumnFormatter.getData(genomeNexusData);
+        const genomeNexusData = FunctionalImpactColumnFormatter.getGenomeNexusDataFromCache(data, genomeNexusCache);
+        const functionalImpactData = genomeNexusData && FunctionalImpactColumnFormatter.getData(genomeNexusData.data);
 
         if (!functionalImpactData) {
             return "";
@@ -310,31 +312,30 @@ export default class FunctionalImpactColumnFormatter {
         ].join(";");
     }
 
-    private static getGenomeNexusData(data:Mutation[], cache:GenomeNexusCache):GenomeNexusCacheDataType | null {
-        if (data.length === 0) {
+    private static getGenomeNexusDataFromCache(data:Mutation[], cache:GenomeNexusCache|undefined):GenomeNexusCacheDataType | null {
+        if (data.length === 0 || !cache) {
             return null;
         }
         return cache.get(data[0]);
     }
 
-    private static makeFuncionalImpactViz(genomeNexusData:GenomeNexusCacheDataType | null) {
+    private static makeFunctionalImpactViz(genomeNexusCacheData:GenomeNexusCacheDataType|null) {
         let status:TableCellStatus | null = null;
 
-        if (genomeNexusData === null) {
+        if (genomeNexusCacheData === null) {
             status = TableCellStatus.LOADING;
-        } else if (genomeNexusData.status === "error") {
+        } else if (genomeNexusCacheData.status === "error") {
             status = TableCellStatus.ERROR;
-        } else if (genomeNexusData.data === null) {
+        } else if (genomeNexusCacheData.data === null) {
             status = TableCellStatus.NA;
         } else {
-            const functionalImpactData = FunctionalImpactColumnFormatter.getData(genomeNexusData);
+            const functionalImpactData = FunctionalImpactColumnFormatter.getData(genomeNexusCacheData.data);
 
             return functionalImpactData && (
                 <div>
-                    {/* TODO: Enable after Mutation Assessor comes back online
                     <MutationAssessor
                         mutationAssessor={functionalImpactData.mutationAssessor}
-                    /> */}
+                    />
                     <Sift
                         siftScore={functionalImpactData.siftScore}
                         siftPrediction={functionalImpactData.siftPrediction}

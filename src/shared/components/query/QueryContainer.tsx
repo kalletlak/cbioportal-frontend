@@ -1,11 +1,8 @@
-import * as _ from "lodash";
 import * as React from "react";
 import CancerStudySelector from "./CancerStudySelector";
-import {FlexRow, FlexCol} from "../flexbox/FlexBox";
-import * as styles_any from './styles/styles.module.scss';
-import classNames from 'classnames';
+import {FlexCol, FlexRow} from "../flexbox/FlexBox";
+import * as styles_any from "./styles/styles.module.scss";
 import MolecularProfileSelector from "./MolecularProfileSelector";
-import {observable, computed, action} from 'mobx';
 import {observer} from "mobx-react";
 import DataTypePrioritySelector from "./DataTypePrioritySelector";
 import GenesetsSelector from "./GenesetsSelector";
@@ -13,10 +10,8 @@ import GeneSetSelector from "./GeneSetSelector";
 import LabeledCheckbox from "../labeledCheckbox/LabeledCheckbox";
 import {QueryStore} from "./QueryStore";
 import {providesStoreContext} from "../../lib/ContextUtils";
-import AppConfig from "appConfig";
 import CaseSetSelector from "./CaseSetSelector";
-import OverlappingStudiesWarning from "../overlappingStudiesWarning/OverlappingStudiesWarning";
-import UnknownStudiesWarning from "../unknownStudies/UnknownStudiesWarning"
+import UnknownStudiesWarning from "../unknownStudies/UnknownStudiesWarning";
 
 const styles = styles_any as {
 	QueryContainer: string,
@@ -53,8 +48,8 @@ export default class QueryContainer extends React.Component<QueryContainerProps,
 	}
 
 	handleSubmit(){
-		this.store.submit();
-		if (this.props.onSubmit) {
+		const submitSucceeded = this.store.submit();
+		if (submitSucceeded && this.props.onSubmit) {
 			this.props.onSubmit();
 		}
 	}
@@ -69,12 +64,13 @@ export default class QueryContainer extends React.Component<QueryContainerProps,
         return (
 			<FlexCol padded overflow className={styles.QueryContainer}>
                 {
-                    <UnknownStudiesWarning ids={this.store.unknownStudyIds} />
+					this.store.unknownStudyIds.isComplete &&
+                    <UnknownStudiesWarning ids={this.store.unknownStudyIds.result} />
                 }
 
-				<CancerStudySelector/>
+				<CancerStudySelector queryStore={this.store}/>
 
-				{this.store.isVirtualStudyQuery ?
+				{this.store.physicalStudyIdsInSelection.length > 1 ?
 					(<DataTypePrioritySelector/>) :
 					(<MolecularProfileSelector/>)
 				}
@@ -88,9 +84,6 @@ export default class QueryContainer extends React.Component<QueryContainerProps,
 				{!! (this.store.isGenesetProfileSelected) && (
 				    <GenesetsSelector/>
 				)}
-
-				
-				
 
 				{!!(this.store.forDownloadTab) && (
 					<span className={styles.downloadSubmitExplanation}>
@@ -112,11 +105,6 @@ export default class QueryContainer extends React.Component<QueryContainerProps,
 					<button style={{paddingLeft:50, paddingRight:50, marginRight:50 }} disabled={!this.store.submitEnabled} className="btn btn-primary btn-lg" onClick={() => this.handleSubmit()} data-test='queryButton'>
 						{!this.store.forDownloadTab ? "Submit Query": "Download"}
 					</button>
-					{!!(this.store.forDownloadTab && AppConfig.genomespaceEnabled) && (
-						<button disabled={!this.store.submitEnabled} className={styles.genomeSpace} onClick={ ()=>this.store.sendToGenomeSpace() }>
-							Send to GenomeSpace
-						</button>
-					)}
 					<FlexCol>
 						{!!(this.store.submitError) && (
 							<span className={styles.errorMessage} data-test="oqlErrorMessage">

@@ -17,30 +17,11 @@ export type MolecularProfileQueryParams = Pick<CancerStudyQueryUrlParams,
 export function currentQueryParams(store:QueryStore) {
     let nonProfileParams = nonMolecularProfileParams(store);
     let profileParams = molecularProfileParams(store);
-    let path = queryUrl(store, nonProfileParams);
-    return queryParams(nonProfileParams, profileParams, path);
-}
-
-export function queryUrl(store:QueryStore, nonMolecularProfileParams:NonMolecularProfileQueryParams) {
-
-    /*if (store.selectedStudyIds.length != 1)
-    {
-        let studyIds = store.selectedStudyIds;
-        if (!studyIds.length) {
-            studyIds = store.cancerStudies.result.map(study => study.studyId);
-        }
-
-        const hash = `crosscancer/overview/${nonMolecularProfileParams.data_priority}/${encodeURIComponent(nonMolecularProfileParams.gene_list)}/${encodeURIComponent(studyIds.join(","))}`;
-        return `cross_cancer.do?#${hash}`;
-    } else {
-        return 'index.do';
-    }*/
-    return 'index.do';
+    return queryParams(nonProfileParams, profileParams);
 }
 
 export function queryParams(nonMolecularProfileParams:NonMolecularProfileQueryParams,
-                            molecularProfileParams:MolecularProfileQueryParams,
-                            path:string) {
+                            molecularProfileParams:MolecularProfileQueryParams) {
     let params:CancerStudyQueryUrlParams = Object.assign({}, nonMolecularProfileParams, molecularProfileParams);
 
     // Remove params with no value, because they may cause problems.
@@ -51,7 +32,7 @@ export function queryParams(nonMolecularProfileParams:NonMolecularProfileQueryPa
         }
     }
 
-    return {pathname: path, query:params};
+    return {query:params};
 }
 
 export function nonMolecularProfileParams(store:QueryStore, whitespace_separated_case_ids?:string):NonMolecularProfileQueryParams {
@@ -120,78 +101,74 @@ export function profileAvailability(molecularProfiles:MolecularProfile[]) {
 	};
 }
 
-export function categorizedSamplesCount(sampleLists: SampleList[],selectedStudies:string[],selectedVirtualStudies:VirtualStudy[]) {
-    let mutationSamples: { [studyId: string]: { [sampleId: string]: boolean } } = {};
-    let cnaSamples: { [studyId: string]: { [sampleId: string]: boolean } } = {};
-    let mutationCnaSamples: { [studyId: string]: { [sampleId: string]: boolean } } = {};
-    let allSamples: { [studyId: string]: { [sampleId: string]: boolean } } = {};
+export function categorizedSamplesCount(sampleLists: SampleList[], selectedStudies: string[], selectedVirtualStudies: VirtualStudy[]) {
+    let mutationSamples: { [studyId: string]: { [sampleId: string]: string } } = {};
+    let cnaSamples: { [studyId: string]: { [sampleId: string]: string } } = {};
+    let mutationCnaSamples: { [studyId: string]: { [sampleId: string]: string } } = {};
+    let allSamples: { [studyId: string]: { [sampleId: string]: string } } = {};
 
-    let filteredMutationSamples: { [studyId: string]: { [sampleId: string]: boolean } } = {};
-    let filteredCnaSamples: { [studyId: string]: { [sampleId: string]: boolean } } = {};
-    let filteredMutationCnaSamples: { [studyId: string]: { [sampleId: string]: boolean } } = {};
-    let filteredallSamples: { [studyId: string]: { [sampleId: string]: boolean } } = {};
+    let filteredMutationSamples: { [studyId: string]: { [sampleId: string]: string } } = {};
+    let filteredCnaSamples: { [studyId: string]: { [sampleId: string]: string } } = {};
+    let filteredMutationCnaSamples: { [studyId: string]: { [sampleId: string]: string } } = {};
+    let filteredallSamples: { [studyId: string]: { [sampleId: string]: string } } = {};
 
-    sampleLists
-        .filter(sampleList => _.includes(['all_cases_in_study', 'all_cases_with_mutation_and_cna_data', 'all_cases_with_mutation_data', 'all_cases_with_cna_data'], sampleList.category))
-        .forEach(sampleList => {
-            let samples: { [sampleId: string]: boolean } =
-                _.reduce(sampleList.sampleIds, (acc: { [sampleId: string]: boolean }, next) => {
-                    acc[next] = true;
-                    return acc;
-                }, {});
-
-            switch (sampleList.category) {
-                case "all_cases_with_mutation_and_cna_data":
-                    mutationCnaSamples[sampleList.studyId] = samples;
-                    break;
-                case "all_cases_with_mutation_data":
-                    mutationSamples[sampleList.studyId] = samples;
-                    break;
-                case "all_cases_with_cna_data":
-                    cnaSamples[sampleList.studyId] = samples;
-                    break;
-                case "all_cases_in_study":
-                    allSamples[sampleList.studyId] = samples;
-                    break;
+    _.each(sampleLists, sampleList => {
+        switch (sampleList.category) {
+            case "all_cases_with_mutation_and_cna_data":
+                mutationCnaSamples[sampleList.studyId] = _.keyBy(sampleList.sampleIds);
+                break;
+            case "all_cases_with_mutation_data":
+                mutationSamples[sampleList.studyId] = _.keyBy(sampleList.sampleIds);
+                break;
+            case "all_cases_with_cna_data":
+                cnaSamples[sampleList.studyId] = _.keyBy(sampleList.sampleIds);
+                break;
+            case "all_cases_in_study":
+                allSamples[sampleList.studyId] = _.keyBy(sampleList.sampleIds);
+                break;
+            default: {
+                // this in case if the all cases list is tagged under other category
+                if (sampleList.sampleListId === sampleList.studyId + '_all') {
+                    allSamples[sampleList.studyId] = _.keyBy(sampleList.sampleIds);
+                }
             }
-        });
+        }
+    });
 
-    let selectedVirtualStudySet: { [id: string]: VirtualStudy } =_.reduce(selectedVirtualStudies, (acc: { [id: string]: VirtualStudy }, next) => {
-            acc[next.id] = next; return acc
-    }, {});
-    let selectedPhysicalStudyIds = selectedStudies.filter(id => !_.has(selectedVirtualStudySet, id));
+    const selectedVirtualStudyIds = _.map(selectedVirtualStudies, virtualStudy => virtualStudy.id);
+    const selectedPhysicalStudyIds = selectedStudies.filter(id => !_.includes(selectedVirtualStudyIds, id));
 
     //add all samples from selected physical studies
-    _.forEach(selectedPhysicalStudyIds,studyId=>{
+    _.forEach(selectedPhysicalStudyIds, studyId => {
         filteredMutationSamples[studyId] = mutationSamples[studyId] || {};
         filteredCnaSamples[studyId] = cnaSamples[studyId] || {};
         filteredMutationCnaSamples[studyId] = mutationCnaSamples[studyId] || {};
         filteredallSamples[studyId] = allSamples[studyId] || {};
     });
 
-    _.forEach(selectedVirtualStudySet,virtualStudy=>{
-        _.forEach(virtualStudy.data.studies,study=>{
-            
+    _.forEach(selectedVirtualStudies, virtualStudy => {
+        _.forEach(virtualStudy.data.studies, study => {
+
             // check if the study in this virtual study is already in the selected studies list
             // and only add the samples if its not already present
-            if(!_.includes(selectedPhysicalStudyIds,study.id)){
+            if (!_.includes(selectedPhysicalStudyIds, study.id)) {
                 filteredMutationSamples[study.id] = filteredMutationSamples[study.id] || {};
                 filteredCnaSamples[study.id] = filteredCnaSamples[study.id] || {};
                 filteredMutationCnaSamples[study.id] = filteredMutationCnaSamples[study.id] || {};
                 filteredallSamples[study.id] = filteredallSamples[study.id] || {};
 
-                _.forEach(study.samples,sampleId=>{
-                    if(mutationSamples[study.id] && mutationSamples[study.id][sampleId]){
-                        filteredMutationSamples[study.id][sampleId] = true;
+                _.forEach(study.samples, sampleId => {
+                    if (mutationSamples[study.id] && mutationSamples[study.id][sampleId]) {
+                        filteredMutationSamples[study.id][sampleId] = sampleId;
                     }
-                    if(cnaSamples[study.id] && cnaSamples[study.id][sampleId]){
-                        filteredCnaSamples[study.id][sampleId] = true;
+                    if (cnaSamples[study.id] && cnaSamples[study.id][sampleId]) {
+                        filteredCnaSamples[study.id][sampleId] = sampleId;
                     }
-                    if(mutationCnaSamples[study.id] && mutationCnaSamples[study.id][sampleId]){
-                        filteredMutationCnaSamples[study.id][sampleId] = true;
+                    if (mutationCnaSamples[study.id] && mutationCnaSamples[study.id][sampleId]) {
+                        filteredMutationCnaSamples[study.id][sampleId] = sampleId;
                     }
-                    if(allSamples[study.id] && allSamples[study.id][sampleId]){
-                        filteredallSamples[study.id][sampleId] = true;
+                    if (allSamples[study.id] && allSamples[study.id][sampleId]) {
+                        filteredallSamples[study.id][sampleId] = sampleId;
                     }
                 });
             }

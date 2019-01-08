@@ -1,4 +1,3 @@
-import accessors, {getSimplifiedMutationType} from "shared/lib/oql/accessors";
 import {assert} from "chai";
 import {
     Gene, NumericGeneMolecularData, GenePanelData, MolecularProfile, Mutation, Patient,
@@ -11,8 +10,10 @@ import {
     filterSubQueryData,
     getOncoKbOncogenic,
     initializeCustomDriverAnnotationSettings,
-    fetchQueriedStudies
+    fetchQueriedStudies, isRNASeqProfile, isPanCanStudy, isTCGAProvStudy, isTCGAPubStudy, buildResultsViewPageTitle,
+    getSampleAlteredMap, getSingleGeneResultKey, getMultipleGeneResultKey
 } from "./ResultsViewPageStoreUtils";
+import {IQueriedMergedTrackCaseData, AnnotatedExtendedAlteration} from "./ResultsViewPageStore";
 import {
     OQLLineFilterOutput, MergedTrackLineFilterOutput
 } from "../../shared/lib/oql/oqlfilter";
@@ -24,6 +25,7 @@ import sinon from 'sinon';
 import sessionServiceClient from "shared/api//sessionServiceInstance";
 import { VirtualStudy, VirtualStudyData } from "shared/model/VirtualStudy";
 import client from "shared/api/cbioportalClientInstance";
+import AccessorsForOqlFilter, {getSimplifiedMutationType} from "../../shared/lib/oql/AccessorsForOqlFilter";
 
 describe("ResultsViewPageStoreUtils", ()=>{
     describe("computeCustomDriverAnnotationReport", ()=>{
@@ -104,7 +106,7 @@ describe("ResultsViewPageStoreUtils", ()=>{
     });
 
     describe("filterSubQueryData", () => {
-        // I believe these metadata to be all `new accessors()` needs
+        // I believe these metadata to be all `new AccessorsForOqlFilter()` needs
         // tslint:disable-next-line no-object-literal-type-assertion
         const makeBasicExpressionProfile = () => ({
             "molecularAlterationType": "MRNA_EXPRESSION",
@@ -140,7 +142,7 @@ describe("ResultsViewPageStoreUtils", ()=>{
 
         it("returns undefined when queried for a non-merged track", () => {
             // given
-            const accessorsInstance = new accessors([makeBasicExpressionProfile()]);
+            const accessorsInstance = new AccessorsForOqlFilter([makeBasicExpressionProfile()]);
             const dataArray: NumericGeneMolecularData[] = makeMinimalExpressionData([{
                 entrezGeneId: 1000,
                 uniqueSampleKey: 'SAMPLE1',
@@ -171,7 +173,7 @@ describe("ResultsViewPageStoreUtils", ()=>{
 
         it("returns a two-element array with no alterations if queried for a two-gene merged track that matches none", () => {
             // given
-            const accessorsInstance = new accessors([makeBasicExpressionProfile()]);
+            const accessorsInstance = new AccessorsForOqlFilter([makeBasicExpressionProfile()]);
             const dataArray: NumericGeneMolecularData[] = makeMinimalExpressionData([
                 {entrezGeneId: 1000, uniqueSampleKey: 'SAMPLE1', value: 1.5},
                 {entrezGeneId: 1001, uniqueSampleKey: 'SAMPLE1', value: 1.5},
@@ -216,7 +218,7 @@ describe("ResultsViewPageStoreUtils", ()=>{
 
         it("lists alterations that match genes in a merged track", () => {
             // given
-            const accessorsInstance = new accessors([makeBasicExpressionProfile()]);
+            const accessorsInstance = new AccessorsForOqlFilter([makeBasicExpressionProfile()]);
             const dataArray: NumericGeneMolecularData[] = makeMinimalExpressionData([
                 {entrezGeneId: 1000, uniqueSampleKey: 'SAMPLE1', value: 0},
                 {entrezGeneId: 1000, uniqueSampleKey: 'SAMPLE2', value: 0},
@@ -518,17 +520,20 @@ describe("ResultsViewPageStoreUtils", ()=>{
 
     describe("computePutativeDriverAnnotatedMutations", ()=>{
         it("returns empty list for empty input", ()=>{
-            assert.deepEqual(computePutativeDriverAnnotatedMutations([], ()=>({}) as any, false), []);
+            assert.deepEqual(computePutativeDriverAnnotatedMutations([], ()=>({}) as any, {}, false), []);
         });
         it("annotates a single mutation", ()=>{
             assert.deepEqual(
                 computePutativeDriverAnnotatedMutations(
-                    [{mutationType:"missense"} as Mutation],
+                    [{mutationType:"missense", entrezGeneId:1} as Mutation],
                     ()=>({oncoKb:"", hotspots:true, cbioportalCount:false, cosmicCount:true, customDriverBinary:false}),
+                    {1:{ hugoGeneSymbol:"mygene"} as Gene},
                     true
                 ) as Partial<AnnotatedMutation>[],
                 [{
                     mutationType:"missense",
+                    hugoGeneSymbol:"mygene",
+                    entrezGeneId:1,
                     simplifiedMutationType: getSimplifiedMutationType("missense"),
                     isHotspot: true,
                     oncoKbOncogenic: "",
@@ -539,24 +544,31 @@ describe("ResultsViewPageStoreUtils", ()=>{
         it("annotates a few mutations", ()=>{
             assert.deepEqual(
                 computePutativeDriverAnnotatedMutations(
-                    [{mutationType:"missense"} as Mutation, {mutationType:"in_frame_del"} as Mutation, {mutationType:"asdf"} as Mutation],
+                    [{mutationType:"missense", entrezGeneId:1} as Mutation, {mutationType:"in_frame_del", entrezGeneId:1} as Mutation, {mutationType:"asdf", entrezGeneId:134} as Mutation],
                     ()=>({oncoKb:"", hotspots:true, cbioportalCount:false, cosmicCount:true, customDriverBinary:false}),
+                    {1:{hugoGeneSymbol:"gene1hello"} as Gene, 134:{hugoGeneSymbol:"gene3hello"} as Gene},
                     true
                 ) as Partial<AnnotatedMutation>[],
                 [{
                     mutationType:"missense",
+                    hugoGeneSymbol:"gene1hello",
+                    entrezGeneId:1,
                     simplifiedMutationType: getSimplifiedMutationType("missense"),
                     isHotspot: true,
                     oncoKbOncogenic: "",
                     putativeDriver: true
                 },{
                     mutationType:"in_frame_del",
+                    hugoGeneSymbol:"gene1hello",
+                    entrezGeneId:1,
                     simplifiedMutationType: getSimplifiedMutationType("in_frame_del"),
                     isHotspot: true,
                     oncoKbOncogenic: "",
                     putativeDriver: true
                 },{
                     mutationType:"asdf",
+                    hugoGeneSymbol:"gene3hello",
+                    entrezGeneId:134,
                     simplifiedMutationType: getSimplifiedMutationType("asdf"),
                     isHotspot: true,
                     oncoKbOncogenic: "",
@@ -567,8 +579,9 @@ describe("ResultsViewPageStoreUtils", ()=>{
         it("excludes a single non-annotated mutation", ()=>{
             assert.deepEqual(
                 computePutativeDriverAnnotatedMutations(
-                    [{mutationType:"missense"} as Mutation],
+                    [{mutationType:"missense", entrezGeneId:1} as Mutation],
                     ()=>({oncoKb:"", hotspots:false, cbioportalCount:false, cosmicCount:false, customDriverBinary:false}),
+                    {1:{hugoGeneSymbol:"gene1hello"} as Gene, 134:{hugoGeneSymbol:"gene3hello"} as Gene},
                     true
                 ),
                 []
@@ -577,15 +590,18 @@ describe("ResultsViewPageStoreUtils", ()=>{
         it("excludes non-annotated mutations from a list of a few", ()=>{
             assert.deepEqual(
                 computePutativeDriverAnnotatedMutations(
-                    [{mutationType:"missense"} as Mutation, {mutationType:"in_frame_del"} as Mutation, {mutationType:"asdf"} as Mutation],
+                    [{mutationType:"missense", entrezGeneId:1} as Mutation, {mutationType:"in_frame_del", entrezGeneId:1} as Mutation, {mutationType:"asdf", entrezGeneId:134} as Mutation],
                     (m)=>(m.mutationType === "in_frame_del" ?
                         {oncoKb:"", hotspots:false, cbioportalCount:false, cosmicCount:false, customDriverBinary:true}:
                         {oncoKb:"", hotspots:false, cbioportalCount:false, cosmicCount:false, customDriverBinary:false}
                     ),
+                    {1:{hugoGeneSymbol:"gene1hello"} as Gene, 134:{hugoGeneSymbol:"gene3hello"} as Gene},
                     true
                 ) as Partial<AnnotatedMutation>[],
                 [{
                     mutationType:"in_frame_del",
+                    hugoGeneSymbol:"gene1hello",
+                    entrezGeneId:1,
                     simplifiedMutationType: getSimplifiedMutationType("in_frame_del"),
                     isHotspot: false,
                     oncoKbOncogenic: "",
@@ -619,118 +635,159 @@ describe("ResultsViewPageStoreUtils", ()=>{
         it("annotates single element correctly in case of Likely Oncogenic", ()=>{
             assert.deepEqual(
                 annotateMolecularDatum(
-                    {value:0, molecularProfileId:"profile"} as NumericGeneMolecularData,
+                    {value:0, molecularProfileId:"profile", entrezGeneId:9} as NumericGeneMolecularData,
                     (d:NumericGeneMolecularData)=>({oncogenic:"Likely Oncogenic"} as IndicatorQueryResp),
-                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile}
+                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile},
+                    { 9: { hugoGeneSymbol:"genesymbol"} as Gene}
                 ),
-                {value:0, molecularProfileId:"profile", oncoKbOncogenic:"Likely Oncogenic"}
+                {value:0, molecularProfileId:"profile", oncoKbOncogenic:"Likely Oncogenic", hugoGeneSymbol:"genesymbol", entrezGeneId:9}
             );
         });
         it("annotates single element correctly in case of Predicted Oncogenic", ()=>{
             assert.deepEqual(
                 annotateMolecularDatum(
-                    {value:0, molecularProfileId:"profile"} as NumericGeneMolecularData,
+                    {value:0, molecularProfileId:"profile", entrezGeneId:9} as NumericGeneMolecularData,
                     (d:NumericGeneMolecularData)=>({oncogenic:"Predicted Oncogenic"} as IndicatorQueryResp),
-                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile}
+                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile},
+                    { 9: { hugoGeneSymbol:"genesymbol"} as Gene}
                 ),
-                {value:0, molecularProfileId:"profile", oncoKbOncogenic:"Predicted Oncogenic"}
+                {value:0, molecularProfileId:"profile", oncoKbOncogenic:"Predicted Oncogenic", hugoGeneSymbol:"genesymbol", entrezGeneId:9}
             );
         });
         it("annotates single element correctly in case of Oncogenic", ()=>{
             assert.deepEqual(
                 annotateMolecularDatum(
-                    {value:0, molecularProfileId:"profile"} as NumericGeneMolecularData,
+                    {value:0, molecularProfileId:"profile", entrezGeneId:9} as NumericGeneMolecularData,
                     (d:NumericGeneMolecularData)=>({oncogenic:"Oncogenic"} as IndicatorQueryResp),
-                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile}
+                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile},
+                    { 9: { hugoGeneSymbol:"genesymbol"} as Gene}
                 ),
-                {value:0, molecularProfileId:"profile", oncoKbOncogenic:"Oncogenic"}
+                {value:0, molecularProfileId:"profile", oncoKbOncogenic:"Oncogenic", hugoGeneSymbol:"genesymbol", entrezGeneId:9}
             );
         });
         it("annotates single element correctly in case of Likely Neutral, Inconclusive, Unknown, asdfasd, undefined, empty", ()=>{
             assert.deepEqual(
                 annotateMolecularDatum(
-                    {value:0, molecularProfileId:"profile"} as NumericGeneMolecularData,
+                    {value:0, molecularProfileId:"profile", entrezGeneId:9} as NumericGeneMolecularData,
                     (d:NumericGeneMolecularData)=>({oncogenic:"Likely Neutral"} as IndicatorQueryResp),
-                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile}
+                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile},
+                    { 9: { hugoGeneSymbol:"genesymbol"} as Gene}
                 ),
-                {value:0, molecularProfileId:"profile", oncoKbOncogenic:""}
+                {value:0, molecularProfileId:"profile", oncoKbOncogenic:"", hugoGeneSymbol:"genesymbol", entrezGeneId:9}
             );
             assert.deepEqual(
                 annotateMolecularDatum(
-                    {value:0, molecularProfileId:"profile"} as NumericGeneMolecularData,
+                    {value:0, molecularProfileId:"profile", entrezGeneId:9} as NumericGeneMolecularData,
                     (d:NumericGeneMolecularData)=>({oncogenic:"Inconclusive"} as IndicatorQueryResp),
-                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile}
+                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile},
+                    { 9: { hugoGeneSymbol:"genesymbol"} as Gene}
                 ),
-                {value:0, molecularProfileId:"profile", oncoKbOncogenic:""}
+                {value:0, molecularProfileId:"profile", oncoKbOncogenic:"", hugoGeneSymbol:"genesymbol", entrezGeneId:9}
             );
             assert.deepEqual(
                 annotateMolecularDatum(
-                    {value:0, molecularProfileId:"profile"} as NumericGeneMolecularData,
+                    {value:0, molecularProfileId:"profile", entrezGeneId:9} as NumericGeneMolecularData,
                     (d:NumericGeneMolecularData)=>({oncogenic:"Unknown"} as IndicatorQueryResp),
-                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile}
+                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile},
+                    { 9: { hugoGeneSymbol:"genesymbol"} as Gene}
                 ),
-                {value:0, molecularProfileId:"profile", oncoKbOncogenic:""}
+                {value:0, molecularProfileId:"profile", oncoKbOncogenic:"", hugoGeneSymbol:"genesymbol", entrezGeneId:9}
             );
             assert.deepEqual(
                 annotateMolecularDatum(
-                    {value:0, molecularProfileId:"profile"} as NumericGeneMolecularData,
+                    {value:0, molecularProfileId:"profile", entrezGeneId:9} as NumericGeneMolecularData,
                     (d:NumericGeneMolecularData)=>({oncogenic:"asdfasdf"} as IndicatorQueryResp),
-                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile}
+                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile},
+                    { 9: { hugoGeneSymbol:"genesymbol"} as Gene}
                 ),
-                {value:0, molecularProfileId:"profile", oncoKbOncogenic:""}
+                {value:0, molecularProfileId:"profile", oncoKbOncogenic:"", hugoGeneSymbol:"genesymbol", entrezGeneId:9}
             );
             assert.deepEqual(
                 annotateMolecularDatum(
-                    {value:0, molecularProfileId:"profile"} as NumericGeneMolecularData,
+                    {value:0, molecularProfileId:"profile", entrezGeneId:9} as NumericGeneMolecularData,
                     (d:NumericGeneMolecularData)=>({oncogenic:undefined} as any),
-                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile}
+                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile},
+                    { 9: { hugoGeneSymbol:"genesymbol"} as Gene}
                 ),
-                {value:0, molecularProfileId:"profile", oncoKbOncogenic:""}
+                {value:0, molecularProfileId:"profile", oncoKbOncogenic:"", hugoGeneSymbol:"genesymbol", entrezGeneId:9}
             );
             assert.deepEqual(
                 annotateMolecularDatum(
-                    {value:0, molecularProfileId:"profile"} as NumericGeneMolecularData,
+                    {value:0, molecularProfileId:"profile", entrezGeneId:9} as NumericGeneMolecularData,
                     (d:NumericGeneMolecularData)=>({oncogenic:""} as IndicatorQueryResp),
-                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile}
+                    {"profile":{molecularAlterationType:"COPY_NUMBER_ALTERATION"} as MolecularProfile},
+                    { 9: { hugoGeneSymbol:"genesymbol"} as Gene}
                 ),
-                {value:0, molecularProfileId:"profile", oncoKbOncogenic:""}
+                {value:0, molecularProfileId:"profile", oncoKbOncogenic:"", hugoGeneSymbol:"genesymbol", entrezGeneId:9}
             );
         });
         it("annotates non-copy number data with empty string", ()=>{
             assert.deepEqual(
                 annotateMolecularDatum(
-                    {value:0, molecularProfileId:"profile"} as NumericGeneMolecularData,
+                    {value:0, molecularProfileId:"profile", entrezGeneId:9} as NumericGeneMolecularData,
                     (d:NumericGeneMolecularData)=>({oncogenic:"Oncogenic"} as IndicatorQueryResp),
-                    {"profile":{molecularAlterationType:"MUTATION_EXTENDED"} as MolecularProfile}
+                    {"profile":{molecularAlterationType:"MUTATION_EXTENDED"} as MolecularProfile},
+                    { 9: { hugoGeneSymbol:"genesymbol"} as Gene}
                 ),
-                {value:0, molecularProfileId:"profile", oncoKbOncogenic:""}
+                {value:0, molecularProfileId:"profile", oncoKbOncogenic:"", hugoGeneSymbol:"genesymbol", entrezGeneId:9}
             );
             assert.deepEqual(
                 annotateMolecularDatum(
-                    {value:0, molecularProfileId:"profile"} as NumericGeneMolecularData,
+                    {value:0, molecularProfileId:"profile", entrezGeneId:9} as NumericGeneMolecularData,
                     (d:NumericGeneMolecularData)=>({oncogenic:"Oncogenic"} as IndicatorQueryResp),
-                    {"profile":{molecularAlterationType:"MRNA_EXPRESSION"} as MolecularProfile}
+                    {"profile":{molecularAlterationType:"MRNA_EXPRESSION"} as MolecularProfile},
+                    { 9: { hugoGeneSymbol:"genesymbol"} as Gene}
                 ),
-                {value:0, molecularProfileId:"profile", oncoKbOncogenic:""}
+                {value:0, molecularProfileId:"profile", oncoKbOncogenic:"", hugoGeneSymbol:"genesymbol", entrezGeneId:9}
             );
             assert.deepEqual(
                 annotateMolecularDatum(
-                    {value:0, molecularProfileId:"profile"} as NumericGeneMolecularData,
+                    {value:0, molecularProfileId:"profile", entrezGeneId:9} as NumericGeneMolecularData,
                     (d:NumericGeneMolecularData)=>({oncogenic:"Oncogenic"} as IndicatorQueryResp),
-                    {"profile":{molecularAlterationType:"PROTEIN_LEVEL"} as MolecularProfile}
+                    {"profile":{molecularAlterationType:"PROTEIN_LEVEL"} as MolecularProfile},
+                    { 9: { hugoGeneSymbol:"genesymbol"} as Gene}
                 ),
-                {value:0, molecularProfileId:"profile", oncoKbOncogenic:""}
+                {value:0, molecularProfileId:"profile", oncoKbOncogenic:"", hugoGeneSymbol:"genesymbol", entrezGeneId:9}
             );
             assert.deepEqual(
                 annotateMolecularDatum(
-                    {value:0, molecularProfileId:"profile"} as NumericGeneMolecularData,
+                    {value:0, molecularProfileId:"profile", entrezGeneId:9} as NumericGeneMolecularData,
                     (d:NumericGeneMolecularData)=>({oncogenic:"Oncogenic"} as IndicatorQueryResp),
-                    {"profile":{molecularAlterationType:"FUSION"} as MolecularProfile}
+                    {"profile":{molecularAlterationType:"FUSION"} as MolecularProfile},
+                    { 9: { hugoGeneSymbol:"genesymbol"} as Gene}
                 ),
-                {value:0, molecularProfileId:"profile", oncoKbOncogenic:""}
+                {value:0, molecularProfileId:"profile", oncoKbOncogenic:"", hugoGeneSymbol:"genesymbol", entrezGeneId:9}
             );
         });
     });
+
+
+
+    describe('getDefaultSelectedStudiesForExpressionTab', () => {
+
+        it('recognizes pub tcga study', () => {
+            const studyId = "blca_tcga_pub";
+            assert.isTrue(isTCGAPubStudy(studyId));
+            assert.isFalse(isTCGAProvStudy(studyId));
+            assert.isFalse(isPanCanStudy(studyId));
+        });
+
+        it('recognizes provisional tcga study', () => {
+            const studyId = "blca_tcga";
+            assert.isFalse(isTCGAPubStudy(studyId));
+            assert.isTrue(isTCGAProvStudy(studyId));
+            assert.isFalse(isPanCanStudy(studyId));
+        });
+
+        it('recognizes pan can tcga study', () => {
+            const studyId = "blca_tcga_pan_can_atlas_2018";
+            assert.isFalse(isTCGAPubStudy(studyId));
+            assert.isFalse(isTCGAProvStudy(studyId));
+            assert.isTrue(isPanCanStudy(studyId));
+        });
+
+    });
+
 
     describe("computeGenePanelInformation", ()=>{
         const genes:Gene[] = [];
@@ -1036,6 +1093,22 @@ describe("ResultsViewPageStoreUtils", ()=>{
             );
         });
     });
+
+    describe('getRNASeqProfiles',()=>{
+
+        it('properly recognizes expression profile based on patterns in id',()=>{
+            assert.isFalse(isRNASeqProfile("",1), "blank is false");
+            assert.isTrue(isRNASeqProfile("acc_tcga_rna_seq_v2_mrna",2),"matches seq v2 id");
+            assert.isFalse(isRNASeqProfile("acc_tcga_rna_seq_v2_mrna",1),"fails if versions is wrong");
+            assert.isTrue(isRNASeqProfile("chol_tcga_pan_can_atlas_2018_rna_seq_v2_mrna_median",2),'matches pan can v2');
+            assert.isFalse(isRNASeqProfile("chol_tcga_pan_can_atlas_2018_rna_seq_v2_mrna_median",1),'matches pan can v2');
+            assert.isFalse(isRNASeqProfile("laml_tcga_rna_seq_mrna",2));
+            assert.isTrue(isRNASeqProfile("laml_tcga_rna_seq_mrna",1));
+            assert.isFalse(isRNASeqProfile("chol_tcga_pan_can_atlas_2018_rna_seq_v2_mrna_median_Zscores",2), 'doesn\'t match zscores profils');
+        });
+
+    });
+
     describe("getQueriedStudies", ()=>{
 
         const virtualStudy: VirtualStudy = {
@@ -1065,21 +1138,15 @@ describe("ResultsViewPageStoreUtils", ()=>{
             } as CancerStudy
         };
 
-        let virtualStudies: { [id: string]: VirtualStudy } = {
-            'virtual_study_1': $.extend({},virtualStudy,{"id": "virtual_study_1"}) as VirtualStudy,
-            'virtual_study_2': $.extend({},virtualStudy,{"id": "virtual_study_2"}) as VirtualStudy
-        };
+        let virtualStudies: VirtualStudy[] = [
+            $.extend({},virtualStudy,{"id": "virtual_study_1"}) as VirtualStudy,
+            $.extend({},virtualStudy,{"id": "virtual_study_2"}) as VirtualStudy
+        ];
 
         before(()=>{
-            sinon.stub(sessionServiceClient, "getVirtualStudy").callsFake(function fakeFn(id:string) {
+            sinon.stub(sessionServiceClient, "getUserVirtualStudies").callsFake(function fakeFn(id:string) {
                 return new Promise((resolve, reject) => {
-                    let obj = virtualStudies[id]
-                    if(_.isUndefined(obj)){
-                        reject()
-                    }
-                    else{
-                        resolve(obj);
-                    }
+                    resolve(virtualStudies);
                 });
             });
             //
@@ -1128,13 +1195,623 @@ describe("ResultsViewPageStoreUtils", ()=>{
             let test = await fetchQueriedStudies({ 'physical_study_1': { studyId: 'physical_study_1'} as CancerStudy},['physical_study_1','physical_study_2']);
             assert.deepEqual(_.map(test,obj=>obj.studyId), ['physical_study_1', 'physical_study_2']);
         });
-        
+
         //this case is not possible because id in these scenarios are first identified in QueryBuilder.java and
         //returned to query selector page
-        it("when virtual study query having private study or unknow virtual study id", (done)=>{
-            fetchQueriedStudies({},['shared_study1']).catch((error)=>{
-                done();
-            });
+        it("when virtual study query having private study or unknow virtual study id", async ()=>{
+            let test = await fetchQueriedStudies({},['shared_study1']);
+            // assume no studies returned
+            assert.equal(test.length, 0);
         });
+
+
+
+    });
+
+    describe('buildResultsViewPageTitle', ()=>{
+
+        it('handles various numbers of studies and genes',()=>{
+
+            let genes = ["KRAS","NRAS","BRAF"];
+            let studies = [{ shortName:"Study Number One"} as CancerStudy];
+            let ret = buildResultsViewPageTitle(genes, studies);
+            let expectedResult = "cBioPortal for Cancer Genomics: KRAS, NRAS and 1 other gene in Study Number One";
+            assert.equal(ret, expectedResult, "three genes, one study");
+
+            genes = ["KRAS","NRAS","BRAF","KFED"];
+            studies = [{ shortName:"Study Number One"} as CancerStudy];
+            ret = buildResultsViewPageTitle(genes, studies);
+            expectedResult = "cBioPortal for Cancer Genomics: KRAS, NRAS and 2 other genes in Study Number One";
+            assert.equal(ret, expectedResult, "two genes, one study");
+
+            genes = ["KRAS","NRAS"];
+            studies = [{ shortName:"Study Number One"} as CancerStudy];
+            ret = buildResultsViewPageTitle(genes, studies);
+            expectedResult = "cBioPortal for Cancer Genomics: KRAS, NRAS in Study Number One";
+            assert.equal(ret, expectedResult, "two genes, one study");
+
+            genes = ["KRAS"];
+            studies = [{ shortName:"Study Number One"} as CancerStudy];
+            ret = buildResultsViewPageTitle(genes, studies);
+            expectedResult = "cBioPortal for Cancer Genomics: KRAS in Study Number One";
+            assert.equal(ret, expectedResult, "one gene, one study");
+
+            genes = ["KRAS"];
+            studies = [{ shortName:"Study Number One"} as CancerStudy, { shortName:"Study Number Two"} as CancerStudy];
+            ret = buildResultsViewPageTitle(genes, studies);
+            expectedResult = "cBioPortal for Cancer Genomics: KRAS in Study Number One and 1 other study";
+            assert.equal(ret, expectedResult, "one gene two studies");
+
+            genes = ["KRAS"];
+            studies = [{ shortName:"Study Number One"} as CancerStudy, { shortName:"Study Number Two"} as CancerStudy,  { shortName:"Study Number Two"} as CancerStudy];
+            ret = buildResultsViewPageTitle(genes, studies);
+            expectedResult = "cBioPortal for Cancer Genomics: KRAS in Study Number One and 2 other studies";
+            assert.equal(ret, expectedResult, "one gene, three studies");
+
+        })
+
+    });
+
+});
+
+
+describe('getSampleAlteredMap', () => {
+
+    const arg0 = [
+        {
+            "cases": {
+                "samples": {
+                },
+                "patients": {
+                }
+            },
+            "oql": {
+                "label": "RAS",
+                "list": [
+                    {
+                        "gene": "KRAS",
+                        "parsed_oql_line": {
+                            "gene": "KRAS",
+                            "alterations": [
+                                {
+                                    "alteration_type": "mut",
+                                    "info": {}
+                                },
+                                {
+                                    "alteration_type": "fusion"
+                                }
+                            ]
+                        },
+                        "oql_line": "KRAS: MUT FUSION;",
+                        "data": [
+                            {
+                                "uniqueSampleKey": "QjA4NTpjaG9sX251c18yMDEy",
+                            },
+                            {
+                                "uniqueSampleKey": "UjEwNDpjaG9sX251c18yMDEy",
+                            },
+                            {
+                                "uniqueSampleKey": "VzAxMjpjaG9sX251c18yMDEy",
+                            }
+                        ]
+                    },
+                    {
+                        "gene": "NRAS",
+                        "parsed_oql_line": {
+                            "gene": "NRAS",
+                            "alterations": [
+                                {
+                                    "alteration_type": "mut",
+                                    "info": {}
+                                },
+                                {
+                                    "alteration_type": "fusion"
+                                }
+                            ]
+                        },
+                        "oql_line": "NRAS: MUT FUSION;",
+                        "data": []
+                    }
+                ]
+            },
+            "mergedTrackOqlList": [
+                {
+                    "cases": {
+                        "samples": {
+                        },
+                        "patients": {
+                        }
+                    },
+                    "oql": {
+                        "gene": "KRAS",
+                        "parsed_oql_line": {
+                            "gene": "KRAS",
+                            "alterations": [
+                                {
+                                    "alteration_type": "mut",
+                                    "info": {}
+                                },
+                                {
+                                    "alteration_type": "fusion"
+                                }
+                            ]
+                        },
+                        "oql_line": "KRAS: MUT FUSION;",
+                        "data": [
+                            {
+                                "uniqueSampleKey": "QjA4NTpjaG9sX251c18yMDEy",
+                            },
+                            {
+                                "uniqueSampleKey": "UjEwNDpjaG9sX251c18yMDEy",
+                            },
+                            {
+                                "uniqueSampleKey": "VzAxMjpjaG9sX251c18yMDEy",
+                            }
+                        ]
+                    }
+                },
+                {
+                    "cases": {
+                        "samples": {
+                        },
+                        "patients": {
+                        }
+                    },
+                    "oql": {
+                        "gene": "NRAS",
+                        "parsed_oql_line": {
+                            "gene": "NRAS",
+                            "alterations": [
+                                {
+                                    "alteration_type": "mut",
+                                    "info": {}
+                                },
+                                {
+                                    "alteration_type": "fusion"
+                                }
+                            ]
+                        },
+                        "oql_line": "NRAS: MUT FUSION;",
+                        "data": []
+                    }
+                }
+            ]
+        },
+        {
+            "cases": {
+                "samples": {
+                },
+                "patients": {
+                }
+            },
+            "oql": {
+                "list": [
+                    {
+                        "gene": "SMAD4",
+                        "parsed_oql_line": {
+                            "gene": "SMAD4",
+                            "alterations": [
+                                {
+                                    "alteration_type": "mut",
+                                    "info": {}
+                                },
+                                {
+                                    "alteration_type": "fusion"
+                                }
+                            ]
+                        },
+                        "oql_line": "SMAD4: MUT FUSION;",
+                        "data": [
+                            {
+                                "uniqueSampleKey": "QjA5OTpjaG9sX251c18yMDEy",
+                            },
+                            {
+                                "uniqueSampleKey": "UjEwNDpjaG9sX251c18yMDEy",
+                            },
+                            {
+                                "uniqueSampleKey": "VTA0NDpjaG9sX251c18yMDEy",
+                            },
+                            {
+                                "uniqueSampleKey": "VzAxMjpjaG9sX251c18yMDEy",
+                            }
+                        ]
+                    },
+                    {
+                        "gene": "RAN",
+                        "parsed_oql_line": {
+                            "gene": "RAN",
+                            "alterations": [
+                                {
+                                    "alteration_type": "mut",
+                                    "info": {}
+                                },
+                                {
+                                    "alteration_type": "fusion"
+                                }
+                            ]
+                        },
+                        "oql_line": "RAN: MUT FUSION;",
+                        "data": []
+                    }
+                ]
+            },
+            "mergedTrackOqlList": [
+                {
+                    "cases": {
+                        "samples": {
+                        },
+                        "patients": {
+                        }
+                    },
+                    "oql": {
+                        "gene": "SMAD4",
+                        "parsed_oql_line": {
+                            "gene": "SMAD4",
+                            "alterations": [
+                                {
+                                    "alteration_type": "mut",
+                                    "info": {}
+                                },
+                                {
+                                    "alteration_type": "fusion"
+                                }
+                            ]
+                        },
+                        "oql_line": "SMAD4: MUT FUSION;",
+                        "data": [
+                            {
+                                "uniqueSampleKey": "QjA5OTpjaG9sX251c18yMDEy",
+                            },
+                            {
+                                "uniqueSampleKey": "UjEwNDpjaG9sX251c18yMDEy",
+                            },
+                            {
+                                "uniqueSampleKey": "VTA0NDpjaG9sX251c18yMDEy",
+                            },
+                            {
+                                "uniqueSampleKey": "VzAxMjpjaG9sX251c18yMDEy",
+                            }
+                        ]
+                    }
+                },
+                {
+                    "cases": {
+                        "samples": {
+                        },
+                        "patients": {
+                        }
+                    },
+                    "oql": {
+                        "gene": "RAN",
+                        "parsed_oql_line": {
+                            "gene": "RAN",
+                            "alterations": [
+                                {
+                                    "alteration_type": "mut",
+                                    "info": {}
+                                },
+                                {
+                                    "alteration_type": "fusion"
+                                }
+                            ]
+                        },
+                        "oql_line": "RAN: MUT FUSION;",
+                        "data": []
+                    }
+                }
+            ]
+        },
+        {
+            "cases": {
+                "samples": {
+                },
+                "patients": {
+                }
+            },
+            "oql": {
+                "gene": "SMAD4",
+                "parsed_oql_line": {
+                    "gene": "SMAD4",
+                    "alterations": [
+                        {
+                            "alteration_type": "mut",
+                            "info": {}
+                        }
+                    ]
+                },
+                "oql_line": "SMAD4: MUT;",
+                "data": [
+                    {
+                        "uniqueSampleKey": "QjA5OTpjaG9sX251c18yMDEy",
+                    },
+                    {
+                        "uniqueSampleKey": "UjEwNDpjaG9sX251c18yMDEy",
+                    },
+                    {
+                        "uniqueSampleKey": "VTA0NDpjaG9sX251c18yMDEy",
+                    },
+                    {
+                        "uniqueSampleKey": "VzAxMjpjaG9sX251c18yMDEy",
+                    }
+                ]
+            }
+        },
+        {
+            "cases": {
+                "samples": {
+                }
+            },
+            "oql": {
+                "gene": "KRAS",
+                "parsed_oql_line": {
+                    "gene": "KRAS",
+                    "alterations": [
+                        {
+                            "alteration_type": "mut",
+                            "info": {}
+                        },
+                        {
+                            "alteration_type": "fusion"
+                        }
+                    ]
+                },
+                "oql_line": "KRAS: MUT FUSION;",
+                "data": [
+                    {
+                        "uniqueSampleKey": "QjA4NTpjaG9sX251c18yMDEy",
+                    },
+                    {
+                        "uniqueSampleKey": "UjEwNDpjaG9sX251c18yMDEy",
+                    },
+                    {
+                        "uniqueSampleKey": "VzAxMjpjaG9sX251c18yMDEy",
+                    }
+                ]
+            }
+        }
+    ] as IQueriedMergedTrackCaseData[];
+
+    var arg1 = [
+        {
+            "uniqueSampleKey": "QjA4NTpjaG9sX251c18yMDEy",
+            "uniquePatientKey": "QjA4NTpjaG9sX251c18yMDEy",
+            "sampleType": "Primary Solid Tumor",
+            "sequenced": true,
+            "copyNumberSegmentPresent": false,
+            "sampleId": "B085",
+            "patientId": "B085",
+            "studyId": "chol_nus_2012"
+        },
+        {
+            "uniqueSampleKey": "QjA5OTpjaG9sX251c18yMDEy",
+            "uniquePatientKey": "QjA5OTpjaG9sX251c18yMDEy",
+            "sampleType": "Primary Solid Tumor",
+            "sequenced": true,
+            "copyNumberSegmentPresent": false,
+            "sampleId": "B099",
+            "patientId": "B099",
+            "studyId": "chol_nus_2012"
+        },
+        {
+            "uniqueSampleKey": "UjEwNDpjaG9sX251c18yMDEy",
+            "uniquePatientKey": "UjEwNDpjaG9sX251c18yMDEy",
+            "sampleType": "Primary Solid Tumor",
+            "sequenced": true,
+            "copyNumberSegmentPresent": false,
+            "sampleId": "R104",
+            "patientId": "R104",
+            "studyId": "chol_nus_2012"
+        },
+        {
+            "uniqueSampleKey": "VDAyNjpjaG9sX251c18yMDEy",
+            "uniquePatientKey": "VDAyNjpjaG9sX251c18yMDEy",
+            "sampleType": "Primary Solid Tumor",
+            "sequenced": true,
+            "copyNumberSegmentPresent": false,
+            "sampleId": "T026",
+            "patientId": "T026",
+            "studyId": "chol_nus_2012"
+        },
+        {
+            "uniqueSampleKey": "VTA0NDpjaG9sX251c18yMDEy",
+            "uniquePatientKey": "VTA0NDpjaG9sX251c18yMDEy",
+            "sampleType": "Primary Solid Tumor",
+            "sequenced": true,
+            "copyNumberSegmentPresent": false,
+            "sampleId": "U044",
+            "patientId": "U044",
+            "studyId": "chol_nus_2012"
+        },
+        {
+            "uniqueSampleKey": "VzAxMjpjaG9sX251c18yMDEy",
+            "uniquePatientKey": "VzAxMjpjaG9sX251c18yMDEy",
+            "sampleType": "Primary Solid Tumor",
+            "sequenced": true,
+            "copyNumberSegmentPresent": false,
+            "sampleId": "W012",
+            "patientId": "W012",
+            "studyId": "chol_nus_2012"
+        },
+        {
+            "uniqueSampleKey": "VzAzOTpjaG9sX251c18yMDEy",
+            "uniquePatientKey": "VzAzOTpjaG9sX251c18yMDEy",
+            "sampleType": "Primary Solid Tumor",
+            "sequenced": true,
+            "copyNumberSegmentPresent": false,
+            "sampleId": "W039",
+            "patientId": "W039",
+            "studyId": "chol_nus_2012"
+        },
+        {
+            "uniqueSampleKey": "VzA0MDpjaG9sX251c18yMDEy",
+            "uniquePatientKey": "VzA0MDpjaG9sX251c18yMDEy",
+            "sampleType": "Primary Solid Tumor",
+            "sequenced": true,
+            "copyNumberSegmentPresent": false,
+            "sampleId": "W040",
+            "patientId": "W040",
+            "studyId": "chol_nus_2012"
+        }
+    ] as Sample[];
+
+    const arg2 = "[\"RAS\" KRAS NRAS]\n[SMAD4 RAN]\nSMAD4: MUT\nKRAS";
+
+    it('handles different type of gene tracks correctly', () => {
+        
+        const ret = getSampleAlteredMap(arg0, arg1, arg2);
+        const expectedResult = {
+            "RAS": [
+                true,
+                false,
+                true,
+                false,
+                false,
+                true,
+                false,
+                false
+            ],
+            "SMAD4 / RAN": [
+                false,
+                true,
+                true,
+                false,
+                true,
+                true,
+                false,
+                false
+            ],
+            "SMAD4: MUT": [
+                false,
+                true,
+                true,
+                false,
+                true,
+                true,
+                false,
+                false
+            ],
+            "KRAS": [
+                true,
+                false,
+                true,
+                false,
+                false,
+                true,
+                false,
+                false
+            ]
+        };
+        assert.deepEqual(ret["KRAS"], expectedResult["KRAS"], "single gene track");
+        assert.deepEqual(ret["SMAD4: MUT"], expectedResult["SMAD4: MUT"], "single gene track(with alteration)");
+        assert.deepEqual(ret["SMAD4 / RAN"], expectedResult["SMAD4 / RAN"], "merged gene track");
+        assert.deepEqual(ret["RAS"], expectedResult["RAS"], "merged gene track(with group name)");
+
+    });
+});
+
+describe('getSingleGeneResultKey', () => {
+    it('handles gene with alteration', () => {
+
+        let arg0 = 2;
+        let arg1 = "[\"RAS\" KRAS NRAS]\n[SMAD4 RAN]\nSMAD4: MUT\nKRAS";
+        let arg2 = {
+            "gene": "SMAD4",
+            "parsed_oql_line": {
+                "gene": "SMAD4",
+                "alterations": []
+            },
+            "oql_line": "SMAD4: MUT;",
+            "data": []
+        } as OQLLineFilterOutput<AnnotatedExtendedAlteration>;
+        const ret = getSingleGeneResultKey(arg0, arg1, arg2);
+        const expectedResult = "SMAD4: MUT"
+
+        assert.equal(ret, expectedResult, "get single gene result key(with alteration)");
+
+    });
+
+    it('handles gene without mutation', () => {
+
+        let arg0 = 3;
+        let arg1 = "[\"RAS\" KRAS NRAS]\n[SMAD4 RAN]\nSMAD4: MUT\nKRAS";
+        let arg2 = {
+            "gene": "KRAS",
+            "parsed_oql_line": {
+                "gene": "KRAS",
+                "alterations": []
+            },
+            "oql_line": "KRAS: MUT FUSION;",
+            "data": []
+        } as OQLLineFilterOutput<AnnotatedExtendedAlteration>;
+        const ret = getSingleGeneResultKey(arg0, arg1, arg2);
+        const expectedResult = "KRAS"
+        
+        assert.equal(ret, expectedResult, "get single gene result key(without alteration)");
+
+    });
+});
+
+describe('getMultipleGeneResultKey', () => {
+    it('handles gene group with name', () => {
+
+        let arg0 = {
+            "label": "RAS",
+            "list": [
+                {
+                    "gene": "KRAS",
+                    "parsed_oql_line": {
+                        "gene": "KRAS",
+                        "alterations": []
+                    },
+                    "oql_line": "KRAS: MUT FUSION;",
+                    "data": []
+                },
+                {
+                    "gene": "NRAS",
+                    "parsed_oql_line": {
+                        "gene": "NRAS",
+                        "alterations": []
+                    },
+                    "oql_line": "NRAS: MUT FUSION;",
+                    "data": []
+                }
+            ]
+        } as MergedTrackLineFilterOutput<AnnotatedExtendedAlteration>;
+        const ret = getMultipleGeneResultKey(arg0);
+        const expectedResult = "RAS"
+        
+        assert.equal(ret, expectedResult, "get gene group result key(with name)");
+
+    });
+
+    it('handles gene group without name', () => {
+
+        let arg0 = {
+            "list": [
+                {
+                    "gene": "SMAD4",
+                    "parsed_oql_line": {
+                        "gene": "SMAD4",
+                        "alterations": []
+                    },
+                    "oql_line": "SMAD4: MUT FUSION;",
+                    "data": []
+                },
+                {
+                    "gene": "RAN",
+                    "parsed_oql_line": {
+                        "gene": "RAN",
+                        "alterations": []
+                    },
+                    "oql_line": "RAN: MUT FUSION;",
+                    "data": []
+                }
+            ]
+        } as MergedTrackLineFilterOutput<AnnotatedExtendedAlteration>;
+        const ret = getMultipleGeneResultKey(arg0);
+        const expectedResult = "SMAD4 / RAN"
+        
+        assert.equal(ret, expectedResult, "get gene group result key(without name)");
+
     });
 });

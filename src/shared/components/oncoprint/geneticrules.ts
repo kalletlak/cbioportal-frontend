@@ -1,5 +1,5 @@
 import * as $ from "jquery";
-import {RuleSetParams} from "oncoprintjs";
+import {IGeneticAlterationRuleSetParams, RuleSetParams} from "oncoprintjs";
 // Feed this in as
 
 // Default grey
@@ -9,11 +9,12 @@ export const DEFAULT_GREY = "rgba(190, 190, 190, 1)";
 export const MUT_COLOR_MISSENSE = '#008000';
 export const MUT_COLOR_MISSENSE_PASSENGER = '#53D400';
 export const MUT_COLOR_INFRAME = '#993404';
-export const MUT_COLOR_INFRAME_PASSENGER = '#fe9929';
+export const MUT_COLOR_INFRAME_PASSENGER = '#a68028';
 export const MUT_COLOR_TRUNC = '#000000';
 export const MUT_COLOR_TRUNC_PASSENGER = '#708090';
 export const MUT_COLOR_FUSION = '#8B00C9';
 export const MUT_COLOR_PROMOTER = '#00B7CE';
+export const MUT_COLOR_OTHER = '#cf58bc';//'#cfb537';
 
 export const MRNA_COLOR_UP = "#ff9999";
 export const MRNA_COLOR_DOWN = "#6699cc";
@@ -191,24 +192,27 @@ let non_mutation_rule_params = {
 		legend_label: 'Fusion',
 		legend_order: FUSION_LEGEND_ORDER
 	}
-    },
+    }
+};
+
+export const germline_rule_params = {
     // germline
     'disp_germ': {
-        // white stripe in the middle
-        'true': {
-            shapes: [{
-                'type': 'rectangle',
-                'fill': MUT_COLOR_GERMLINE,
-                'x': '0%',
-                'y': '46%',
-                'width': '100%',
-                'height': '8%',
-                'z': 7
-            }],
+    // white stripe in the middle
+    'true': {
+        shapes: [{
+            'type': 'rectangle',
+            'fill': MUT_COLOR_GERMLINE,
+            'x': '0%',
+            'y': '46%',
+            'width': '100%',
+            'height': '8%',
+            'z': 7
+        }],
             legend_label: 'Germline Mutation',
             legend_order: GERMLINE_LEGEND_ORDER
-        }
     }
+}
 };
 
 const base_genetic_rule_set_params = {
@@ -218,11 +222,11 @@ const base_genetic_rule_set_params = {
 	legend_base_color: DEFAULT_GREY
 };
 
-export const genetic_rule_set_same_color_for_all_no_recurrence:RuleSetParams =
+export const genetic_rule_set_same_color_for_all_no_recurrence:IGeneticAlterationRuleSetParams =
 	$.extend({}, base_genetic_rule_set_params, {
 		'rule_params': $.extend({}, non_mutation_rule_params, {
 			'disp_mut': {
-				'trunc,inframe,missense,promoter,trunc_rec,inframe_rec,missense_rec,promoter_rec': {
+				'trunc,inframe,missense,promoter,other,trunc_rec,inframe_rec,missense_rec,promoter_rec,other_rec': {
 				shapes: [{
 					'type': 'rectangle',
 					'fill': MUT_COLOR_MISSENSE,
@@ -239,11 +243,11 @@ export const genetic_rule_set_same_color_for_all_no_recurrence:RuleSetParams =
 		})
 	});
 
-export const genetic_rule_set_same_color_for_all_recurrence:RuleSetParams =
+export const genetic_rule_set_same_color_for_all_recurrence:IGeneticAlterationRuleSetParams =
 	$.extend({}, base_genetic_rule_set_params, {
 		'rule_params': $.extend({}, non_mutation_rule_params, {
 			'disp_mut': {
-				'missense_rec,inframe_rec,trunc_rec': {
+				'missense_rec,inframe_rec,trunc_rec,promoter_rec,other_rec': {
 				shapes: [{
 					'type': 'rectangle',
 					'fill': MUT_COLOR_MISSENSE,
@@ -256,7 +260,7 @@ export const genetic_rule_set_same_color_for_all_recurrence:RuleSetParams =
 				legend_label: 'Mutation (putative driver)',
 				legend_order: MUTATION_LEGEND_ORDER
 				},
-				'missense,inframe,trunc,promoter,promoter_rec': {
+				'missense,inframe,trunc,promoter,other': {
 				shapes: [{
 					'type': 'rectangle',
 					'fill': MUT_COLOR_MISSENSE_PASSENGER,
@@ -273,10 +277,23 @@ export const genetic_rule_set_same_color_for_all_recurrence:RuleSetParams =
 		})
 	});
 
-export const genetic_rule_set_different_colors_no_recurrence:RuleSetParams =
+export const genetic_rule_set_different_colors_no_recurrence:IGeneticAlterationRuleSetParams =
 	$.extend({}, base_genetic_rule_set_params, {
 			'rule_params': $.extend({}, non_mutation_rule_params, {
 			'disp_mut': {
+				'other,other_rec':{
+					shapes: [{
+						'type': 'rectangle',
+						'fill': MUT_COLOR_OTHER,
+						'x': '0%',
+						'y': '33.33%',
+						'width': '100%',
+						'height': '33.33%',
+						'z': 6,
+					}],
+					legend_label: 'Other Mutation',
+					legend_order: MUTATION_LEGEND_ORDER
+				},
 				'promoter,promoter_rec': {
 				shapes: [{
 					'type': 'rectangle',
@@ -333,10 +350,23 @@ export const genetic_rule_set_different_colors_no_recurrence:RuleSetParams =
 		})
 	});
 
-export const genetic_rule_set_different_colors_recurrence:RuleSetParams =
+export const genetic_rule_set_different_colors_recurrence:IGeneticAlterationRuleSetParams =
 	$.extend({}, base_genetic_rule_set_params, {
 			'rule_params': $.extend({}, non_mutation_rule_params, {
 			'disp_mut': {
+				'other,other_rec':{
+					shapes: [{
+						'type': 'rectangle',
+						'fill': MUT_COLOR_OTHER,
+						'x': '0%',
+						'y': '33.33%',
+						'width': '100%',
+						'height': '33.33%',
+						'z': 6,
+					}],
+					legend_label: 'Other Mutation',
+					legend_order: MUTATION_LEGEND_ORDER
+				},
 				'promoter,promoter_rec': {
 				shapes: [{
 					'type': 'rectangle',

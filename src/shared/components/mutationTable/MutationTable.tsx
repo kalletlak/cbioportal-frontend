@@ -31,17 +31,19 @@ import {ICivicVariantDataWrapper, ICivicGeneDataWrapper} from "shared/model/Civi
 import {IMutSigData} from "shared/model/MutSig";
 import DiscreteCNACache from "shared/cache/DiscreteCNACache";
 import OncoKbEvidenceCache from "shared/cache/OncoKbEvidenceCache";
-import GenomeNexusEnrichmentCache from "shared/cache/GenomeNexusEnrichment";
 import MrnaExprRankCache from "shared/cache/MrnaExprRankCache";
 import VariantCountCache from "shared/cache/VariantCountCache";
 import PubMedCache from "shared/cache/PubMedCache";
 import MutationCountCache from "shared/cache/MutationCountCache";
+import GenomeNexusCache from "shared/cache/GenomeNexusCache";
 import {ILazyMobXTableApplicationDataStore} from "shared/lib/ILazyMobXTableApplicationDataStore";
 import {ILazyMobXTableApplicationLazyDownloadDataFetcher} from "shared/lib/ILazyMobXTableApplicationLazyDownloadDataFetcher";
 import generalStyles from "./column/styles.module.scss";
 import classnames from 'classnames';
 import {IPaginationControlsProps} from "../paginationControls/PaginationControls";
 import {IColumnVisibilityControlsProps} from "../columnVisibilityControls/ColumnVisibilityControls";
+import MobxPromise from "mobxpromise";
+import { VariantAnnotation } from "shared/api/generated/GenomeNexusAPI";
 
 export interface IMutationTableProps {
     studyIdToStudy?: {[studyId:string]:CancerStudy};
@@ -49,11 +51,11 @@ export interface IMutationTableProps {
     molecularProfileIdToMolecularProfile?: {[molecularProfileId:string]:MolecularProfile};
     discreteCNACache?:DiscreteCNACache;
     oncoKbEvidenceCache?:OncoKbEvidenceCache;
-    genomeNexusEnrichmentCache?:GenomeNexusEnrichmentCache;
     mrnaExprRankCache?:MrnaExprRankCache;
     variantCountCache?:VariantCountCache;
     pubMedCache?:PubMedCache;
     mutationCountCache?:MutationCountCache;
+    genomeNexusCache?:GenomeNexusCache;
     mutSigData?:IMutSigData;
     enableOncoKb?: boolean;
     enableMyCancerGenome?: boolean;
@@ -62,6 +64,7 @@ export interface IMutationTableProps {
     enableFunctionalImpact?: boolean;
     myCancerGenomeData?: IMyCancerGenomeData;
     hotspotData?: IHotspotDataWrapper;
+    indexedVariantAnnotations?: MobxPromise<{ [genomicLocation: string]: VariantAnnotation; } | undefined>;
     cosmicData?:ICosmicData;
     oncoKbData?: IOncoKbDataWrapper;
     oncoKbAnnotatedGenes:{[entrezGeneId:number]:boolean};
@@ -414,11 +417,11 @@ export default class MutationTable<P extends IMutationTableProps> extends React.
 
         this._columns[MutationTableColumnType.FUNCTIONAL_IMPACT] = {
             name:"Functional Impact",
-            render:(d:Mutation[])=>(this.props.genomeNexusEnrichmentCache
-                ? FunctionalImpactColumnFormatter.renderFunction(d, this.props.genomeNexusEnrichmentCache as GenomeNexusEnrichmentCache)
-                : (<span></span>)),
+            render:(d:Mutation[])=>(this.props.genomeNexusCache
+                ? FunctionalImpactColumnFormatter.renderFunction(d, this.props.genomeNexusCache)
+                : <span></span>),
             download: (d:Mutation[]) => FunctionalImpactColumnFormatter.download(
-                d, this.props.genomeNexusEnrichmentCache as GenomeNexusEnrichmentCache),
+                d, this.props.genomeNexusCache as GenomeNexusCache),
             headerRender: FunctionalImpactColumnFormatter.headerRender,
             visible: false,
             shouldExclude: () => !this.props.enableFunctionalImpact

@@ -353,11 +353,14 @@ export class FilteredCancerTreeView
 
         const {selectableSelectedStudyIds, selectableSelectedStudies, shownStudies, shownAndSelectedStudies} = this.getSelectionReport();
 
+		let updatedSelectableSelectedStudyIds:string[] = []
         if (shownStudies.length === shownAndSelectedStudies.length) { // deselect
-            this.store.selectableSelectedStudyIds = _.without(this.store.selectableSelectedStudyIds, ... shownStudies.map((study:CancerStudy)=>study.studyId));
+            updatedSelectableSelectedStudyIds = _.without(this.store.selectableSelectedStudyIds, ... shownStudies.map((study:CancerStudy)=>study.studyId));
         } else {
-            this.store.selectableSelectedStudyIds = _.union(this.store.selectableSelectedStudyIds, shownStudies.map((study:CancerStudy)=>study.studyId));
-        }
+            updatedSelectableSelectedStudyIds = _.union(this.store.selectableSelectedStudyIds, shownStudies.map((study:CancerStudy)=>study.studyId));
+		}
+
+		this.store.selectableSelectedStudyIds = updatedSelectableSelectedStudyIds.filter(id => !_.includes(this.store.deletedVirtualStudies,id));
 
     }
 
@@ -369,6 +372,6 @@ export class FilteredCancerTreeView
 		else
 			selectableSelectedStudyIds = _.difference(selectableSelectedStudyIds, clickedStudyIds);
 
-		this.store.selectableSelectedStudyIds = selectableSelectedStudyIds;
+		this.store.selectableSelectedStudyIds = selectableSelectedStudyIds.filter(id => !_.includes(this.store.deletedVirtualStudies,id));
 	}
 }

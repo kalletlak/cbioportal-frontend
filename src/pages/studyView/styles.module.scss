@@ -1,10 +1,84 @@
-.flexContainer {
-    display: inline-flex;
-    flex-direction: row;
-    flex-wrap: wrap;
-    width: 100%;
+.selectedInfo {
 }
-.survivalPlot {
+
+.absolutePanel {
+    position: absolute;
+    top: 8px;
+    right:20px;
+    z-index: 2;
+    display: flex;
+}
+
+.selectedInfoLoadingIndicator {
+    padding: 5px;
+    width: 200px;
+}
+
+.selectedInfoCheckbox {
+    margin: 2px 3px 0 0 !important;
+}
+
+.mainTabs{
+    position: relative;
+}
+
+.studyViewSurvivalPlot {
     float: left;
     margin: 5px;
 }
+
+.studyViewSurvivalPlotTitle {
+    font-size: 18px;
+    color: #000;
+    font-weight: 700;
+    text-align: center;
+}
+
+.studyViewSurvivalPlotBody {
+    position: relative
+}
+
+.studyViewAutoMargin {
+    margin: auto;
+}
+
+.studyViewLoadingIndicator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-grow: 1;
+    flex-direction: column;
+}
+.userSelections {
+    font-size: 13px;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom:10px;
+}
+
+.parentGroupLogic {
+    background-color: $lightGrey;
+    border:1px solid $borderColor;
+    border-radius: 5px;
+    margin: 2px 5px 2px 0;
+    padding: 5px;
+}
+
+.summaryClearAllBtn {
+    height: 30px;
+    margin-left: 5px !important;
+}
+
+.filterClinicalAttrName {
+    font-size: 13px;
+    font-weight: bold;
+}
+
+.summary{
+    flex-grow: 1;
+    .description{
+        font-size: 13px;
+    }
+}
+

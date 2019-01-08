@@ -1,10 +1,9 @@
 import MobxPromiseCache from "../lib/MobxPromiseCache";
 import {
     CancerStudy, ClinicalAttribute, ClinicalData, GenePanelData, MolecularProfile,
-    MutationCount, Patient, Sample
+    Patient, Sample
 } from "../api/generated/CBioPortalAPI";
 import {
-    FractionGenomeAltered, FractionGenomeAlteredFilter,
     MutationSpectrum, MutationSpectrumFilter
 } from "../api/generated/CBioPortalAPIInternal";
 import {MobxPromise} from "mobxpromise";
@@ -13,17 +12,25 @@ import _ from "lodash";
 import client from "../api/cbioportalClientInstance";
 import internalClient from "../api/cbioportalInternalClientInstance";
 import {OncoprintClinicalAttribute} from "../components/oncoprint/ResultsViewOncoprint";
-import {logicalOr} from "../lib/LogicUtils";
 
 export enum SpecialAttribute {
-    MutationCount = "MUTATION_COUNT",
-    FractionGenomeAltered = "FRACTION_GENOME_ALTERED",
     MutationSpectrum = "NO_CONTEXT_MUTATION_SIGNATURE",
     StudyOfOrigin = "CANCER_STUDY",
-    Profiled = "PROFILED_IN"
+    ProfiledInPrefix = "PROFILED_IN",
+    NumSamplesPerPatient = "NUM_SAMPLES_PER_PATIENT"
 }
 
-type OncoprintClinicalData = ClinicalData[]|MutationCount[]|FractionGenomeAltered[]|MutationSpectrum[];
+const locallyComputedSpecialAttributes = [SpecialAttribute.StudyOfOrigin, SpecialAttribute.NumSamplesPerPatient];
+
+export function clinicalAttributeIsPROFILEDIN(attribute:{clinicalAttributeId:string|SpecialAttribute}) {
+    return attribute.clinicalAttributeId.startsWith(SpecialAttribute.ProfiledInPrefix);
+}
+
+export function clinicalAttributeIsLocallyComputed(attribute:{clinicalAttributeId:string|SpecialAttribute}) {
+    return clinicalAttributeIsPROFILEDIN(attribute) || (locallyComputedSpecialAttributes.indexOf(attribute.clinicalAttributeId as any) > -1);
+}
+
+type OncoprintClinicalData = ClinicalData[]|MutationSpectrum[];
 
 function makeProfiledData(
     attribute: OncoprintClinicalAttribute,
@@ -38,7 +45,8 @@ function makeProfiledData(
             continue;
         }
         const allCoverage:GenePanelData[] = _.flatten(_.values(coverageInfo.byGene)).concat(coverageInfo.allGenes);
-        const profiled = logicalOr(molecularProfileIds.map(molecularProfileId=>!!allCoverage.find(gpData=>(gpData.molecularProfileId === molecularProfileId))));
+        const coveredMolecularProfiles = _.keyBy(allCoverage, "molecularProfileId");
+        const profiled = _.some(molecularProfileIds, molecularProfileId=>(molecularProfileId in coveredMolecularProfiles));
         if (profiled) {
             ret.push({
                 clinicalAttribute: attribute as ClinicalAttribute,
@@ -66,36 +74,6 @@ async function fetch(
     let ret:OncoprintClinicalData;
     let studyToSamples:{[studyId:string]:Sample[]};
     switch(attribute.clinicalAttributeId) {
-        case SpecialAttribute.MutationCount:
-            studyToSamples = _.groupBy(samples, sample=>sample.studyId);
-            ret = _.flatten(await Promise.all(Object.keys(studyToMutationMolecularProfile).map(studyId=>{
-                const samplesInStudy = studyToSamples[studyId];
-                if (samplesInStudy.length) {
-                    return client.fetchMutationCountsInMolecularProfileUsingPOST({
-                        molecularProfileId: studyToMutationMolecularProfile[studyId].molecularProfileId,
-                        sampleIds: samplesInStudy.map(s=>s.sampleId)
-                    });
-                } else {
-                    return Promise.resolve([]);
-                }
-            })));
-            break;
-        case SpecialAttribute.FractionGenomeAltered:
-            studyToSamples = _.groupBy(samples, sample=>sample.studyId);
-            ret = _.flatten(await Promise.all(Object.keys(studyToSamples).map(studyId=>{
-                const samplesInStudy = studyToSamples[studyId];
-                if (samplesInStudy.length) {
-                    return internalClient.fetchFractionGenomeAlteredUsingPOST({
-                        studyId,
-                        fractionGenomeAlteredFilter: {
-                            sampleIds: samplesInStudy.map(s=>s.sampleId)
-                        } as FractionGenomeAlteredFilter
-                    });
-                } else {
-                    return Promise.resolve([]);
-                }
-            })));
-            break;
         case SpecialAttribute.MutationSpectrum:
             studyToSamples = _.groupBy(samples, sample=>sample.studyId);
             ret = _.flatten(await Promise.all(Object.keys(studyToMutationMolecularProfile).map(studyId=>{
@@ -124,8 +102,23 @@ async function fetch(
                 value: studyIdToStudy[sample.studyId].name
             } as ClinicalData));
             break;
+        case SpecialAttribute.NumSamplesPerPatient:
+            const patientToSamples = _.groupBy(samples, "uniquePatientKey");
+            const patientKeyToPatient = _.keyBy(patients, "uniquePatientKey");
+            ret = _.map(patientToSamples, (samples, patientKey)=>{
+                const patient = patientKeyToPatient[patientKey];
+                return {
+                    clinicalAttribute: attribute,
+                    clinicalAttributeId: attribute.clinicalAttributeId,
+                    patientId: patient.patientId,
+                    uniquePatientKey: patientKey,
+                    studyId: patient.studyId,
+                    value: samples.length
+                } as any as ClinicalData;
+            });
+            break;
         default:
-            if (attribute.clinicalAttributeId.indexOf(SpecialAttribute.Profiled) === 0) {
+            if (attribute.clinicalAttributeId.indexOf(SpecialAttribute.ProfiledInPrefix) === 0) {
                 ret = makeProfiledData(attribute, samples, coverageInformation);
             } else {
                 ret = await client.fetchClinicalDataUsingPOST({

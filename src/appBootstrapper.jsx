@@ -1,10 +1,20 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { Provider } from 'mobx-react';
-import { hashHistory, createMemoryHistory, Router } from 'react-router';
+import { hashHistory, browserHistory, createMemoryHistory, Router, useRouterHistory } from 'react-router';
+import { createHistory } from 'history'
 import { RouterStore, syncHistoryWithStore  } from 'mobx-react-router';
 import ExtendedRoutingStore from './shared/lib/ExtendedRouterStore';
-import {QueryStore} from "./shared/components/query/QueryStore";
+import {
+    fetchServerConfig,
+    initializeAPIClients,
+    initializeAppStore,
+    initializeConfiguration,
+    setServerConfig,
+    setConfigDefaults
+} from './config/config';
+
+import './shared/lib/ajaxQuiet';
 import {computed, extendObservable} from 'mobx';
 import makeRoutes from './routes';
 import * as _ from 'lodash';
@@ -15,19 +25,23 @@ import { getHost } from './shared/api/urls';
 import { validateParametersPatientView } from './shared/lib/validateParameters';
 import AppConfig from "appConfig";
 import browser from 'bowser';
-import './shared/lib/tracking';
+import { setNetworkListener } from './shared/lib/ajaxQuiet';
+import {initializeTracking} from "shared/lib/tracking";
+import {CancerStudyQueryUrlParams} from "shared/components/query/QueryStore";
+import {MolecularProfile} from "shared/api/generated/CBioPortalAPI";
+import {molecularProfileParams} from "shared/components/query/QueryStoreUtils";
+import ExtendedRouterStore from "shared/lib/ExtendedRouterStore";
+import superagentCache from 'superagent-cache';
+import getBrowserWindow from "shared/lib/getBrowserWindow";
+import {getConfigurationServiceApiUrl} from "shared/api/urls";
+import {AppStore} from "./AppStore";
 
-if (localStorage.localdev === 'true' || localStorage.localdist === 'true') {
-    __webpack_public_path__ = "//localhost:3000/"
-    localStorage.setItem("e2etest", "true");
-} else if (localStorage.heroku) {
-    __webpack_public_path__ = ['//',localStorage.heroku,'.herokuapp.com','/'].join('');
-    localStorage.setItem("e2etest", "true");
-} else if (AppConfig.frontendUrl) {
-    // use given frontendUrl as base (use when deploying frontend on external
-    // CDN instead of cbioportal backend)
-    __webpack_public_path__ = AppConfig.frontendUrl;
-}
+superagentCache(superagent);
+
+// YOU MUST RUN THESE initialize and then set the public path after
+initializeConfiguration();
+// THIS TELLS WEBPACK BUNDLE LOADER WHERE TO LOAD SPLIT BUNDLES
+__webpack_public_path__ = AppConfig.frontendUrl;
 
 if (!window.hasOwnProperty("$")) {
     window.$ = $;
@@ -44,34 +58,25 @@ if (browser) {
     });
 }
 
-if (localStorage.e2etest) {
+// e2e test specific stuff
+if (getBrowserWindow().navigator.webdriver) {
+
     $(document).ready(()=>{
         $("body").addClass("e2etest");
         window.e2etest = true;
     });
+
+    setNetworkListener();
 }
 
 // expose version on window
 window.FRONTEND_VERSION = VERSION;
 window.FRONTEND_COMMIT = COMMIT;
 
-import 'script-loader!raven-js/dist/raven.js';
-
-// explose jquery globally if it doesn't exist
-// if (!window.hasOwnProperty("jQuery")) {
-//     window.$ = $;
-//     window.jQuery = $;
-// }
-
-if (/cbioportal\.mskcc\.org|www.cbioportal\.org/.test(window.location.hostname) || window.localStorage.getItem('sentry') === 'true') {
-    Raven.config('https://c93645c81c964dd284436dffd1c89551@sentry.io/164574', {
-        tags:{
-          fullUrl:window.location.href
-        },
-        release:window.FRONTEND_COMMIT || '',
-        ignoreErrors: ['_germline', 'symlink_by_patient'],
-        serverName: window.location.hostname
-    }).install();
+// this is special function allowing MSKCC CIS to hide login UI in
+// portal header
+window.postLoadForMskCIS = function(){
+    AppConfig.hide_login = true;
 }
 
 // make sure lodash doesn't overwrite (or set) global underscore
@@ -79,20 +84,16 @@ _.noConflict();
 
 const routingStore = new ExtendedRoutingStore();
 
-//sometimes we need to use memory history where there would be a conflict with
-//existing use of url hashfragment
-const history = (AppConfig.historyType === 'memory') ? createMemoryHistory() : hashHistory;
+const history = useRouterHistory(createHistory)({
+    basename: AppConfig.basePath || ""
+});
 
 const syncedHistory = syncHistoryWithStore(history, routingStore);
-
-// lets make query Store since it's used in a lot of places
-const queryStore = new QueryStore(window, window.location.href);
 
 const stores = {
     // Key can be whatever you want
     routing: routingStore,
-    queryStore
-    // ...other stores
+    appStore:new AppStore()
 };
 
 window.globalStores = stores;
@@ -101,41 +102,8 @@ const end = superagent.Request.prototype.end;
 
 let redirecting = false;
 
-// check if valid hash parameters for patient view, otherwise convert old style
-// querystring for backwards compatibility
-const validationResult = validateParametersPatientView(routingStore.location.query);
-if (!validationResult.isValid) {
-    const newParams = {};
-    const qs = URL.parse(window.location.href, true).query;
-
-    if ('cancer_study_id' in qs && _.isUndefined(routingStore.location.query.studyId)) {
-        newParams['studyId'] = qs.cancer_study_id;
-    }
-    if ('case_id' in qs && _.isUndefined(routingStore.location.query.caseId)) {
-        newParams['caseId'] = qs.case_id;
-    }
-
-    if ('sample_id' in qs && _.isUndefined(routingStore.location.query.sampleId)) {
-        newParams['sampleId'] = qs.sample_id;
-    }
-
-    const navCaseIdsMatch = routingStore.location.pathname.match(/(nav_case_ids)=(.*)$/);
-    if (navCaseIdsMatch && navCaseIdsMatch.length > 2) {
-        newParams['navCaseIds'] = navCaseIdsMatch[2];
-    }
-
-    routingStore.updateRoute(newParams);
-}
-
 superagent.Request.prototype.end = function (callback) {
     return end.call(this, (error, response) => {
-
-        if (error) {
-
-            Raven.captureException(((response && response.error) || error),{
-                tags: { network:true }
-            });
-        }
 
         if (redirecting) {
             return;
@@ -157,6 +125,8 @@ window.routingStore = routingStore;
 
 let render = () => {
 
+    if (!getBrowserWindow().navigator.webdriver) initializeTracking();
+
     const rootNode = document.getElementById("reactRoot");
 
     ReactDOM.render(
@@ -177,4 +147,21 @@ if (__DEBUG__ && module.hot) {
     module.hot.accept('./routes', () => render());
 }
 
-$(document).ready(() => render());
+$(document).ready(async () => {
+
+    // we use rawServerConfig (written by JSP) if it is present
+    // or fetch from config service if not
+    // need to use jsonp, so use jquery
+    let config = window.rawServerConfig || await fetchServerConfig();
+
+    setServerConfig(config);
+
+    setConfigDefaults();
+
+    initializeAPIClients();
+
+    initializeAppStore(stores.appStore,config);
+
+    render();
+
+});

@@ -6,7 +6,7 @@
     "title": "cBioPortal web API [Beta]",
     "contact": {
       "name": "cBioPortal",
-      "url": "www.cbioportal.org",
+      "url": "http://www.cbioportal.org",
       "email": "cbioportal@googlegroups.com"
     },
     "license": {
@@ -262,8 +262,7 @@
               "datatype",
               "patientAttribute",
               "priority",
-              "studyId",
-              "count"
+              "studyId"
             ]
           },
           {
@@ -297,8 +296,8 @@
         "tags": [
           "Clinical Attributes"
         ],
-        "summary": "Get all clinical attributes in specified sampleIdentifiers or sampleListID with clinical attribute count",
-        "operationId": "getAllClinicalAttributesInStudiesUsingPOST",
+        "summary": "Get counts for clinical attributes according to their data availability for selected samples/patients",
+        "operationId": "getClinicalAttributeCountsUsingPOST",
         "consumes": [
           "application/json"
         ],
@@ -308,55 +307,12 @@
         "parameters": [
           {
             "in": "body",
-            "name": "clinicalAttributeFilter",
+            "name": "clinicalAttributeCountFilter",
             "description": "List of SampleIdentifiers or Sample List ID",
             "required": true,
             "schema": {
-              "$ref": "#/definitions/ClinicalAttributeFilter"
+              "$ref": "#/definitions/ClinicalAttributeCountFilter"
             }
-          },
-          {
-            "name": "projection",
-            "in": "query",
-            "description": "projection",
-            "required": false,
-            "type": "string",
-            "default": "SUMMARY",
-            "enum": [
-              "ID",
-              "SUMMARY",
-              "DETAILED",
-              "META"
-            ]
-          },
-          {
-            "name": "sortBy",
-            "in": "query",
-            "description": "Name of the property that the result list is sorted by",
-            "required": false,
-            "type": "string",
-            "enum": [
-              "clinicalAttributeId",
-              "displayName",
-              "description",
-              "datatype",
-              "patientAttribute",
-              "priority",
-              "studyId",
-              "count"
-            ]
-          },
-          {
-            "name": "direction",
-            "in": "query",
-            "description": "Direction of the sort",
-            "required": false,
-            "type": "string",
-            "default": "ASC",
-            "enum": [
-              "ASC",
-              "DESC"
-            ]
           }
         ],
         "responses": {
@@ -365,7 +321,7 @@
             "schema": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/ClinicalAttribute"
+                "$ref": "#/definitions/ClinicalAttributeCount"
               }
             }
           }
@@ -1548,92 +1504,6 @@
         }
       }
     },
-    "/molecular-profiles/{molecularProfileId}/mutation-counts": {
-      "get": {
-        "tags": [
-          "Mutations"
-        ],
-        "summary": "Get mutation counts in a molecular profile by Sample List ID",
-        "operationId": "getMutationCountsInMolecularProfileBySampleListIdUsingGET",
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "molecularProfileId",
-            "in": "path",
-            "description": "Molecular Profile ID e.g. acc_tcga_mutations",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "name": "sampleListId",
-            "in": "query",
-            "description": "Sample List ID e.g. acc_tcga_all",
-            "required": true,
-            "type": "string"
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/MutationCount"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/molecular-profiles/{molecularProfileId}/mutation-counts/fetch": {
-      "post": {
-        "tags": [
-          "Mutations"
-        ],
-        "summary": "Fetch mutation counts in a molecular profile by sample IDs",
-        "operationId": "fetchMutationCountsInMolecularProfileUsingPOST",
-        "consumes": [
-          "application/json"
-        ],
-        "produces": [
-          "application/json"
-        ],
-        "parameters": [
-          {
-            "name": "molecularProfileId",
-            "in": "path",
-            "description": "Molecular Profile ID e.g. acc_tcga_mutations",
-            "required": true,
-            "type": "string"
-          },
-          {
-            "in": "body",
-            "name": "sampleIds",
-            "description": "List of Sample IDs",
-            "required": true,
-            "schema": {
-              "type": "array",
-              "items": {
-                "type": "string"
-              }
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "OK",
-            "schema": {
-              "type": "array",
-              "items": {
-                "$ref": "#/definitions/MutationCount"
-              }
-            }
-          }
-        }
-      }
-    },
     "/molecular-profiles/{molecularProfileId}/mutations": {
       "get": {
         "tags": [
@@ -1658,6 +1528,14 @@
             "description": "Sample List ID e.g. acc_tcga_all",
             "required": true,
             "type": "string"
+          },
+          {
+            "name": "entrezGeneId",
+            "in": "query",
+            "description": "Entrez Gene ID",
+            "required": false,
+            "type": "integer",
+            "format": "int32"
           },
           {
             "name": "projection",
@@ -2587,8 +2465,7 @@
               "datatype",
               "patientAttribute",
               "priority",
-              "studyId",
-              "count"
+              "studyId"
             ]
           },
           {
@@ -3339,8 +3216,7 @@
             "type": "string",
             "enum": [
               "sampleId",
-              "sampleType",
-              "cancerTypeId"
+              "sampleType"
             ]
           },
           {
@@ -3529,8 +3405,7 @@
             "type": "string",
             "enum": [
               "sampleId",
-              "sampleType",
-              "cancerTypeId"
+              "sampleType"
             ]
           },
           {
@@ -3909,10 +3784,6 @@
         "clinicalAttributeId": {
           "type": "string"
         },
-        "count": {
-          "type": "integer",
-          "format": "int32"
-        },
         "datatype": {
           "type": "string"
         },
@@ -3934,7 +3805,20 @@
       },
       "title": "ClinicalAttribute"
     },
-    "ClinicalAttributeFilter": {
+    "ClinicalAttributeCount": {
+      "type": "object",
+      "properties": {
+        "clinicalAttributeId": {
+          "type": "string"
+        },
+        "count": {
+          "type": "integer",
+          "format": "int32"
+        }
+      },
+      "title": "ClinicalAttributeCount"
+    },
+    "ClinicalAttributeCountFilter": {
       "type": "object",
       "properties": {
         "sampleIdentifiers": {
@@ -3947,7 +3831,7 @@
           "type": "string"
         }
       },
-      "title": "ClinicalAttributeFilter"
+      "title": "ClinicalAttributeCountFilter"
     },
     "ClinicalData": {
       "type": "object",
@@ -4453,6 +4337,7 @@
           "type": "string",
           "enum": [
             "MUTATION_EXTENDED",
+            "MUTATION_UNCALLED",
             "FUSION",
             "STRUCTURAL_VARIANT",
             "COPY_NUMBER_ALTERATION",
@@ -4640,41 +4525,6 @@
         }
       },
       "title": "Mutation"
-    },
-    "MutationCount": {
-      "type": "object",
-      "required": [
-        "molecularProfileId",
-        "mutationCount",
-        "patientId",
-        "sampleId",
-        "studyId"
-      ],
-      "properties": {
-        "molecularProfileId": {
-          "type": "string"
-        },
-        "mutationCount": {
-          "type": "integer",
-          "format": "int32"
-        },
-        "patientId": {
-          "type": "string"
-        },
-        "sampleId": {
-          "type": "string"
-        },
-        "studyId": {
-          "type": "string"
-        },
-        "uniquePatientKey": {
-          "type": "string"
-        },
-        "uniqueSampleKey": {
-          "type": "string"
-        }
-      },
-      "title": "MutationCount"
     },
     "MutationCountByPosition": {
       "type": "object",
@@ -4875,9 +4725,6 @@
         "studyId"
       ],
       "properties": {
-        "cancerTypeId": {
-          "type": "string"
-        },
         "copyNumberSegmentPresent": {
           "type": "boolean"
         },

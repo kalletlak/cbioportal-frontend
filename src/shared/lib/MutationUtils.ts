@@ -3,12 +3,17 @@ import {
     default as getCanonicalMutationType, CanonicalMutationType,
     ProteinImpactType, getProteinImpactTypeFromCanonical
 } from "./getCanonicalMutationType";
-import {MolecularProfile, Mutation, SampleIdentifier} from "shared/api/generated/CBioPortalAPI";
+import {Gene, MolecularProfile, Mutation, SampleIdentifier} from "shared/api/generated/CBioPortalAPI";
 import {GenomicLocation} from "shared/api/generated/GenomeNexusAPIInternal";
 import {MUTATION_STATUS_GERMLINE, MOLECULAR_PROFILE_UNCALLED_MUTATIONS_SUFFIX} from "shared/constants";
 import {findFirstMostCommonElt} from "./findFirstMostCommonElt";
 import {toSampleUuid} from "./UuidUtils";
 import {stringListToSet} from "./StringUtils";
+import {
+    MUT_COLOR_INFRAME, MUT_COLOR_MISSENSE, MUT_COLOR_OTHER,
+    MUT_COLOR_TRUNC
+} from "../components/oncoprint/geneticrules";
+import {AlterationTypeConstants, AnnotatedExtendedAlteration} from "../../pages/resultsView/ResultsViewPageStore";
 
 export interface IProteinImpactTypeColors
 {
@@ -19,10 +24,10 @@ export interface IProteinImpactTypeColors
 }
 
 export const DEFAULT_PROTEIN_IMPACT_TYPE_COLORS: IProteinImpactTypeColors = {
-    missenseColor: "#008000",
-    inframeColor: "#8B4513",
-    truncatingColor: "#000000",
-    otherColor: "#8B00C9"
+    missenseColor: MUT_COLOR_MISSENSE,
+    inframeColor: MUT_COLOR_INFRAME,
+    truncatingColor: MUT_COLOR_TRUNC,
+    otherColor: MUT_COLOR_OTHER
 };
 
 export const MUTATION_TYPE_PRIORITY: {[canonicalMutationType: string]: number} = {
@@ -132,6 +137,16 @@ export function countUniqueMutations(mutations: Mutation[]): number
     return Object.keys(groupMutationsByGeneAndPatientAndProteinChange(mutations)).length;
 }
 
+export function countMutationsByProteinChange(mutations: Mutation[]): {proteinChange: string, count: number}[]
+{
+    const mutationsByProteinChange = _.groupBy(mutations, "proteinChange");
+    const mutationCountsByProteinChange = _.map(mutationsByProteinChange,
+        mutations => ({proteinChange: mutations[0].proteinChange, count: mutations.length}));
+
+    // order by count descending, and then protein change ascending
+    return _.orderBy(mutationCountsByProteinChange, ["count", "proteinChange"], ["desc", "asc"]);
+}
+
 /**
  * Protein start positions for the mutations falling between a specific start and end position range
  */
@@ -161,6 +176,7 @@ export function getProteinStartPositionsByRange(data: Mutation[][], start: numbe
     return _.uniq(positions);
 }
 
+const GERMLINE_REGEXP = new RegExp(MUTATION_STATUS_GERMLINE, "i");
 /**
  * Percentage of cases/samples with a germline mutation in given gene.
  * Assumes all given sample ids in the study had germline screening for all
@@ -180,7 +196,7 @@ export function germlineMutationRate(hugoGeneSymbol:string,
                 if (profile) {
                     return (
                         m.gene.hugoGeneSymbol === hugoGeneSymbol &&
-                        new RegExp(MUTATION_STATUS_GERMLINE, "i").test(m.mutationStatus) &&
+                        GERMLINE_REGEXP.test(m.mutationStatus) &&
                         // filter for given sample IDs
                         !!sampleIds[toSampleUuid(profile.studyId, m.sampleId)]
                     );
@@ -213,7 +229,7 @@ export function somaticMutationRate(hugoGeneSymbol: string, mutations: Mutation[
                     if (profile) {
                         return (
                             m.gene.hugoGeneSymbol === hugoGeneSymbol &&
-                            !(new RegExp(MUTATION_STATUS_GERMLINE, "i").test(m.mutationStatus)) &&
+                            !(GERMLINE_REGEXP.test(m.mutationStatus)) &&
                             // filter for given sample IDs
                             !!sampleIds[toSampleUuid(profile.studyId, m.sampleId)]
                         );
@@ -232,15 +248,49 @@ export function somaticMutationRate(hugoGeneSymbol: string, mutations: Mutation[
     }
 }
 
+export function isNotGermlineMutation(
+    m:any
+) {
+    return !m.mutationStatus || !(GERMLINE_REGEXP.test(m.mutationStatus));
+}
+
+export function updateMissingGeneInfo(mutations: Partial<Mutation>[],
+                                      genesByHugoSymbol: {[hugoGeneSymbol:string]: Gene})
+{
+    mutations.forEach(mutation => {
+        if (mutation.gene && mutation.gene.hugoGeneSymbol)
+        {
+            const gene = genesByHugoSymbol[mutation.gene.hugoGeneSymbol];
+
+            if (gene) {
+                // keep the existing "mutation.gene" values: only overwrite missing (undefined) values
+                mutation.gene = _.merge({}, gene, mutation.gene);
+                // also update entrezGeneId for the mutation itself
+                mutation.entrezGeneId = mutation.entrezGeneId || gene.entrezGeneId;
+            }
+        }
+    });
+}
+
 export function extractGenomicLocation(mutation: Mutation)
 {
-    return {
-        chromosome: mutation.gene.chromosome.replace("chr", ""),
-        start: mutation.startPosition,
-        end: mutation.endPosition,
-        referenceAllele: mutation.referenceAllele,
-        variantAllele: mutation.variantAllele
-    };
+    if (mutation.gene && mutation.gene.chromosome &&
+        mutation.startPosition &&
+        mutation.endPosition &&
+        mutation.referenceAllele &&
+        mutation.variantAllele)
+    {
+        return {
+            chromosome: mutation.gene.chromosome.replace("chr", ""),
+            start: mutation.startPosition,
+            end: mutation.endPosition,
+            referenceAllele: mutation.referenceAllele,
+            variantAllele: mutation.variantAllele
+        };
+    }
+    else {
+        return undefined;
+    }
 }
 
 export function genomicLocationString(genomicLocation: GenomicLocation)
@@ -252,9 +302,12 @@ export function uniqueGenomicLocations(mutations: Mutation[]): GenomicLocation[]
 {
     const genomicLocationMap: {[key: string]: GenomicLocation} = {};
 
-    mutations.map((mutaiton: Mutation) => {
-        const genomicLocation: GenomicLocation = extractGenomicLocation(mutaiton);
-        genomicLocationMap[genomicLocationString(genomicLocation)] = genomicLocation;
+    mutations.map((mutation: Mutation) => {
+        const genomicLocation: GenomicLocation|undefined = extractGenomicLocation(mutation);
+
+        if (genomicLocation) {
+            genomicLocationMap[genomicLocationString(genomicLocation)] = genomicLocation;
+        }
     });
 
     return _.values(genomicLocationMap);

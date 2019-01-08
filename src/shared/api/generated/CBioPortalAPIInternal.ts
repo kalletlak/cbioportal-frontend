@@ -19,10 +19,44 @@ export type AlterationEnrichment = {
         'unalteredCount': number
 
 };
+export type ClinicalDataBinCountFilter = {
+    'attributes': Array < ClinicalDataBinFilter >
+
+        'studyViewFilter': StudyViewFilter
+
+};
+export type ClinicalDataBinFilter = {
+    'attributeId': string
+
+        'clinicalDataType': "SAMPLE" | "PATIENT"
+
+        'customBins': Array < number >
+
+        'disableLogScale': boolean
+
+        'end': number
+
+        'start': number
+
+};
 export type ClinicalDataCount = {
     'count': number
 
         'value': string
+
+};
+export type ClinicalDataCountFilter = {
+    'attributes': Array < ClinicalDataFilter >
+
+        'studyViewFilter': StudyViewFilter
+
+};
+export type ClinicalDataCountItem = {
+    'attributeId': string
+
+        'clinicalDataType': "SAMPLE" | "PATIENT"
+
+        'counts': Array < ClinicalDataCount >
 
 };
 export type ClinicalDataEqualityFilter = {
@@ -33,6 +67,28 @@ export type ClinicalDataEqualityFilter = {
         'values': Array < string >
 
 };
+export type ClinicalDataFilter = {
+    'attributeId': string
+
+        'clinicalDataType': "SAMPLE" | "PATIENT"
+
+};
+export type ClinicalDataIntervalFilter = {
+    'attributeId': string
+
+        'clinicalDataType': "SAMPLE" | "PATIENT"
+
+        'values': Array < ClinicalDataIntervalFilterValue >
+
+};
+export type ClinicalDataIntervalFilterValue = {
+    'end': number
+
+        'start': number
+
+        'value': string
+
+};
 export type CoExpression = {
     'cytoband': string
 
@@ -40,7 +96,9 @@ export type CoExpression = {
 
         'hugoGeneSymbol': string
 
-        'pearsonsCorrelation': number
+        'pValue': number
+
+        'qValue': number
 
         'spearmansCorrelation': number
 
@@ -64,13 +122,13 @@ export type CopyNumberCountByGene = {
 
         'hugoGeneSymbol': string
 
+        'qValue': number
+
         'totalCount': number
 
 };
 export type CopyNumberGeneFilter = {
     'alterations': Array < CopyNumberGeneFilterElement >
-
-        'molecularProfileId': string
 
 };
 export type CopyNumberGeneFilterElement = {
@@ -87,6 +145,36 @@ export type CosmicMutation = {
         'keyword': string
 
         'proteinChange': string
+
+};
+export type DataBin = {
+    'attributeId': string
+
+        'clinicalDataType': "SAMPLE" | "PATIENT"
+
+        'count': number
+
+        'end': number
+
+        'specialValue': string
+
+        'start': number
+
+};
+export type DensityPlotBin = {
+    'binX': number
+
+        'binY': number
+
+        'count': number
+
+        'maxX': number
+
+        'maxY': number
+
+        'minX': number
+
+        'minY': number
 
 };
 export type EnrichmentFilter = {
@@ -115,26 +203,6 @@ export type ExpressionEnrichment = {
         'standardDeviationInAlteredGroup': number
 
         'standardDeviationInUnalteredGroup': number
-
-};
-export type FractionGenomeAltered = {
-    'patientId': string
-
-        'sampleId': string
-
-        'studyId': string
-
-        'uniquePatientKey': string
-
-        'uniqueSampleKey': string
-
-        'value': number
-
-};
-export type FractionGenomeAlteredFilter = {
-    'sampleIds': Array < string >
-
-        'sampleListId': string
 
 };
 export type Geneset = {
@@ -228,13 +296,37 @@ export type GisticToGene = {
 export type Info = {
     'dbVersion': string
 
+        'gitBranch': string
+
+        'gitCommitId': string
+
+        'gitCommitIdAbbrev': string
+
+        'gitCommitIdDescribe': string
+
+        'gitCommitIdDescribeShort': string
+
+        'gitCommitMessageFull': string
+
+        'gitCommitMessageShort': string
+
+        'gitCommitMessageUserEmail': string
+
+        'gitCommitMessageUserName': string
+
+        'gitDirty': boolean
+
         'portalVersion': string
 
 };
 export type MolecularProfileSampleCount = {
-    'numberOfProfiledSamples': number
+    'numberOfCNAProfiledSamples': number
 
-        'numberOfUnprofiledSamples': number
+        'numberOfCNAUnprofiledSamples': number
+
+        'numberOfMutationProfiledSamples': number
+
+        'numberOfMutationUnprofiledSamples': number
 
 };
 export type MrnaPercentile = {
@@ -282,13 +374,13 @@ export type MutationCountByGene = {
 
         'hugoGeneSymbol': string
 
+        'qValue': number
+
         'totalCount': number
 
 };
 export type MutationGeneFilter = {
     'entrezGeneIds': Array < number >
-
-        'molecularProfileId': string
 
 };
 export type MutationSpectrum = {
@@ -323,10 +415,18 @@ export type MutationSpectrumFilter = {
         'sampleListId': string
 
 };
-export type Sample = {
-    'cancerTypeId': string
+export type RectangleBounds = {
+    'xEnd': number
 
-        'copyNumberSegmentPresent': boolean
+        'xStart': number
+
+        'yEnd': number
+
+        'yStart': number
+
+};
+export type Sample = {
+    'copyNumberSegmentPresent': boolean
 
         'patientId': string
 
@@ -343,14 +443,30 @@ export type Sample = {
         'uniqueSampleKey': string
 
 };
+export type SampleIdentifier = {
+    'sampleId': string
+
+        'studyId': string
+
+};
 export type StudyViewFilter = {
     'clinicalDataEqualityFilters': Array < ClinicalDataEqualityFilter >
+
+        'clinicalDataIntervalFilters': Array < ClinicalDataIntervalFilter >
 
         'cnaGenes': Array < CopyNumberGeneFilter >
 
         'mutatedGenes': Array < MutationGeneFilter >
 
-        'sampleIds': Array < string >
+        'mutationCountVsCNASelection': RectangleBounds
+
+        'sampleIdentifiers': Array < SampleIdentifier >
+
+        'studyIds': Array < string >
+
+        'withCNAData': boolean
+
+        'withMutationData': boolean
 
 };
 export type TumorVsNormalsData = {
@@ -454,6 +570,457 @@ export default class CBioPortalAPIInternal {
         });
     }
 
+    fetchClinicalDataBinCountsUsingPOSTURL(parameters: {
+        'dataBinMethod' ? : "STATIC" | "DYNAMIC",
+        'clinicalDataBinCountFilter': ClinicalDataBinCountFilter,
+        $queryParameters ? : any
+    }): string {
+        let queryParameters: any = {};
+        let path = '/clinical-data-bin-counts/fetch';
+        if (parameters['dataBinMethod'] !== undefined) {
+            queryParameters['dataBinMethod'] = parameters['dataBinMethod'];
+        }
+
+        if (parameters.$queryParameters) {
+            Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                var parameter = parameters.$queryParameters[parameterName];
+                queryParameters[parameterName] = parameter;
+            });
+        }
+        let keys = Object.keys(queryParameters);
+        return this.domain + path + (keys.length > 0 ? '?' + (keys.map(key => key + '=' + encodeURIComponent(queryParameters[key])).join('&')) : '');
+    };
+
+    /**
+     * Fetch clinical data bin counts by study view filter
+     * @method
+     * @name CBioPortalAPIInternal#fetchClinicalDataBinCountsUsingPOST
+     * @param {string} dataBinMethod - Method for data binning
+     * @param {} clinicalDataBinCountFilter - Clinical data bin count filter
+     */
+    fetchClinicalDataBinCountsUsingPOSTWithHttpInfo(parameters: {
+        'dataBinMethod' ? : "STATIC" | "DYNAMIC",
+        'clinicalDataBinCountFilter': ClinicalDataBinCountFilter,
+        $queryParameters ? : any,
+            $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/clinical-data-bin-counts/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            if (parameters['dataBinMethod'] !== undefined) {
+                queryParameters['dataBinMethod'] = parameters['dataBinMethod'];
+            }
+
+            if (parameters['clinicalDataBinCountFilter'] !== undefined) {
+                body = parameters['clinicalDataBinCountFilter'];
+            }
+
+            if (parameters['clinicalDataBinCountFilter'] === undefined) {
+                reject(new Error('Missing required  parameter: clinicalDataBinCountFilter'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Fetch clinical data bin counts by study view filter
+     * @method
+     * @name CBioPortalAPIInternal#fetchClinicalDataBinCountsUsingPOST
+     * @param {string} dataBinMethod - Method for data binning
+     * @param {} clinicalDataBinCountFilter - Clinical data bin count filter
+     */
+    fetchClinicalDataBinCountsUsingPOST(parameters: {
+            'dataBinMethod' ? : "STATIC" | "DYNAMIC",
+            'clinicalDataBinCountFilter': ClinicalDataBinCountFilter,
+            $queryParameters ? : any,
+                $domain ? : string
+        }): Promise < Array < DataBin >
+        > {
+            return this.fetchClinicalDataBinCountsUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
+                return response.body;
+            });
+        };
+    fetchClinicalDataCountsUsingPOSTURL(parameters: {
+        'clinicalDataCountFilter': ClinicalDataCountFilter,
+        $queryParameters ? : any
+    }): string {
+        let queryParameters: any = {};
+        let path = '/clinical-data-counts/fetch';
+
+        if (parameters.$queryParameters) {
+            Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                var parameter = parameters.$queryParameters[parameterName];
+                queryParameters[parameterName] = parameter;
+            });
+        }
+        let keys = Object.keys(queryParameters);
+        return this.domain + path + (keys.length > 0 ? '?' + (keys.map(key => key + '=' + encodeURIComponent(queryParameters[key])).join('&')) : '');
+    };
+
+    /**
+     * Fetch clinical data counts by study view filter
+     * @method
+     * @name CBioPortalAPIInternal#fetchClinicalDataCountsUsingPOST
+     * @param {} clinicalDataCountFilter - Clinical data count filter
+     */
+    fetchClinicalDataCountsUsingPOSTWithHttpInfo(parameters: {
+        'clinicalDataCountFilter': ClinicalDataCountFilter,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/clinical-data-counts/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            if (parameters['clinicalDataCountFilter'] !== undefined) {
+                body = parameters['clinicalDataCountFilter'];
+            }
+
+            if (parameters['clinicalDataCountFilter'] === undefined) {
+                reject(new Error('Missing required  parameter: clinicalDataCountFilter'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Fetch clinical data counts by study view filter
+     * @method
+     * @name CBioPortalAPIInternal#fetchClinicalDataCountsUsingPOST
+     * @param {} clinicalDataCountFilter - Clinical data count filter
+     */
+    fetchClinicalDataCountsUsingPOST(parameters: {
+            'clinicalDataCountFilter': ClinicalDataCountFilter,
+            $queryParameters ? : any,
+            $domain ? : string
+        }): Promise < Array < ClinicalDataCountItem >
+        > {
+            return this.fetchClinicalDataCountsUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
+                return response.body;
+            });
+        };
+    fetchClinicalDataDensityPlotUsingPOSTURL(parameters: {
+        'xAxisAttributeId': string,
+        'xAxisBinCount' ? : number,
+        'xAxisStart' ? : number,
+        'xAxisEnd' ? : number,
+        'yAxisAttributeId': string,
+        'yAxisBinCount' ? : number,
+        'yAxisStart' ? : number,
+        'yAxisEnd' ? : number,
+        'clinicalDataType': "SAMPLE" | "PATIENT",
+        'studyViewFilter': StudyViewFilter,
+        $queryParameters ? : any
+    }): string {
+        let queryParameters: any = {};
+        let path = '/clinical-data-density-plot/fetch';
+        if (parameters['xAxisAttributeId'] !== undefined) {
+            queryParameters['xAxisAttributeId'] = parameters['xAxisAttributeId'];
+        }
+
+        if (parameters['xAxisBinCount'] !== undefined) {
+            queryParameters['xAxisBinCount'] = parameters['xAxisBinCount'];
+        }
+
+        if (parameters['xAxisStart'] !== undefined) {
+            queryParameters['xAxisStart'] = parameters['xAxisStart'];
+        }
+
+        if (parameters['xAxisEnd'] !== undefined) {
+            queryParameters['xAxisEnd'] = parameters['xAxisEnd'];
+        }
+
+        if (parameters['yAxisAttributeId'] !== undefined) {
+            queryParameters['yAxisAttributeId'] = parameters['yAxisAttributeId'];
+        }
+
+        if (parameters['yAxisBinCount'] !== undefined) {
+            queryParameters['yAxisBinCount'] = parameters['yAxisBinCount'];
+        }
+
+        if (parameters['yAxisStart'] !== undefined) {
+            queryParameters['yAxisStart'] = parameters['yAxisStart'];
+        }
+
+        if (parameters['yAxisEnd'] !== undefined) {
+            queryParameters['yAxisEnd'] = parameters['yAxisEnd'];
+        }
+
+        if (parameters['clinicalDataType'] !== undefined) {
+            queryParameters['clinicalDataType'] = parameters['clinicalDataType'];
+        }
+
+        if (parameters.$queryParameters) {
+            Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                var parameter = parameters.$queryParameters[parameterName];
+                queryParameters[parameterName] = parameter;
+            });
+        }
+        let keys = Object.keys(queryParameters);
+        return this.domain + path + (keys.length > 0 ? '?' + (keys.map(key => key + '=' + encodeURIComponent(queryParameters[key])).join('&')) : '');
+    };
+
+    /**
+     * Fetch clinical data density plot bins by study view filter
+     * @method
+     * @name CBioPortalAPIInternal#fetchClinicalDataDensityPlotUsingPOST
+     * @param {string} xAxisAttributeId - Clinical Attribute ID of the X axis
+     * @param {integer} xAxisBinCount - Number of the bins in X axis
+     * @param {number} xAxisStart - Starting point of the X axis, if different than smallest value
+     * @param {number} xAxisEnd - Starting point of the X axis, if different than largest value
+     * @param {string} yAxisAttributeId - Clinical Attribute ID of the Y axis
+     * @param {integer} yAxisBinCount - Number of the bins in Y axis
+     * @param {number} yAxisStart - Starting point of the Y axis, if different than smallest value
+     * @param {number} yAxisEnd - Starting point of the Y axis, if different than largest value
+     * @param {string} clinicalDataType - Clinical data type of both attributes
+     * @param {} studyViewFilter - Study view filter
+     */
+    fetchClinicalDataDensityPlotUsingPOSTWithHttpInfo(parameters: {
+        'xAxisAttributeId': string,
+        'xAxisBinCount' ? : number,
+        'xAxisStart' ? : number,
+        'xAxisEnd' ? : number,
+        'yAxisAttributeId': string,
+        'yAxisBinCount' ? : number,
+        'yAxisStart' ? : number,
+        'yAxisEnd' ? : number,
+        'clinicalDataType': "SAMPLE" | "PATIENT",
+        'studyViewFilter': StudyViewFilter,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/clinical-data-density-plot/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            if (parameters['xAxisAttributeId'] !== undefined) {
+                queryParameters['xAxisAttributeId'] = parameters['xAxisAttributeId'];
+            }
+
+            if (parameters['xAxisAttributeId'] === undefined) {
+                reject(new Error('Missing required  parameter: xAxisAttributeId'));
+                return;
+            }
+
+            if (parameters['xAxisBinCount'] !== undefined) {
+                queryParameters['xAxisBinCount'] = parameters['xAxisBinCount'];
+            }
+
+            if (parameters['xAxisStart'] !== undefined) {
+                queryParameters['xAxisStart'] = parameters['xAxisStart'];
+            }
+
+            if (parameters['xAxisEnd'] !== undefined) {
+                queryParameters['xAxisEnd'] = parameters['xAxisEnd'];
+            }
+
+            if (parameters['yAxisAttributeId'] !== undefined) {
+                queryParameters['yAxisAttributeId'] = parameters['yAxisAttributeId'];
+            }
+
+            if (parameters['yAxisAttributeId'] === undefined) {
+                reject(new Error('Missing required  parameter: yAxisAttributeId'));
+                return;
+            }
+
+            if (parameters['yAxisBinCount'] !== undefined) {
+                queryParameters['yAxisBinCount'] = parameters['yAxisBinCount'];
+            }
+
+            if (parameters['yAxisStart'] !== undefined) {
+                queryParameters['yAxisStart'] = parameters['yAxisStart'];
+            }
+
+            if (parameters['yAxisEnd'] !== undefined) {
+                queryParameters['yAxisEnd'] = parameters['yAxisEnd'];
+            }
+
+            if (parameters['clinicalDataType'] !== undefined) {
+                queryParameters['clinicalDataType'] = parameters['clinicalDataType'];
+            }
+
+            if (parameters['clinicalDataType'] === undefined) {
+                reject(new Error('Missing required  parameter: clinicalDataType'));
+                return;
+            }
+
+            if (parameters['studyViewFilter'] !== undefined) {
+                body = parameters['studyViewFilter'];
+            }
+
+            if (parameters['studyViewFilter'] === undefined) {
+                reject(new Error('Missing required  parameter: studyViewFilter'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Fetch clinical data density plot bins by study view filter
+     * @method
+     * @name CBioPortalAPIInternal#fetchClinicalDataDensityPlotUsingPOST
+     * @param {string} xAxisAttributeId - Clinical Attribute ID of the X axis
+     * @param {integer} xAxisBinCount - Number of the bins in X axis
+     * @param {number} xAxisStart - Starting point of the X axis, if different than smallest value
+     * @param {number} xAxisEnd - Starting point of the X axis, if different than largest value
+     * @param {string} yAxisAttributeId - Clinical Attribute ID of the Y axis
+     * @param {integer} yAxisBinCount - Number of the bins in Y axis
+     * @param {number} yAxisStart - Starting point of the Y axis, if different than smallest value
+     * @param {number} yAxisEnd - Starting point of the Y axis, if different than largest value
+     * @param {string} clinicalDataType - Clinical data type of both attributes
+     * @param {} studyViewFilter - Study view filter
+     */
+    fetchClinicalDataDensityPlotUsingPOST(parameters: {
+            'xAxisAttributeId': string,
+            'xAxisBinCount' ? : number,
+            'xAxisStart' ? : number,
+            'xAxisEnd' ? : number,
+            'yAxisAttributeId': string,
+            'yAxisBinCount' ? : number,
+            'yAxisStart' ? : number,
+            'yAxisEnd' ? : number,
+            'clinicalDataType': "SAMPLE" | "PATIENT",
+            'studyViewFilter': StudyViewFilter,
+            $queryParameters ? : any,
+            $domain ? : string
+        }): Promise < Array < DensityPlotBin >
+        > {
+            return this.fetchClinicalDataDensityPlotUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
+                return response.body;
+            });
+        };
+    fetchCNAGenesUsingPOSTURL(parameters: {
+        'studyViewFilter': StudyViewFilter,
+        $queryParameters ? : any
+    }): string {
+        let queryParameters: any = {};
+        let path = '/cna-genes/fetch';
+
+        if (parameters.$queryParameters) {
+            Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                var parameter = parameters.$queryParameters[parameterName];
+                queryParameters[parameterName] = parameter;
+            });
+        }
+        let keys = Object.keys(queryParameters);
+        return this.domain + path + (keys.length > 0 ? '?' + (keys.map(key => key + '=' + encodeURIComponent(queryParameters[key])).join('&')) : '');
+    };
+
+    /**
+     * Fetch CNA genes by study view filter
+     * @method
+     * @name CBioPortalAPIInternal#fetchCNAGenesUsingPOST
+     * @param {} studyViewFilter - Study view filter
+     */
+    fetchCNAGenesUsingPOSTWithHttpInfo(parameters: {
+        'studyViewFilter': StudyViewFilter,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/cna-genes/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            if (parameters['studyViewFilter'] !== undefined) {
+                body = parameters['studyViewFilter'];
+            }
+
+            if (parameters['studyViewFilter'] === undefined) {
+                reject(new Error('Missing required  parameter: studyViewFilter'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Fetch CNA genes by study view filter
+     * @method
+     * @name CBioPortalAPIInternal#fetchCNAGenesUsingPOST
+     * @param {} studyViewFilter - Study view filter
+     */
+    fetchCNAGenesUsingPOST(parameters: {
+            'studyViewFilter': StudyViewFilter,
+            $queryParameters ? : any,
+            $domain ? : string
+        }): Promise < Array < CopyNumberCountByGene >
+        > {
+            return this.fetchCNAGenesUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
+                return response.body;
+            });
+        };
     fetchCosmicCountsUsingPOSTURL(parameters: {
         'keywords': Array < string > ,
         $queryParameters ? : any
@@ -477,47 +1044,286 @@ export default class CBioPortalAPIInternal {
      * @name CBioPortalAPIInternal#fetchCosmicCountsUsingPOST
      * @param {} keywords - List of keywords
      */
+    fetchCosmicCountsUsingPOSTWithHttpInfo(parameters: {
+        'keywords': Array < string > ,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/cosmic-counts/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            if (parameters['keywords'] !== undefined) {
+                body = parameters['keywords'];
+            }
+
+            if (parameters['keywords'] === undefined) {
+                reject(new Error('Missing required  parameter: keywords'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Get counts within the COSMIC database by keywords
+     * @method
+     * @name CBioPortalAPIInternal#fetchCosmicCountsUsingPOST
+     * @param {} keywords - List of keywords
+     */
     fetchCosmicCountsUsingPOST(parameters: {
             'keywords': Array < string > ,
             $queryParameters ? : any,
             $domain ? : string
         }): Promise < Array < CosmicMutation >
         > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/cosmic-counts/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                if (parameters['keywords'] !== undefined) {
-                    body = parameters['keywords'];
-                }
-
-                if (parameters['keywords'] === undefined) {
-                    reject(new Error('Missing required  parameter: keywords'));
-                    return;
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
+            return this.fetchCosmicCountsUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
+    getDownloadableStudiesUsingGETURL(parameters: {
+        $queryParameters ? : any
+    }): string {
+        let queryParameters: any = {};
+        let path = '/download/studies_list';
 
+        if (parameters.$queryParameters) {
+            Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                var parameter = parameters.$queryParameters[parameterName];
+                queryParameters[parameterName] = parameter;
+            });
+        }
+        let keys = Object.keys(queryParameters);
+        return this.domain + path + (keys.length > 0 ? '?' + (keys.map(key => key + '=' + encodeURIComponent(queryParameters[key])).join('&')) : '');
+    };
+
+    /**
+     * getDownloadableStudies
+     * @method
+     * @name CBioPortalAPIInternal#getDownloadableStudiesUsingGET
+     */
+    getDownloadableStudiesUsingGETWithHttpInfo(parameters: {
+        $queryParameters ? : any,
+            $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/download/studies_list';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = '*/*';
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('GET', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * getDownloadableStudies
+     * @method
+     * @name CBioPortalAPIInternal#getDownloadableStudiesUsingGET
+     */
+    getDownloadableStudiesUsingGET(parameters: {
+            $queryParameters ? : any,
+                $domain ? : string
+        }): Promise < Array < string >
+        > {
+            return this.getDownloadableStudiesUsingGETWithHttpInfo(parameters).then(function(response: request.Response) {
+                return response.body;
+            });
+        };
+    getFileUsingGETURL(parameters: {
+        'fileName': string,
+        $queryParameters ? : any
+    }): string {
+        let queryParameters: any = {};
+        let path = '/download/{fileName}';
+
+        path = path.replace('{fileName}', parameters['fileName'] + '');
+
+        if (parameters.$queryParameters) {
+            Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                var parameter = parameters.$queryParameters[parameterName];
+                queryParameters[parameterName] = parameter;
+            });
+        }
+        let keys = Object.keys(queryParameters);
+        return this.domain + path + (keys.length > 0 ? '?' + (keys.map(key => key + '=' + encodeURIComponent(queryParameters[key])).join('&')) : '');
+    };
+
+    /**
+     * getFile
+     * @method
+     * @name CBioPortalAPIInternal#getFileUsingGET
+     * @param {string} fileName - fileName
+     */
+    getFileUsingGETWithHttpInfo(parameters: {
+        'fileName': string,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/download/{fileName}';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = '*/*';
+
+            path = path.replace('{fileName}', parameters['fileName'] + '');
+
+            if (parameters['fileName'] === undefined) {
+                reject(new Error('Missing required  parameter: fileName'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('GET', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * getFile
+     * @method
+     * @name CBioPortalAPIInternal#getFileUsingGET
+     * @param {string} fileName - fileName
+     */
+    getFileUsingGET(parameters: {
+        'fileName': string,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < any > {
+        return this.getFileUsingGETWithHttpInfo(parameters).then(function(response: request.Response) {
+            return response.body;
+        });
+    };
+    fetchFilteredSamplesUsingPOSTURL(parameters: {
+        'negateFilters' ? : boolean,
+        'studyViewFilter': StudyViewFilter,
+        $queryParameters ? : any
+    }): string {
+        let queryParameters: any = {};
+        let path = '/filtered-samples/fetch';
+        if (parameters['negateFilters'] !== undefined) {
+            queryParameters['negateFilters'] = parameters['negateFilters'];
+        }
+
+        if (parameters.$queryParameters) {
+            Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                var parameter = parameters.$queryParameters[parameterName];
+                queryParameters[parameterName] = parameter;
+            });
+        }
+        let keys = Object.keys(queryParameters);
+        return this.domain + path + (keys.length > 0 ? '?' + (keys.map(key => key + '=' + encodeURIComponent(queryParameters[key])).join('&')) : '');
+    };
+
+    /**
+     * Fetch sample IDs by study view filter
+     * @method
+     * @name CBioPortalAPIInternal#fetchFilteredSamplesUsingPOST
+     * @param {boolean} negateFilters - Whether to negate the study view filters
+     * @param {} studyViewFilter - Study view filter
+     */
+    fetchFilteredSamplesUsingPOSTWithHttpInfo(parameters: {
+        'negateFilters' ? : boolean,
+        'studyViewFilter': StudyViewFilter,
+        $queryParameters ? : any,
+            $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/filtered-samples/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            if (parameters['negateFilters'] !== undefined) {
+                queryParameters['negateFilters'] = parameters['negateFilters'];
+            }
+
+            if (parameters['studyViewFilter'] !== undefined) {
+                body = parameters['studyViewFilter'];
+            }
+
+            if (parameters['studyViewFilter'] === undefined) {
+                reject(new Error('Missing required  parameter: studyViewFilter'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Fetch sample IDs by study view filter
+     * @method
+     * @name CBioPortalAPIInternal#fetchFilteredSamplesUsingPOST
+     * @param {boolean} negateFilters - Whether to negate the study view filters
+     * @param {} studyViewFilter - Study view filter
+     */
+    fetchFilteredSamplesUsingPOST(parameters: {
+            'negateFilters' ? : boolean,
+            'studyViewFilter': StudyViewFilter,
+            $queryParameters ? : any,
+                $domain ? : string
+        }): Promise < Array < Sample >
+        > {
+            return this.fetchFilteredSamplesUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
+                return response.body;
+            });
+        };
     getTumorVsNormalsDataUsingPOSTURL(parameters: {
         'geneSymbol': string,
         'normalsReferenceId': string,
@@ -553,6 +1359,72 @@ export default class CBioPortalAPIInternal {
      * @param {boolean} zScore - z-Score e.g. true/false
      * @param {} tvnDataIdentifiers - List of identifiers
      */
+    getTumorVsNormalsDataUsingPOSTWithHttpInfo(parameters: {
+        'geneSymbol': string,
+        'normalsReferenceId': string,
+        'zScore' ? : boolean,
+        'tvnDataIdentifiers': Array < TumorVsNormalsDataIdentifiers > ,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/gene-symbol/{geneSymbol}/normals-reference/{normalsReferenceId}/data/{zScore}';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            path = path.replace('{geneSymbol}', parameters['geneSymbol'] + '');
+
+            if (parameters['geneSymbol'] === undefined) {
+                reject(new Error('Missing required  parameter: geneSymbol'));
+                return;
+            }
+
+            path = path.replace('{normalsReferenceId}', parameters['normalsReferenceId'] + '');
+
+            if (parameters['normalsReferenceId'] === undefined) {
+                reject(new Error('Missing required  parameter: normalsReferenceId'));
+                return;
+            }
+
+            path = path.replace('{zScore}', parameters['zScore'] + '');
+
+            if (parameters['tvnDataIdentifiers'] !== undefined) {
+                body = parameters['tvnDataIdentifiers'];
+            }
+
+            if (parameters['tvnDataIdentifiers'] === undefined) {
+                reject(new Error('Missing required  parameter: tvnDataIdentifiers'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Get tumor vs normals data
+     * @method
+     * @name CBioPortalAPIInternal#getTumorVsNormalsDataUsingPOST
+     * @param {string} geneSymbol - Gene Symbol e.g. MYC
+     * @param {string} normalsReferenceId - Normals Tissue reference id e.g. gtex
+     * @param {boolean} zScore - z-Score e.g. true/false
+     * @param {} tvnDataIdentifiers - List of identifiers
+     */
     getTumorVsNormalsDataUsingPOST(parameters: {
             'geneSymbol': string,
             'normalsReferenceId': string,
@@ -562,57 +1434,10 @@ export default class CBioPortalAPIInternal {
             $domain ? : string
         }): Promise < Array < TumorVsNormalsData >
         > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/gene-symbol/{geneSymbol}/normals-reference/{normalsReferenceId}/data/{zScore}';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                path = path.replace('{geneSymbol}', parameters['geneSymbol'] + '');
-
-                if (parameters['geneSymbol'] === undefined) {
-                    reject(new Error('Missing required  parameter: geneSymbol'));
-                    return;
-                }
-
-                path = path.replace('{normalsReferenceId}', parameters['normalsReferenceId'] + '');
-
-                if (parameters['normalsReferenceId'] === undefined) {
-                    reject(new Error('Missing required  parameter: normalsReferenceId'));
-                    return;
-                }
-
-                path = path.replace('{zScore}', parameters['zScore'] + '');
-
-                if (parameters['tvnDataIdentifiers'] !== undefined) {
-                    body = parameters['tvnDataIdentifiers'];
-                }
-
-                if (parameters['tvnDataIdentifiers'] === undefined) {
-                    reject(new Error('Missing required  parameter: tvnDataIdentifiers'));
-                    return;
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
+            return this.getTumorVsNormalsDataUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
-
     fetchGenesetHierarchyInfoUsingPOSTURL(parameters: {
         'geneticProfileId': string,
         'percentile' ? : number,
@@ -665,6 +1490,80 @@ export default class CBioPortalAPIInternal {
      * @param {string} sampleListId - Identifier of pre-defined sample list with samples to query, e.g. brca_tcga_all
      * @param {} sampleIds - Fill this one if you want to specify a subset of samples: sampleIds: custom list of samples or patients to query, e.g. ["TCGA-A1-A0SD-01", "TCGA-A1-A0SE-01"]
      */
+    fetchGenesetHierarchyInfoUsingPOSTWithHttpInfo(parameters: {
+        'geneticProfileId': string,
+        'percentile' ? : number,
+        'scoreThreshold' ? : number,
+        'pvalueThreshold' ? : number,
+        'sampleListId' ? : string,
+        'sampleIds' ? : Array < string > ,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/geneset-hierarchy/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            if (parameters['geneticProfileId'] !== undefined) {
+                queryParameters['geneticProfileId'] = parameters['geneticProfileId'];
+            }
+
+            if (parameters['geneticProfileId'] === undefined) {
+                reject(new Error('Missing required  parameter: geneticProfileId'));
+                return;
+            }
+
+            if (parameters['percentile'] !== undefined) {
+                queryParameters['percentile'] = parameters['percentile'];
+            }
+
+            if (parameters['scoreThreshold'] !== undefined) {
+                queryParameters['scoreThreshold'] = parameters['scoreThreshold'];
+            }
+
+            if (parameters['pvalueThreshold'] !== undefined) {
+                queryParameters['pvalueThreshold'] = parameters['pvalueThreshold'];
+            }
+
+            if (parameters['sampleListId'] !== undefined) {
+                queryParameters['sampleListId'] = parameters['sampleListId'];
+            }
+
+            if (parameters['sampleIds'] !== undefined) {
+                body = parameters['sampleIds'];
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Get gene set hierarchical organization information. I.e. how different gene sets relate to other gene sets, in a hierarchy
+     * @method
+     * @name CBioPortalAPIInternal#fetchGenesetHierarchyInfoUsingPOST
+     * @param {string} geneticProfileId - Genetic Profile ID e.g. gbm_tcga_gsva_scores. The final hierarchy  will only include gene sets scored in the specified profile.
+     * @param {integer} percentile - Percentile (for score calculation). Which percentile to use when determining the *representative score*
+     * @param {number} scoreThreshold - Gene set score threshold (for absolute score value). Filters out gene sets where the GSVA(like) *representative score* is under this threshold.
+     * @param {number} pvalueThreshold - p-value threshold. Filters out gene sets for which the score p-value is higher than this threshold.
+     * @param {string} sampleListId - Identifier of pre-defined sample list with samples to query, e.g. brca_tcga_all
+     * @param {} sampleIds - Fill this one if you want to specify a subset of samples: sampleIds: custom list of samples or patients to query, e.g. ["TCGA-A1-A0SD-01", "TCGA-A1-A0SE-01"]
+     */
     fetchGenesetHierarchyInfoUsingPOST(parameters: {
             'geneticProfileId': string,
             'percentile' ? : number,
@@ -676,61 +1575,10 @@ export default class CBioPortalAPIInternal {
             $domain ? : string
         }): Promise < Array < GenesetHierarchyInfo >
         > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/geneset-hierarchy/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                if (parameters['geneticProfileId'] !== undefined) {
-                    queryParameters['geneticProfileId'] = parameters['geneticProfileId'];
-                }
-
-                if (parameters['geneticProfileId'] === undefined) {
-                    reject(new Error('Missing required  parameter: geneticProfileId'));
-                    return;
-                }
-
-                if (parameters['percentile'] !== undefined) {
-                    queryParameters['percentile'] = parameters['percentile'];
-                }
-
-                if (parameters['scoreThreshold'] !== undefined) {
-                    queryParameters['scoreThreshold'] = parameters['scoreThreshold'];
-                }
-
-                if (parameters['pvalueThreshold'] !== undefined) {
-                    queryParameters['pvalueThreshold'] = parameters['pvalueThreshold'];
-                }
-
-                if (parameters['sampleListId'] !== undefined) {
-                    queryParameters['sampleListId'] = parameters['sampleListId'];
-                }
-
-                if (parameters['sampleIds'] !== undefined) {
-                    body = parameters['sampleIds'];
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
+            return this.fetchGenesetHierarchyInfoUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
-
     getAllGenesetsUsingGETURL(parameters: {
         'projection' ? : "ID" | "SUMMARY" | "DETAILED" | "META",
         'pageSize' ? : number,
@@ -769,6 +1617,56 @@ export default class CBioPortalAPIInternal {
      * @param {integer} pageSize - Page size of the result list
      * @param {integer} pageNumber - Page number of the result list
      */
+    getAllGenesetsUsingGETWithHttpInfo(parameters: {
+        'projection' ? : "ID" | "SUMMARY" | "DETAILED" | "META",
+        'pageSize' ? : number,
+        'pageNumber' ? : number,
+        $queryParameters ? : any,
+            $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/genesets';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+
+            if (parameters['projection'] !== undefined) {
+                queryParameters['projection'] = parameters['projection'];
+            }
+
+            if (parameters['pageSize'] !== undefined) {
+                queryParameters['pageSize'] = parameters['pageSize'];
+            }
+
+            if (parameters['pageNumber'] !== undefined) {
+                queryParameters['pageNumber'] = parameters['pageNumber'];
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('GET', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Get all gene sets
+     * @method
+     * @name CBioPortalAPIInternal#getAllGenesetsUsingGET
+     * @param {string} projection - Level of detail of the response
+     * @param {integer} pageSize - Page size of the result list
+     * @param {integer} pageNumber - Page number of the result list
+     */
     getAllGenesetsUsingGET(parameters: {
             'projection' ? : "ID" | "SUMMARY" | "DETAILED" | "META",
             'pageSize' ? : number,
@@ -777,43 +1675,10 @@ export default class CBioPortalAPIInternal {
                 $domain ? : string
         }): Promise < Array < Geneset >
         > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/genesets';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-
-                if (parameters['projection'] !== undefined) {
-                    queryParameters['projection'] = parameters['projection'];
-                }
-
-                if (parameters['pageSize'] !== undefined) {
-                    queryParameters['pageSize'] = parameters['pageSize'];
-                }
-
-                if (parameters['pageNumber'] !== undefined) {
-                    queryParameters['pageNumber'] = parameters['pageNumber'];
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('GET', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
+            return this.getAllGenesetsUsingGETWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
-
     fetchGenesetsUsingPOSTURL(parameters: {
         'genesetIds': Array < string > ,
         $queryParameters ? : any
@@ -837,47 +1702,60 @@ export default class CBioPortalAPIInternal {
      * @name CBioPortalAPIInternal#fetchGenesetsUsingPOST
      * @param {} genesetIds - List of Gene set IDs
      */
+    fetchGenesetsUsingPOSTWithHttpInfo(parameters: {
+        'genesetIds': Array < string > ,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/genesets/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            if (parameters['genesetIds'] !== undefined) {
+                body = parameters['genesetIds'];
+            }
+
+            if (parameters['genesetIds'] === undefined) {
+                reject(new Error('Missing required  parameter: genesetIds'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Fetch gene sets by ID
+     * @method
+     * @name CBioPortalAPIInternal#fetchGenesetsUsingPOST
+     * @param {} genesetIds - List of Gene set IDs
+     */
     fetchGenesetsUsingPOST(parameters: {
             'genesetIds': Array < string > ,
             $queryParameters ? : any,
             $domain ? : string
         }): Promise < Array < Geneset >
         > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/genesets/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                if (parameters['genesetIds'] !== undefined) {
-                    body = parameters['genesetIds'];
-                }
-
-                if (parameters['genesetIds'] === undefined) {
-                    reject(new Error('Missing required  parameter: genesetIds'));
-                    return;
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
+            return this.fetchGenesetsUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
-
     getGenesetUsingGETURL(parameters: {
         'genesetId': string,
         $queryParameters ? : any
@@ -903,11 +1781,11 @@ export default class CBioPortalAPIInternal {
      * @name CBioPortalAPIInternal#getGenesetUsingGET
      * @param {string} genesetId - Gene set ID e.g. GNF2_ZAP70
      */
-    getGenesetUsingGET(parameters: {
+    getGenesetUsingGETWithHttpInfo(parameters: {
         'genesetId': string,
         $queryParameters ? : any,
         $domain ? : string
-    }): Promise < Geneset > {
+    }): Promise < request.Response > {
         const domain = parameters.$domain ? parameters.$domain : this.domain;
         const errorHandlers = this.errorHandlers;
         const request = this.request;
@@ -935,11 +1813,24 @@ export default class CBioPortalAPIInternal {
 
             request('GET', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
 
-        }).then(function(response: request.Response) {
-            return response.body;
         });
     };
 
+    /**
+     * Get a gene set
+     * @method
+     * @name CBioPortalAPIInternal#getGenesetUsingGET
+     * @param {string} genesetId - Gene set ID e.g. GNF2_ZAP70
+     */
+    getGenesetUsingGET(parameters: {
+        'genesetId': string,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < Geneset > {
+        return this.getGenesetUsingGETWithHttpInfo(parameters).then(function(response: request.Response) {
+            return response.body;
+        });
+    };
     fetchCorrelatedGenesUsingPOSTURL(parameters: {
         'genesetId': string,
         'geneticProfileId': string,
@@ -984,6 +1875,77 @@ export default class CBioPortalAPIInternal {
      * @param {string} sampleListId - Identifier of pre-defined sample list with samples to query, e.g. brca_tcga_all
      * @param {} sampleIds - Fill this one if you want to specify a subset of samples: sampleIds: custom list of samples or patients to query, e.g. ["TCGA-A1-A0SD-01", "TCGA-A1-A0SE-01"]
      */
+    fetchCorrelatedGenesUsingPOSTWithHttpInfo(parameters: {
+        'genesetId': string,
+        'geneticProfileId': string,
+        'correlationThreshold' ? : number,
+        'sampleListId' ? : string,
+        'sampleIds' ? : Array < string > ,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/genesets/{genesetId}/expression-correlation/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            path = path.replace('{genesetId}', parameters['genesetId'] + '');
+
+            if (parameters['genesetId'] === undefined) {
+                reject(new Error('Missing required  parameter: genesetId'));
+                return;
+            }
+
+            if (parameters['geneticProfileId'] !== undefined) {
+                queryParameters['geneticProfileId'] = parameters['geneticProfileId'];
+            }
+
+            if (parameters['geneticProfileId'] === undefined) {
+                reject(new Error('Missing required  parameter: geneticProfileId'));
+                return;
+            }
+
+            if (parameters['correlationThreshold'] !== undefined) {
+                queryParameters['correlationThreshold'] = parameters['correlationThreshold'];
+            }
+
+            if (parameters['sampleListId'] !== undefined) {
+                queryParameters['sampleListId'] = parameters['sampleListId'];
+            }
+
+            if (parameters['sampleIds'] !== undefined) {
+                body = parameters['sampleIds'];
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Get the genes in a gene set that have expression correlated to the gene set scores (calculated using Spearman's correlation)
+     * @method
+     * @name CBioPortalAPIInternal#fetchCorrelatedGenesUsingPOST
+     * @param {string} genesetId - Gene set ID, e.g. HINATA_NFKB_MATRIX.
+     * @param {string} geneticProfileId - Genetic Profile ID e.g. gbm_tcga_gsva_scores
+     * @param {number} correlationThreshold - Correlation threshold (for absolute correlation value, Spearman correlation)
+     * @param {string} sampleListId - Identifier of pre-defined sample list with samples to query, e.g. brca_tcga_all
+     * @param {} sampleIds - Fill this one if you want to specify a subset of samples: sampleIds: custom list of samples or patients to query, e.g. ["TCGA-A1-A0SD-01", "TCGA-A1-A0SE-01"]
+     */
     fetchCorrelatedGenesUsingPOST(parameters: {
             'genesetId': string,
             'geneticProfileId': string,
@@ -994,60 +1956,10 @@ export default class CBioPortalAPIInternal {
             $domain ? : string
         }): Promise < Array < GenesetCorrelation >
         > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/genesets/{genesetId}/expression-correlation/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                path = path.replace('{genesetId}', parameters['genesetId'] + '');
-
-                if (parameters['genesetId'] === undefined) {
-                    reject(new Error('Missing required  parameter: genesetId'));
-                    return;
-                }
-
-                if (parameters['geneticProfileId'] !== undefined) {
-                    queryParameters['geneticProfileId'] = parameters['geneticProfileId'];
-                }
-
-                if (parameters['geneticProfileId'] === undefined) {
-                    reject(new Error('Missing required  parameter: geneticProfileId'));
-                    return;
-                }
-
-                if (parameters['correlationThreshold'] !== undefined) {
-                    queryParameters['correlationThreshold'] = parameters['correlationThreshold'];
-                }
-
-                if (parameters['sampleListId'] !== undefined) {
-                    queryParameters['sampleListId'] = parameters['sampleListId'];
-                }
-
-                if (parameters['sampleIds'] !== undefined) {
-                    body = parameters['sampleIds'];
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
+            return this.fetchCorrelatedGenesUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
-
     fetchGeneticDataItemsUsingPOSTURL(parameters: {
         'geneticProfileId': string,
         'genesetDataFilterCriteria': GenesetDataFilterCriteria,
@@ -1075,6 +1987,59 @@ export default class CBioPortalAPIInternal {
      * @param {string} geneticProfileId - Genetic profile ID, e.g. gbm_tcga_gsva_scores
      * @param {} genesetDataFilterCriteria - Search criteria to return the values for a given set of samples and gene set items. genesetIds: The list of identifiers for the gene sets of interest, e.g. HINATA_NFKB_MATRIX. Use one of these if you want to specify a subset of samples:(1) sampleListId: Identifier of pre-defined sample list with samples to query, e.g. brca_tcga_all or (2) sampleIds: custom list of samples or patients to query, e.g. TCGA-BH-A1EO-01, TCGA-AR-A1AR-01
      */
+    fetchGeneticDataItemsUsingPOSTWithHttpInfo(parameters: {
+        'geneticProfileId': string,
+        'genesetDataFilterCriteria': GenesetDataFilterCriteria,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/genetic-profiles/{geneticProfileId}/geneset-genetic-data/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            path = path.replace('{geneticProfileId}', parameters['geneticProfileId'] + '');
+
+            if (parameters['geneticProfileId'] === undefined) {
+                reject(new Error('Missing required  parameter: geneticProfileId'));
+                return;
+            }
+
+            if (parameters['genesetDataFilterCriteria'] !== undefined) {
+                body = parameters['genesetDataFilterCriteria'];
+            }
+
+            if (parameters['genesetDataFilterCriteria'] === undefined) {
+                reject(new Error('Missing required  parameter: genesetDataFilterCriteria'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Fetch gene set "genetic data" items (gene set scores) by profile Id, gene set ids and sample ids
+     * @method
+     * @name CBioPortalAPIInternal#fetchGeneticDataItemsUsingPOST
+     * @param {string} geneticProfileId - Genetic profile ID, e.g. gbm_tcga_gsva_scores
+     * @param {} genesetDataFilterCriteria - Search criteria to return the values for a given set of samples and gene set items. genesetIds: The list of identifiers for the gene sets of interest, e.g. HINATA_NFKB_MATRIX. Use one of these if you want to specify a subset of samples:(1) sampleListId: Identifier of pre-defined sample list with samples to query, e.g. brca_tcga_all or (2) sampleIds: custom list of samples or patients to query, e.g. TCGA-BH-A1EO-01, TCGA-AR-A1AR-01
+     */
     fetchGeneticDataItemsUsingPOST(parameters: {
             'geneticProfileId': string,
             'genesetDataFilterCriteria': GenesetDataFilterCriteria,
@@ -1082,48 +2047,10 @@ export default class CBioPortalAPIInternal {
             $domain ? : string
         }): Promise < Array < GenesetMolecularData >
         > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/genetic-profiles/{geneticProfileId}/geneset-genetic-data/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                path = path.replace('{geneticProfileId}', parameters['geneticProfileId'] + '');
-
-                if (parameters['geneticProfileId'] === undefined) {
-                    reject(new Error('Missing required  parameter: geneticProfileId'));
-                    return;
-                }
-
-                if (parameters['genesetDataFilterCriteria'] !== undefined) {
-                    body = parameters['genesetDataFilterCriteria'];
-                }
-
-                if (parameters['genesetDataFilterCriteria'] === undefined) {
-                    reject(new Error('Missing required  parameter: genesetDataFilterCriteria'));
-                    return;
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
+            return this.fetchGeneticDataItemsUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
-
     getInfoUsingGETURL(parameters: {
         $queryParameters ? : any
     }): string {
@@ -1145,10 +2072,10 @@ export default class CBioPortalAPIInternal {
      * @method
      * @name CBioPortalAPIInternal#getInfoUsingGET
      */
-    getInfoUsingGET(parameters: {
+    getInfoUsingGETWithHttpInfo(parameters: {
         $queryParameters ? : any,
             $domain ? : string
-    }): Promise < Info > {
+    }): Promise < request.Response > {
         const domain = parameters.$domain ? parameters.$domain : this.domain;
         const errorHandlers = this.errorHandlers;
         const request = this.request;
@@ -1169,87 +2096,22 @@ export default class CBioPortalAPIInternal {
 
             request('GET', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
 
-        }).then(function(response: request.Response) {
-            return response.body;
         });
     };
 
-    fetchCNAGenesUsingPOSTURL(parameters: {
-        'molecularProfileId': string,
-        'studyViewFilter': StudyViewFilter,
-        $queryParameters ? : any
-    }): string {
-        let queryParameters: any = {};
-        let path = '/molecular-profiles/{molecularProfileId}/cna-genes/fetch';
-
-        path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
-
-        if (parameters.$queryParameters) {
-            Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                var parameter = parameters.$queryParameters[parameterName];
-                queryParameters[parameterName] = parameter;
-            });
-        }
-        let keys = Object.keys(queryParameters);
-        return this.domain + path + (keys.length > 0 ? '?' + (keys.map(key => key + '=' + encodeURIComponent(queryParameters[key])).join('&')) : '');
-    };
-
     /**
-     * Fetch CNA genes by study view filter
+     * Get information about the running instance
      * @method
-     * @name CBioPortalAPIInternal#fetchCNAGenesUsingPOST
-     * @param {string} molecularProfileId - Molecular Profile ID e.g. acc_tcga_gistic
-     * @param {} studyViewFilter - Study view filter
+     * @name CBioPortalAPIInternal#getInfoUsingGET
      */
-    fetchCNAGenesUsingPOST(parameters: {
-            'molecularProfileId': string,
-            'studyViewFilter': StudyViewFilter,
-            $queryParameters ? : any,
+    getInfoUsingGET(parameters: {
+        $queryParameters ? : any,
             $domain ? : string
-        }): Promise < Array < CopyNumberCountByGene >
-        > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/molecular-profiles/{molecularProfileId}/cna-genes/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
-
-                if (parameters['molecularProfileId'] === undefined) {
-                    reject(new Error('Missing required  parameter: molecularProfileId'));
-                    return;
-                }
-
-                if (parameters['studyViewFilter'] !== undefined) {
-                    body = parameters['studyViewFilter'];
-                }
-
-                if (parameters['studyViewFilter'] === undefined) {
-                    reject(new Error('Missing required  parameter: studyViewFilter'));
-                    return;
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
-                return response.body;
-            });
-        };
-
+    }): Promise < Info > {
+        return this.getInfoUsingGETWithHttpInfo(parameters).then(function(response: request.Response) {
+            return response.body;
+        });
+    };
     fetchCoExpressionsUsingPOSTURL(parameters: {
         'molecularProfileId': string,
         'coExpressionFilter': CoExpressionFilter,
@@ -1289,6 +2151,76 @@ export default class CBioPortalAPIInternal {
      * @param {integer} entrezGeneId - Entrez Gene ID
      * @param {number} threshold - Threshold
      */
+    fetchCoExpressionsUsingPOSTWithHttpInfo(parameters: {
+        'molecularProfileId': string,
+        'coExpressionFilter': CoExpressionFilter,
+        'entrezGeneId': number,
+        'threshold' ? : number,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/molecular-profiles/{molecularProfileId}/co-expressions/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
+
+            if (parameters['molecularProfileId'] === undefined) {
+                reject(new Error('Missing required  parameter: molecularProfileId'));
+                return;
+            }
+
+            if (parameters['coExpressionFilter'] !== undefined) {
+                body = parameters['coExpressionFilter'];
+            }
+
+            if (parameters['coExpressionFilter'] === undefined) {
+                reject(new Error('Missing required  parameter: coExpressionFilter'));
+                return;
+            }
+
+            if (parameters['entrezGeneId'] !== undefined) {
+                queryParameters['entrezGeneId'] = parameters['entrezGeneId'];
+            }
+
+            if (parameters['entrezGeneId'] === undefined) {
+                reject(new Error('Missing required  parameter: entrezGeneId'));
+                return;
+            }
+
+            if (parameters['threshold'] !== undefined) {
+                queryParameters['threshold'] = parameters['threshold'];
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Fetch co-expressions in a molecular profile
+     * @method
+     * @name CBioPortalAPIInternal#fetchCoExpressionsUsingPOST
+     * @param {string} molecularProfileId - Molecular Profile ID e.g. acc_tcga_rna_seq_v2_mrna
+     * @param {} coExpressionFilter - List of Sample IDs/Sample List ID
+     * @param {integer} entrezGeneId - Entrez Gene ID
+     * @param {number} threshold - Threshold
+     */
     fetchCoExpressionsUsingPOST(parameters: {
             'molecularProfileId': string,
             'coExpressionFilter': CoExpressionFilter,
@@ -1298,61 +2230,10 @@ export default class CBioPortalAPIInternal {
             $domain ? : string
         }): Promise < Array < CoExpression >
         > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/molecular-profiles/{molecularProfileId}/co-expressions/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
-
-                if (parameters['molecularProfileId'] === undefined) {
-                    reject(new Error('Missing required  parameter: molecularProfileId'));
-                    return;
-                }
-
-                if (parameters['coExpressionFilter'] !== undefined) {
-                    body = parameters['coExpressionFilter'];
-                }
-
-                if (parameters['coExpressionFilter'] === undefined) {
-                    reject(new Error('Missing required  parameter: coExpressionFilter'));
-                    return;
-                }
-
-                if (parameters['entrezGeneId'] !== undefined) {
-                    queryParameters['entrezGeneId'] = parameters['entrezGeneId'];
-                }
-
-                if (parameters['entrezGeneId'] === undefined) {
-                    reject(new Error('Missing required  parameter: entrezGeneId'));
-                    return;
-                }
-
-                if (parameters['threshold'] !== undefined) {
-                    queryParameters['threshold'] = parameters['threshold'];
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
+            return this.fetchCoExpressionsUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
-
     fetchCopyNumberEnrichmentsUsingPOSTURL(parameters: {
         'molecularProfileId': string,
         'copyNumberEventType' ? : "HOMDEL" | "AMP",
@@ -1391,6 +2272,71 @@ export default class CBioPortalAPIInternal {
      * @param {string} enrichmentType - Type of the enrichment e.g. SAMPLE or PATIENT
      * @param {} enrichmentFilter - List of altered and unaltered Sample/Patient IDs
      */
+    fetchCopyNumberEnrichmentsUsingPOSTWithHttpInfo(parameters: {
+        'molecularProfileId': string,
+        'copyNumberEventType' ? : "HOMDEL" | "AMP",
+        'enrichmentType' ? : "SAMPLE" | "PATIENT",
+        'enrichmentFilter': EnrichmentFilter,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/molecular-profiles/{molecularProfileId}/copy-number-enrichments/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
+
+            if (parameters['molecularProfileId'] === undefined) {
+                reject(new Error('Missing required  parameter: molecularProfileId'));
+                return;
+            }
+
+            if (parameters['copyNumberEventType'] !== undefined) {
+                queryParameters['copyNumberEventType'] = parameters['copyNumberEventType'];
+            }
+
+            if (parameters['enrichmentType'] !== undefined) {
+                queryParameters['enrichmentType'] = parameters['enrichmentType'];
+            }
+
+            if (parameters['enrichmentFilter'] !== undefined) {
+                body = parameters['enrichmentFilter'];
+            }
+
+            if (parameters['enrichmentFilter'] === undefined) {
+                reject(new Error('Missing required  parameter: enrichmentFilter'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Fetch copy number enrichments in a molecular profile
+     * @method
+     * @name CBioPortalAPIInternal#fetchCopyNumberEnrichmentsUsingPOST
+     * @param {string} molecularProfileId - Molecular Profile ID e.g. acc_tcga_mutations
+     * @param {string} copyNumberEventType - Type of the copy number event
+     * @param {string} enrichmentType - Type of the enrichment e.g. SAMPLE or PATIENT
+     * @param {} enrichmentFilter - List of altered and unaltered Sample/Patient IDs
+     */
     fetchCopyNumberEnrichmentsUsingPOST(parameters: {
             'molecularProfileId': string,
             'copyNumberEventType' ? : "HOMDEL" | "AMP",
@@ -1400,56 +2346,10 @@ export default class CBioPortalAPIInternal {
             $domain ? : string
         }): Promise < Array < AlterationEnrichment >
         > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/molecular-profiles/{molecularProfileId}/copy-number-enrichments/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
-
-                if (parameters['molecularProfileId'] === undefined) {
-                    reject(new Error('Missing required  parameter: molecularProfileId'));
-                    return;
-                }
-
-                if (parameters['copyNumberEventType'] !== undefined) {
-                    queryParameters['copyNumberEventType'] = parameters['copyNumberEventType'];
-                }
-
-                if (parameters['enrichmentType'] !== undefined) {
-                    queryParameters['enrichmentType'] = parameters['enrichmentType'];
-                }
-
-                if (parameters['enrichmentFilter'] !== undefined) {
-                    body = parameters['enrichmentFilter'];
-                }
-
-                if (parameters['enrichmentFilter'] === undefined) {
-                    reject(new Error('Missing required  parameter: enrichmentFilter'));
-                    return;
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
+            return this.fetchCopyNumberEnrichmentsUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
-
     fetchExpressionEnrichmentsUsingPOSTURL(parameters: {
         'molecularProfileId': string,
         'enrichmentType' ? : "SAMPLE" | "PATIENT",
@@ -1482,6 +2382,65 @@ export default class CBioPortalAPIInternal {
      * @param {string} enrichmentType - Type of the enrichment e.g. SAMPLE or PATIENT
      * @param {} enrichmentFilter - List of altered and unaltered Sample/Patient IDs
      */
+    fetchExpressionEnrichmentsUsingPOSTWithHttpInfo(parameters: {
+        'molecularProfileId': string,
+        'enrichmentType' ? : "SAMPLE" | "PATIENT",
+        'enrichmentFilter': EnrichmentFilter,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/molecular-profiles/{molecularProfileId}/expression-enrichments/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
+
+            if (parameters['molecularProfileId'] === undefined) {
+                reject(new Error('Missing required  parameter: molecularProfileId'));
+                return;
+            }
+
+            if (parameters['enrichmentType'] !== undefined) {
+                queryParameters['enrichmentType'] = parameters['enrichmentType'];
+            }
+
+            if (parameters['enrichmentFilter'] !== undefined) {
+                body = parameters['enrichmentFilter'];
+            }
+
+            if (parameters['enrichmentFilter'] === undefined) {
+                reject(new Error('Missing required  parameter: enrichmentFilter'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Fetch expression enrichments in a molecular profile
+     * @method
+     * @name CBioPortalAPIInternal#fetchExpressionEnrichmentsUsingPOST
+     * @param {string} molecularProfileId - Molecular Profile ID e.g. acc_tcga_rna_seq_v2_mrna
+     * @param {string} enrichmentType - Type of the enrichment e.g. SAMPLE or PATIENT
+     * @param {} enrichmentFilter - List of altered and unaltered Sample/Patient IDs
+     */
     fetchExpressionEnrichmentsUsingPOST(parameters: {
             'molecularProfileId': string,
             'enrichmentType' ? : "SAMPLE" | "PATIENT",
@@ -1490,52 +2449,10 @@ export default class CBioPortalAPIInternal {
             $domain ? : string
         }): Promise < Array < ExpressionEnrichment >
         > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/molecular-profiles/{molecularProfileId}/expression-enrichments/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
-
-                if (parameters['molecularProfileId'] === undefined) {
-                    reject(new Error('Missing required  parameter: molecularProfileId'));
-                    return;
-                }
-
-                if (parameters['enrichmentType'] !== undefined) {
-                    queryParameters['enrichmentType'] = parameters['enrichmentType'];
-                }
-
-                if (parameters['enrichmentFilter'] !== undefined) {
-                    body = parameters['enrichmentFilter'];
-                }
-
-                if (parameters['enrichmentFilter'] === undefined) {
-                    reject(new Error('Missing required  parameter: enrichmentFilter'));
-                    return;
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
+            return this.fetchExpressionEnrichmentsUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
-
     fetchMrnaPercentileUsingPOSTURL(parameters: {
         'molecularProfileId': string,
         'sampleId': string,
@@ -1568,6 +2485,70 @@ export default class CBioPortalAPIInternal {
      * @param {string} sampleId - Sample ID e.g. TCGA-OR-A5J2-01
      * @param {} entrezGeneIds - List of Entrez Gene IDs
      */
+    fetchMrnaPercentileUsingPOSTWithHttpInfo(parameters: {
+        'molecularProfileId': string,
+        'sampleId': string,
+        'entrezGeneIds': Array < number > ,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/molecular-profiles/{molecularProfileId}/mrna-percentile/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
+
+            if (parameters['molecularProfileId'] === undefined) {
+                reject(new Error('Missing required  parameter: molecularProfileId'));
+                return;
+            }
+
+            if (parameters['sampleId'] !== undefined) {
+                queryParameters['sampleId'] = parameters['sampleId'];
+            }
+
+            if (parameters['sampleId'] === undefined) {
+                reject(new Error('Missing required  parameter: sampleId'));
+                return;
+            }
+
+            if (parameters['entrezGeneIds'] !== undefined) {
+                body = parameters['entrezGeneIds'];
+            }
+
+            if (parameters['entrezGeneIds'] === undefined) {
+                reject(new Error('Missing required  parameter: entrezGeneIds'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Get mRNA expression percentiles for list of genes for a sample
+     * @method
+     * @name CBioPortalAPIInternal#fetchMrnaPercentileUsingPOST
+     * @param {string} molecularProfileId - Molecular Profile ID e.g. acc_tcga_rna_seq_v2_mrna
+     * @param {string} sampleId - Sample ID e.g. TCGA-OR-A5J2-01
+     * @param {} entrezGeneIds - List of Entrez Gene IDs
+     */
     fetchMrnaPercentileUsingPOST(parameters: {
             'molecularProfileId': string,
             'sampleId': string,
@@ -1576,133 +2557,10 @@ export default class CBioPortalAPIInternal {
             $domain ? : string
         }): Promise < Array < MrnaPercentile >
         > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/molecular-profiles/{molecularProfileId}/mrna-percentile/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
-
-                if (parameters['molecularProfileId'] === undefined) {
-                    reject(new Error('Missing required  parameter: molecularProfileId'));
-                    return;
-                }
-
-                if (parameters['sampleId'] !== undefined) {
-                    queryParameters['sampleId'] = parameters['sampleId'];
-                }
-
-                if (parameters['sampleId'] === undefined) {
-                    reject(new Error('Missing required  parameter: sampleId'));
-                    return;
-                }
-
-                if (parameters['entrezGeneIds'] !== undefined) {
-                    body = parameters['entrezGeneIds'];
-                }
-
-                if (parameters['entrezGeneIds'] === undefined) {
-                    reject(new Error('Missing required  parameter: entrezGeneIds'));
-                    return;
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
+            return this.fetchMrnaPercentileUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
-
-    fetchMutatedGenesUsingPOSTURL(parameters: {
-        'molecularProfileId': string,
-        'studyViewFilter': StudyViewFilter,
-        $queryParameters ? : any
-    }): string {
-        let queryParameters: any = {};
-        let path = '/molecular-profiles/{molecularProfileId}/mutated-genes/fetch';
-
-        path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
-
-        if (parameters.$queryParameters) {
-            Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                var parameter = parameters.$queryParameters[parameterName];
-                queryParameters[parameterName] = parameter;
-            });
-        }
-        let keys = Object.keys(queryParameters);
-        return this.domain + path + (keys.length > 0 ? '?' + (keys.map(key => key + '=' + encodeURIComponent(queryParameters[key])).join('&')) : '');
-    };
-
-    /**
-     * Fetch mutated genes by study view filter
-     * @method
-     * @name CBioPortalAPIInternal#fetchMutatedGenesUsingPOST
-     * @param {string} molecularProfileId - Molecular Profile ID e.g. acc_tcga_mutations
-     * @param {} studyViewFilter - Study view filter
-     */
-    fetchMutatedGenesUsingPOST(parameters: {
-            'molecularProfileId': string,
-            'studyViewFilter': StudyViewFilter,
-            $queryParameters ? : any,
-            $domain ? : string
-        }): Promise < Array < MutationCountByGene >
-        > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/molecular-profiles/{molecularProfileId}/mutated-genes/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
-
-                if (parameters['molecularProfileId'] === undefined) {
-                    reject(new Error('Missing required  parameter: molecularProfileId'));
-                    return;
-                }
-
-                if (parameters['studyViewFilter'] !== undefined) {
-                    body = parameters['studyViewFilter'];
-                }
-
-                if (parameters['studyViewFilter'] === undefined) {
-                    reject(new Error('Missing required  parameter: studyViewFilter'));
-                    return;
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
-                return response.body;
-            });
-        };
-
     fetchMutationEnrichmentsUsingPOSTURL(parameters: {
         'molecularProfileId': string,
         'enrichmentType' ? : "SAMPLE" | "PATIENT",
@@ -1735,6 +2593,65 @@ export default class CBioPortalAPIInternal {
      * @param {string} enrichmentType - Type of the enrichment e.g. SAMPLE or PATIENT
      * @param {} enrichmentFilter - List of altered and unaltered Sample/Patient IDs
      */
+    fetchMutationEnrichmentsUsingPOSTWithHttpInfo(parameters: {
+        'molecularProfileId': string,
+        'enrichmentType' ? : "SAMPLE" | "PATIENT",
+        'enrichmentFilter': EnrichmentFilter,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/molecular-profiles/{molecularProfileId}/mutation-enrichments/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
+
+            if (parameters['molecularProfileId'] === undefined) {
+                reject(new Error('Missing required  parameter: molecularProfileId'));
+                return;
+            }
+
+            if (parameters['enrichmentType'] !== undefined) {
+                queryParameters['enrichmentType'] = parameters['enrichmentType'];
+            }
+
+            if (parameters['enrichmentFilter'] !== undefined) {
+                body = parameters['enrichmentFilter'];
+            }
+
+            if (parameters['enrichmentFilter'] === undefined) {
+                reject(new Error('Missing required  parameter: enrichmentFilter'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Fetch mutation enrichments in a molecular profile
+     * @method
+     * @name CBioPortalAPIInternal#fetchMutationEnrichmentsUsingPOST
+     * @param {string} molecularProfileId - Molecular Profile ID e.g. acc_tcga_mutations
+     * @param {string} enrichmentType - Type of the enrichment e.g. SAMPLE or PATIENT
+     * @param {} enrichmentFilter - List of altered and unaltered Sample/Patient IDs
+     */
     fetchMutationEnrichmentsUsingPOST(parameters: {
             'molecularProfileId': string,
             'enrichmentType' ? : "SAMPLE" | "PATIENT",
@@ -1743,52 +2660,10 @@ export default class CBioPortalAPIInternal {
             $domain ? : string
         }): Promise < Array < AlterationEnrichment >
         > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/molecular-profiles/{molecularProfileId}/mutation-enrichments/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
-
-                if (parameters['molecularProfileId'] === undefined) {
-                    reject(new Error('Missing required  parameter: molecularProfileId'));
-                    return;
-                }
-
-                if (parameters['enrichmentType'] !== undefined) {
-                    queryParameters['enrichmentType'] = parameters['enrichmentType'];
-                }
-
-                if (parameters['enrichmentFilter'] !== undefined) {
-                    body = parameters['enrichmentFilter'];
-                }
-
-                if (parameters['enrichmentFilter'] === undefined) {
-                    reject(new Error('Missing required  parameter: enrichmentFilter'));
-                    return;
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
+            return this.fetchMutationEnrichmentsUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
-
     fetchMutationSpectrumsUsingPOSTURL(parameters: {
         'molecularProfileId': string,
         'mutationSpectrumFilter': MutationSpectrumFilter,
@@ -1816,92 +2691,16 @@ export default class CBioPortalAPIInternal {
      * @param {string} molecularProfileId - Molecular Profile ID e.g. acc_tcga_mutations
      * @param {} mutationSpectrumFilter - List of Sample IDs/Sample List ID
      */
-    fetchMutationSpectrumsUsingPOST(parameters: {
-            'molecularProfileId': string,
-            'mutationSpectrumFilter': MutationSpectrumFilter,
-            $queryParameters ? : any,
-            $domain ? : string
-        }): Promise < Array < MutationSpectrum >
-        > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/molecular-profiles/{molecularProfileId}/mutation-spectrums/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
-
-                if (parameters['molecularProfileId'] === undefined) {
-                    reject(new Error('Missing required  parameter: molecularProfileId'));
-                    return;
-                }
-
-                if (parameters['mutationSpectrumFilter'] !== undefined) {
-                    body = parameters['mutationSpectrumFilter'];
-                }
-
-                if (parameters['mutationSpectrumFilter'] === undefined) {
-                    reject(new Error('Missing required  parameter: mutationSpectrumFilter'));
-                    return;
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
-                return response.body;
-            });
-        };
-
-    fetchMolecularProfileSampleCountsUsingPOSTURL(parameters: {
+    fetchMutationSpectrumsUsingPOSTWithHttpInfo(parameters: {
         'molecularProfileId': string,
-        'studyViewFilter': StudyViewFilter,
-        $queryParameters ? : any
-    }): string {
-        let queryParameters: any = {};
-        let path = '/molecular-profiles/{molecularProfileId}/sample-counts/fetch';
-
-        path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
-
-        if (parameters.$queryParameters) {
-            Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                var parameter = parameters.$queryParameters[parameterName];
-                queryParameters[parameterName] = parameter;
-            });
-        }
-        let keys = Object.keys(queryParameters);
-        return this.domain + path + (keys.length > 0 ? '?' + (keys.map(key => key + '=' + encodeURIComponent(queryParameters[key])).join('&')) : '');
-    };
-
-    /**
-     * Fetch sample IDs by study view filter
-     * @method
-     * @name CBioPortalAPIInternal#fetchMolecularProfileSampleCountsUsingPOST
-     * @param {string} molecularProfileId - Molecular Profile ID e.g. acc_tcga_mutations
-     * @param {} studyViewFilter - Study view filter
-     */
-    fetchMolecularProfileSampleCountsUsingPOST(parameters: {
-        'molecularProfileId': string,
-        'studyViewFilter': StudyViewFilter,
+        'mutationSpectrumFilter': MutationSpectrumFilter,
         $queryParameters ? : any,
         $domain ? : string
-    }): Promise < MolecularProfileSampleCount > {
+    }): Promise < request.Response > {
         const domain = parameters.$domain ? parameters.$domain : this.domain;
         const errorHandlers = this.errorHandlers;
         const request = this.request;
-        let path = '/molecular-profiles/{molecularProfileId}/sample-counts/fetch';
+        let path = '/molecular-profiles/{molecularProfileId}/mutation-spectrums/fetch';
         let body: any;
         let queryParameters: any = {};
         let headers: any = {};
@@ -1917,12 +2716,12 @@ export default class CBioPortalAPIInternal {
                 return;
             }
 
-            if (parameters['studyViewFilter'] !== undefined) {
-                body = parameters['studyViewFilter'];
+            if (parameters['mutationSpectrumFilter'] !== undefined) {
+                body = parameters['mutationSpectrumFilter'];
             }
 
-            if (parameters['studyViewFilter'] === undefined) {
-                reject(new Error('Missing required  parameter: studyViewFilter'));
+            if (parameters['mutationSpectrumFilter'] === undefined) {
+                reject(new Error('Missing required  parameter: mutationSpectrumFilter'));
                 return;
             }
 
@@ -1935,11 +2734,27 @@ export default class CBioPortalAPIInternal {
 
             request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
 
-        }).then(function(response: request.Response) {
-            return response.body;
         });
     };
 
+    /**
+     * Fetch mutation spectrums in a molecular profile
+     * @method
+     * @name CBioPortalAPIInternal#fetchMutationSpectrumsUsingPOST
+     * @param {string} molecularProfileId - Molecular Profile ID e.g. acc_tcga_mutations
+     * @param {} mutationSpectrumFilter - List of Sample IDs/Sample List ID
+     */
+    fetchMutationSpectrumsUsingPOST(parameters: {
+            'molecularProfileId': string,
+            'mutationSpectrumFilter': MutationSpectrumFilter,
+            $queryParameters ? : any,
+            $domain ? : string
+        }): Promise < Array < MutationSpectrum >
+        > {
+            return this.fetchMutationSpectrumsUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
+                return response.body;
+            });
+        };
     fetchVariantCountsUsingPOSTURL(parameters: {
         'molecularProfileId': string,
         'variantCountIdentifiers': Array < VariantCountIdentifier > ,
@@ -1967,6 +2782,59 @@ export default class CBioPortalAPIInternal {
      * @param {string} molecularProfileId - Molecular Profile ID e.g. acc_tcga_mutations
      * @param {} variantCountIdentifiers - List of variant count identifiers
      */
+    fetchVariantCountsUsingPOSTWithHttpInfo(parameters: {
+        'molecularProfileId': string,
+        'variantCountIdentifiers': Array < VariantCountIdentifier > ,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/molecular-profiles/{molecularProfileId}/variant-counts/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
+
+            if (parameters['molecularProfileId'] === undefined) {
+                reject(new Error('Missing required  parameter: molecularProfileId'));
+                return;
+            }
+
+            if (parameters['variantCountIdentifiers'] !== undefined) {
+                body = parameters['variantCountIdentifiers'];
+            }
+
+            if (parameters['variantCountIdentifiers'] === undefined) {
+                reject(new Error('Missing required  parameter: variantCountIdentifiers'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Get counts of specific variants within a mutation molecular profile
+     * @method
+     * @name CBioPortalAPIInternal#fetchVariantCountsUsingPOST
+     * @param {string} molecularProfileId - Molecular Profile ID e.g. acc_tcga_mutations
+     * @param {} variantCountIdentifiers - List of variant count identifiers
+     */
     fetchVariantCountsUsingPOST(parameters: {
             'molecularProfileId': string,
             'variantCountIdentifiers': Array < VariantCountIdentifier > ,
@@ -1974,64 +2842,16 @@ export default class CBioPortalAPIInternal {
             $domain ? : string
         }): Promise < Array < VariantCount >
         > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/molecular-profiles/{molecularProfileId}/variant-counts/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                path = path.replace('{molecularProfileId}', parameters['molecularProfileId'] + '');
-
-                if (parameters['molecularProfileId'] === undefined) {
-                    reject(new Error('Missing required  parameter: molecularProfileId'));
-                    return;
-                }
-
-                if (parameters['variantCountIdentifiers'] !== undefined) {
-                    body = parameters['variantCountIdentifiers'];
-                }
-
-                if (parameters['variantCountIdentifiers'] === undefined) {
-                    reject(new Error('Missing required  parameter: variantCountIdentifiers'));
-                    return;
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
+            return this.fetchVariantCountsUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
-
-    fetchClinicalDataCountsUsingPOSTURL(parameters: {
-        'studyId': string,
-        'attributeId': string,
-        'clinicalDataType' ? : "SAMPLE" | "PATIENT",
+    fetchMutatedGenesUsingPOSTURL(parameters: {
         'studyViewFilter': StudyViewFilter,
         $queryParameters ? : any
     }): string {
         let queryParameters: any = {};
-        let path = '/studies/{studyId}/attributes/{attributeId}/clinical-data-counts/fetch';
-
-        path = path.replace('{studyId}', parameters['studyId'] + '');
-
-        path = path.replace('{attributeId}', parameters['attributeId'] + '');
-        if (parameters['clinicalDataType'] !== undefined) {
-            queryParameters['clinicalDataType'] = parameters['clinicalDataType'];
-        }
+        let path = '/mutated-genes/fetch';
 
         if (parameters.$queryParameters) {
             Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
@@ -2044,228 +2864,141 @@ export default class CBioPortalAPIInternal {
     };
 
     /**
-     * Fetch clinical data counts by study view filter
+     * Fetch mutated genes by study view filter
      * @method
-     * @name CBioPortalAPIInternal#fetchClinicalDataCountsUsingPOST
-     * @param {string} studyId - Study ID e.g. acc_tcga
-     * @param {string} attributeId - Attribute ID e.g. CANCER_TYPE
-     * @param {string} clinicalDataType - Type of the clinical data
-     * @param {} studyViewFilter - Clinical data count filter
-     */
-    fetchClinicalDataCountsUsingPOST(parameters: {
-            'studyId': string,
-            'attributeId': string,
-            'clinicalDataType' ? : "SAMPLE" | "PATIENT",
-            'studyViewFilter': StudyViewFilter,
-            $queryParameters ? : any,
-            $domain ? : string
-        }): Promise < Array < ClinicalDataCount >
-        > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/studies/{studyId}/attributes/{attributeId}/clinical-data-counts/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                path = path.replace('{studyId}', parameters['studyId'] + '');
-
-                if (parameters['studyId'] === undefined) {
-                    reject(new Error('Missing required  parameter: studyId'));
-                    return;
-                }
-
-                path = path.replace('{attributeId}', parameters['attributeId'] + '');
-
-                if (parameters['attributeId'] === undefined) {
-                    reject(new Error('Missing required  parameter: attributeId'));
-                    return;
-                }
-
-                if (parameters['clinicalDataType'] !== undefined) {
-                    queryParameters['clinicalDataType'] = parameters['clinicalDataType'];
-                }
-
-                if (parameters['studyViewFilter'] !== undefined) {
-                    body = parameters['studyViewFilter'];
-                }
-
-                if (parameters['studyViewFilter'] === undefined) {
-                    reject(new Error('Missing required  parameter: studyViewFilter'));
-                    return;
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
-                return response.body;
-            });
-        };
-
-    fetchFractionGenomeAlteredUsingPOSTURL(parameters: {
-        'studyId': string,
-        'fractionGenomeAlteredFilter': FractionGenomeAlteredFilter,
-        $queryParameters ? : any
-    }): string {
-        let queryParameters: any = {};
-        let path = '/studies/{studyId}/fraction-genome-altered/fetch';
-
-        path = path.replace('{studyId}', parameters['studyId'] + '');
-
-        if (parameters.$queryParameters) {
-            Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                var parameter = parameters.$queryParameters[parameterName];
-                queryParameters[parameterName] = parameter;
-            });
-        }
-        let keys = Object.keys(queryParameters);
-        return this.domain + path + (keys.length > 0 ? '?' + (keys.map(key => key + '=' + encodeURIComponent(queryParameters[key])).join('&')) : '');
-    };
-
-    /**
-     * Fetch fraction genome altered
-     * @method
-     * @name CBioPortalAPIInternal#fetchFractionGenomeAlteredUsingPOST
-     * @param {string} studyId - Study ID e.g. acc_tcga
-     * @param {} fractionGenomeAlteredFilter - List of Sample IDs/Sample List ID
-     */
-    fetchFractionGenomeAlteredUsingPOST(parameters: {
-            'studyId': string,
-            'fractionGenomeAlteredFilter': FractionGenomeAlteredFilter,
-            $queryParameters ? : any,
-            $domain ? : string
-        }): Promise < Array < FractionGenomeAltered >
-        > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/studies/{studyId}/fraction-genome-altered/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                path = path.replace('{studyId}', parameters['studyId'] + '');
-
-                if (parameters['studyId'] === undefined) {
-                    reject(new Error('Missing required  parameter: studyId'));
-                    return;
-                }
-
-                if (parameters['fractionGenomeAlteredFilter'] !== undefined) {
-                    body = parameters['fractionGenomeAlteredFilter'];
-                }
-
-                if (parameters['fractionGenomeAlteredFilter'] === undefined) {
-                    reject(new Error('Missing required  parameter: fractionGenomeAlteredFilter'));
-                    return;
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
-                return response.body;
-            });
-        };
-
-    fetchSampleIdsUsingPOSTURL(parameters: {
-        'studyId': string,
-        'studyViewFilter': StudyViewFilter,
-        $queryParameters ? : any
-    }): string {
-        let queryParameters: any = {};
-        let path = '/studies/{studyId}/samples/fetch';
-
-        path = path.replace('{studyId}', parameters['studyId'] + '');
-
-        if (parameters.$queryParameters) {
-            Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                var parameter = parameters.$queryParameters[parameterName];
-                queryParameters[parameterName] = parameter;
-            });
-        }
-        let keys = Object.keys(queryParameters);
-        return this.domain + path + (keys.length > 0 ? '?' + (keys.map(key => key + '=' + encodeURIComponent(queryParameters[key])).join('&')) : '');
-    };
-
-    /**
-     * Fetch sample IDs by study view filter
-     * @method
-     * @name CBioPortalAPIInternal#fetchSampleIdsUsingPOST
-     * @param {string} studyId - Study ID e.g. acc_tcga
+     * @name CBioPortalAPIInternal#fetchMutatedGenesUsingPOST
      * @param {} studyViewFilter - Study view filter
      */
-    fetchSampleIdsUsingPOST(parameters: {
-            'studyId': string,
+    fetchMutatedGenesUsingPOSTWithHttpInfo(parameters: {
+        'studyViewFilter': StudyViewFilter,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/mutated-genes/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            if (parameters['studyViewFilter'] !== undefined) {
+                body = parameters['studyViewFilter'];
+            }
+
+            if (parameters['studyViewFilter'] === undefined) {
+                reject(new Error('Missing required  parameter: studyViewFilter'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Fetch mutated genes by study view filter
+     * @method
+     * @name CBioPortalAPIInternal#fetchMutatedGenesUsingPOST
+     * @param {} studyViewFilter - Study view filter
+     */
+    fetchMutatedGenesUsingPOST(parameters: {
             'studyViewFilter': StudyViewFilter,
             $queryParameters ? : any,
             $domain ? : string
-        }): Promise < Array < Sample >
+        }): Promise < Array < MutationCountByGene >
         > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/studies/{studyId}/samples/fetch';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-                headers['Content-Type'] = 'application/json';
-
-                path = path.replace('{studyId}', parameters['studyId'] + '');
-
-                if (parameters['studyId'] === undefined) {
-                    reject(new Error('Missing required  parameter: studyId'));
-                    return;
-                }
-
-                if (parameters['studyViewFilter'] !== undefined) {
-                    body = parameters['studyViewFilter'];
-                }
-
-                if (parameters['studyViewFilter'] === undefined) {
-                    reject(new Error('Missing required  parameter: studyViewFilter'));
-                    return;
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
+            return this.fetchMutatedGenesUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
+    fetchMolecularProfileSampleCountsUsingPOSTURL(parameters: {
+        'studyViewFilter': StudyViewFilter,
+        $queryParameters ? : any
+    }): string {
+        let queryParameters: any = {};
+        let path = '/sample-counts/fetch';
 
+        if (parameters.$queryParameters) {
+            Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                var parameter = parameters.$queryParameters[parameterName];
+                queryParameters[parameterName] = parameter;
+            });
+        }
+        let keys = Object.keys(queryParameters);
+        return this.domain + path + (keys.length > 0 ? '?' + (keys.map(key => key + '=' + encodeURIComponent(queryParameters[key])).join('&')) : '');
+    };
+
+    /**
+     * Fetch sample counts by study view filter
+     * @method
+     * @name CBioPortalAPIInternal#fetchMolecularProfileSampleCountsUsingPOST
+     * @param {} studyViewFilter - Study view filter
+     */
+    fetchMolecularProfileSampleCountsUsingPOSTWithHttpInfo(parameters: {
+        'studyViewFilter': StudyViewFilter,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/sample-counts/fetch';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+            headers['Content-Type'] = 'application/json';
+
+            if (parameters['studyViewFilter'] !== undefined) {
+                body = parameters['studyViewFilter'];
+            }
+
+            if (parameters['studyViewFilter'] === undefined) {
+                reject(new Error('Missing required  parameter: studyViewFilter'));
+                return;
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('POST', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Fetch sample counts by study view filter
+     * @method
+     * @name CBioPortalAPIInternal#fetchMolecularProfileSampleCountsUsingPOST
+     * @param {} studyViewFilter - Study view filter
+     */
+    fetchMolecularProfileSampleCountsUsingPOST(parameters: {
+        'studyViewFilter': StudyViewFilter,
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < MolecularProfileSampleCount > {
+        return this.fetchMolecularProfileSampleCountsUsingPOSTWithHttpInfo(parameters).then(function(response: request.Response) {
+            return response.body;
+        });
+    };
     getSignificantCopyNumberRegionsUsingGETURL(parameters: {
         'studyId': string,
         'projection' ? : "ID" | "SUMMARY" | "DETAILED" | "META",
@@ -2320,6 +3053,77 @@ export default class CBioPortalAPIInternal {
      * @param {string} sortBy - Name of the property that the result list is sorted by
      * @param {string} direction - Direction of the sort
      */
+    getSignificantCopyNumberRegionsUsingGETWithHttpInfo(parameters: {
+        'studyId': string,
+        'projection' ? : "ID" | "SUMMARY" | "DETAILED" | "META",
+        'pageSize' ? : number,
+        'pageNumber' ? : number,
+        'sortBy' ? : "chromosome" | "cytoband" | "widePeakStart" | "widePeakEnd" | "qValue" | "amp",
+        'direction' ? : "ASC" | "DESC",
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/studies/{studyId}/significant-copy-number-regions';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+
+            path = path.replace('{studyId}', parameters['studyId'] + '');
+
+            if (parameters['studyId'] === undefined) {
+                reject(new Error('Missing required  parameter: studyId'));
+                return;
+            }
+
+            if (parameters['projection'] !== undefined) {
+                queryParameters['projection'] = parameters['projection'];
+            }
+
+            if (parameters['pageSize'] !== undefined) {
+                queryParameters['pageSize'] = parameters['pageSize'];
+            }
+
+            if (parameters['pageNumber'] !== undefined) {
+                queryParameters['pageNumber'] = parameters['pageNumber'];
+            }
+
+            if (parameters['sortBy'] !== undefined) {
+                queryParameters['sortBy'] = parameters['sortBy'];
+            }
+
+            if (parameters['direction'] !== undefined) {
+                queryParameters['direction'] = parameters['direction'];
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('GET', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Get significant copy number alteration regions in a study
+     * @method
+     * @name CBioPortalAPIInternal#getSignificantCopyNumberRegionsUsingGET
+     * @param {string} studyId - Study ID e.g. acc_tcga
+     * @param {string} projection - Level of detail of the response
+     * @param {integer} pageSize - Page size of the result list
+     * @param {integer} pageNumber - Page number of the result list
+     * @param {string} sortBy - Name of the property that the result list is sorted by
+     * @param {string} direction - Direction of the sort
+     */
     getSignificantCopyNumberRegionsUsingGET(parameters: {
             'studyId': string,
             'projection' ? : "ID" | "SUMMARY" | "DETAILED" | "META",
@@ -2331,58 +3135,10 @@ export default class CBioPortalAPIInternal {
             $domain ? : string
         }): Promise < Array < Gistic >
         > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/studies/{studyId}/significant-copy-number-regions';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-
-                path = path.replace('{studyId}', parameters['studyId'] + '');
-
-                if (parameters['studyId'] === undefined) {
-                    reject(new Error('Missing required  parameter: studyId'));
-                    return;
-                }
-
-                if (parameters['projection'] !== undefined) {
-                    queryParameters['projection'] = parameters['projection'];
-                }
-
-                if (parameters['pageSize'] !== undefined) {
-                    queryParameters['pageSize'] = parameters['pageSize'];
-                }
-
-                if (parameters['pageNumber'] !== undefined) {
-                    queryParameters['pageNumber'] = parameters['pageNumber'];
-                }
-
-                if (parameters['sortBy'] !== undefined) {
-                    queryParameters['sortBy'] = parameters['sortBy'];
-                }
-
-                if (parameters['direction'] !== undefined) {
-                    queryParameters['direction'] = parameters['direction'];
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('GET', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
+            return this.getSignificantCopyNumberRegionsUsingGETWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
-
     getSignificantlyMutatedGenesUsingGETURL(parameters: {
         'studyId': string,
         'projection' ? : "ID" | "SUMMARY" | "DETAILED" | "META",
@@ -2437,6 +3193,77 @@ export default class CBioPortalAPIInternal {
      * @param {string} sortBy - Name of the property that the result list is sorted by
      * @param {string} direction - Direction of the sort
      */
+    getSignificantlyMutatedGenesUsingGETWithHttpInfo(parameters: {
+        'studyId': string,
+        'projection' ? : "ID" | "SUMMARY" | "DETAILED" | "META",
+        'pageSize' ? : number,
+        'pageNumber' ? : number,
+        'sortBy' ? : "entrezGeneId" | "hugoGeneSymbol" | "rank" | "numberOfMutations" | "pValue" | "qValue",
+        'direction' ? : "ASC" | "DESC",
+        $queryParameters ? : any,
+        $domain ? : string
+    }): Promise < request.Response > {
+        const domain = parameters.$domain ? parameters.$domain : this.domain;
+        const errorHandlers = this.errorHandlers;
+        const request = this.request;
+        let path = '/studies/{studyId}/significantly-mutated-genes';
+        let body: any;
+        let queryParameters: any = {};
+        let headers: any = {};
+        let form: any = {};
+        return new Promise(function(resolve, reject) {
+            headers['Accept'] = 'application/json';
+
+            path = path.replace('{studyId}', parameters['studyId'] + '');
+
+            if (parameters['studyId'] === undefined) {
+                reject(new Error('Missing required  parameter: studyId'));
+                return;
+            }
+
+            if (parameters['projection'] !== undefined) {
+                queryParameters['projection'] = parameters['projection'];
+            }
+
+            if (parameters['pageSize'] !== undefined) {
+                queryParameters['pageSize'] = parameters['pageSize'];
+            }
+
+            if (parameters['pageNumber'] !== undefined) {
+                queryParameters['pageNumber'] = parameters['pageNumber'];
+            }
+
+            if (parameters['sortBy'] !== undefined) {
+                queryParameters['sortBy'] = parameters['sortBy'];
+            }
+
+            if (parameters['direction'] !== undefined) {
+                queryParameters['direction'] = parameters['direction'];
+            }
+
+            if (parameters.$queryParameters) {
+                Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
+                    var parameter = parameters.$queryParameters[parameterName];
+                    queryParameters[parameterName] = parameter;
+                });
+            }
+
+            request('GET', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
+
+        });
+    };
+
+    /**
+     * Get significantly mutated genes in a study
+     * @method
+     * @name CBioPortalAPIInternal#getSignificantlyMutatedGenesUsingGET
+     * @param {string} studyId - Study ID e.g. acc_tcga
+     * @param {string} projection - Level of detail of the response
+     * @param {integer} pageSize - Page size of the result list
+     * @param {integer} pageNumber - Page number of the result list
+     * @param {string} sortBy - Name of the property that the result list is sorted by
+     * @param {string} direction - Direction of the sort
+     */
     getSignificantlyMutatedGenesUsingGET(parameters: {
             'studyId': string,
             'projection' ? : "ID" | "SUMMARY" | "DETAILED" | "META",
@@ -2448,56 +3275,8 @@ export default class CBioPortalAPIInternal {
             $domain ? : string
         }): Promise < Array < MutSig >
         > {
-            const domain = parameters.$domain ? parameters.$domain : this.domain;
-            const errorHandlers = this.errorHandlers;
-            const request = this.request;
-            let path = '/studies/{studyId}/significantly-mutated-genes';
-            let body: any;
-            let queryParameters: any = {};
-            let headers: any = {};
-            let form: any = {};
-            return new Promise(function(resolve, reject) {
-                headers['Accept'] = 'application/json';
-
-                path = path.replace('{studyId}', parameters['studyId'] + '');
-
-                if (parameters['studyId'] === undefined) {
-                    reject(new Error('Missing required  parameter: studyId'));
-                    return;
-                }
-
-                if (parameters['projection'] !== undefined) {
-                    queryParameters['projection'] = parameters['projection'];
-                }
-
-                if (parameters['pageSize'] !== undefined) {
-                    queryParameters['pageSize'] = parameters['pageSize'];
-                }
-
-                if (parameters['pageNumber'] !== undefined) {
-                    queryParameters['pageNumber'] = parameters['pageNumber'];
-                }
-
-                if (parameters['sortBy'] !== undefined) {
-                    queryParameters['sortBy'] = parameters['sortBy'];
-                }
-
-                if (parameters['direction'] !== undefined) {
-                    queryParameters['direction'] = parameters['direction'];
-                }
-
-                if (parameters.$queryParameters) {
-                    Object.keys(parameters.$queryParameters).forEach(function(parameterName) {
-                        var parameter = parameters.$queryParameters[parameterName];
-                        queryParameters[parameterName] = parameter;
-                    });
-                }
-
-                request('GET', domain + path, body, headers, queryParameters, form, reject, resolve, errorHandlers);
-
-            }).then(function(response: request.Response) {
+            return this.getSignificantlyMutatedGenesUsingGETWithHttpInfo(parameters).then(function(response: request.Response) {
                 return response.body;
             });
         };
-
 }

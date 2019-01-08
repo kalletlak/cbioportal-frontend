@@ -12,7 +12,7 @@ describe("Oncoprint TooltipUtils", ()=>{
     describe("makeGeneticTrackTooltip", ()=>{
         let tooltip:(d:any)=>JQuery;
         before(()=>{
-            tooltip = makeGeneticTrackTooltip(false);
+            tooltip = makeGeneticTrackTooltip();
         });
 
         function makeMutation(props:Partial<AnnotatedExtendedAlteration>):AnnotatedExtendedAlteration {
@@ -25,7 +25,7 @@ describe("Oncoprint TooltipUtils", ()=>{
         describe("custom driver annotations", ()=>{
             it("should show a binary custom driver icon with descriptive title, if theres a binary custom driver annotation", ()=>{
                 const datum = {
-                    sample: "sample",
+                    sample: "sample", study_id:"",
                     data: [makeMutation({
                         driverFilter:"Putative_Driver",
                         driverFilterAnnotation: "annotation here"
@@ -33,13 +33,13 @@ describe("Oncoprint TooltipUtils", ()=>{
                     coverage: []
                 };
                 const tooltipOutput = tooltip(datum);
-                assert.equal(tooltipOutput.find("img[src$='driver.png'][title='Putative_Driver: annotation here']").length, 1);
-                assert.equal(tooltipOutput.find("img[src$='driver.png']").length, 1, "should only be one icon");
+                assert.equal(tooltipOutput.find("img[title='Putative_Driver: annotation here']").length, 1);
+                assert.equal(tooltipOutput.find("img[alt='driver filter']").length, 1, "should only be one icon");
             });
 
             it("should show multiple binary custom driver icons with corresponding titles, if there are multiple annotated mutations", ()=>{
                 const datum = {
-                    sample: "sample",
+                    sample: "sample", study_id:"",
                     data: [makeMutation({
                         driverFilter:"Putative_Driver",
                         driverFilterAnnotation: "annotation 1"
@@ -53,15 +53,15 @@ describe("Oncoprint TooltipUtils", ()=>{
                     coverage: []
                 };
                 const tooltipOutput = tooltip(datum );
-                assert.equal(tooltipOutput.find("img[src$='driver.png'][title='Putative_Driver: annotation 1']").length, 1);
-                assert.equal(tooltipOutput.find("img[src$='driver.png'][title='Putative_Driver: annotation 2']").length, 1);
-                assert.equal(tooltipOutput.find("img[src$='driver.png'][title='Putative_Driver: 3 annotation']").length, 1);
-                assert.equal(tooltipOutput.find("img[src$='driver.png']").length, 3, "should be three icons");
+                assert.equal(tooltipOutput.find("img[title='Putative_Driver: annotation 1']").length, 1);
+                assert.equal(tooltipOutput.find("img[title='Putative_Driver: annotation 2']").length, 1);
+                assert.equal(tooltipOutput.find("img[title='Putative_Driver: 3 annotation']").length, 1);
+                assert.equal(tooltipOutput.find("img[alt='driver filter']").length, 3, "should be three icons");
             });
 
             it("should not show a binary custom driver icon with descriptive title, if theres a binary annotation of non-driver", ()=>{
                 const datum = {
-                    sample: "sample",
+                    sample: "sample", study_id:"",
                     data: [makeMutation({
                         driverFilter:"Putative_Passenger",
                         driverFilterAnnotation: "paosidjp"
@@ -72,12 +72,12 @@ describe("Oncoprint TooltipUtils", ()=>{
                     coverage: []
                 };
                 const tooltipOutput = tooltip(datum);
-                assert.equal(tooltipOutput.find("img[src$='driver.png']").length, 0);
+                assert.equal(tooltipOutput.find("img[alt='driver filter']").length, 0);
             });
 
             it("should show a tiers custom driver icon with descriptive title, if theres a tiers custom driver annotation", ()=>{
                 const datum = {
-                    sample: "sample",
+                    sample: "sample", study_id:"",
                     data: [makeMutation({
                         driverTiersFilter:"tier1",
                         driverTiersFilterAnnotation: "tier1 mutation"
@@ -85,13 +85,13 @@ describe("Oncoprint TooltipUtils", ()=>{
                     coverage: []
                 };
                 const tooltipOutput = tooltip(datum);
-                assert.equal(tooltipOutput.find("img[src$='driver_tiers.png'][title='tier1: tier1 mutation']").length, 1);
-                assert.equal(tooltipOutput.find("img[src$='driver_tiers.png']").length, 1, "should only be one icon");
+                assert.equal(tooltipOutput.find("img[title='tier1: tier1 mutation']").length, 1);
+                assert.equal(tooltipOutput.find("img[alt='driver tiers filter']").length, 1, "should only be one icon");
             });
 
             it("should show multiple tiers icons with corresponding titles, if there are multiple annotated mutations", ()=>{
                 const datum = {
-                    sample: "sample",
+                    sample: "sample", study_id:"",
                     data: [makeMutation({
                         driverTiersFilter:"tier2",
                         driverTiersFilterAnnotation: "tier2 mutation"
@@ -105,15 +105,15 @@ describe("Oncoprint TooltipUtils", ()=>{
                     coverage: []
                 };
                 const tooltipOutput = tooltip(datum);
-                assert.equal(tooltipOutput.find("img[src$='driver_tiers.png'][title='tier1: tier1 mutation']").length, 1);
-                assert.equal(tooltipOutput.find("img[src$='driver_tiers.png'][title='tier2: tier2 mutation']").length, 1);
-                assert.equal(tooltipOutput.find("img[src$='driver_tiers.png'][title='tier4: mutation tier4']").length, 1);
-                assert.equal(tooltipOutput.find("img[src$='driver_tiers.png']").length, 3, "should be three icons");
+                assert.equal(tooltipOutput.find("img[title='tier1: tier1 mutation']").length, 1);
+                assert.equal(tooltipOutput.find("img[title='tier2: tier2 mutation']").length, 1);
+                assert.equal(tooltipOutput.find("img[title='tier4: mutation tier4']").length, 1);
+                assert.equal(tooltipOutput.find("img[alt='driver tiers filter']").length, 3, "should be three icons");
             });
 
             it("should show both binary and tiers custom driver icons, with descriptive titles, if there are both annotations", ()=>{
                 const datum = {
-                    sample: "sample",
+                    sample: "sample", study_id:"",
                     data: [makeMutation({
                         driverFilter:"Putative_Driver",
                         driverFilterAnnotation: "annotation 1"
@@ -142,19 +142,19 @@ describe("Oncoprint TooltipUtils", ()=>{
                     coverage: []
                 };
                 const tooltipOutput = tooltip(datum);
-                assert.equal(tooltipOutput.find("img[src$='driver_tiers.png'][title='tier1: tier1 mutation']").length, 1);
-                assert.equal(tooltipOutput.find("img[src$='driver_tiers.png'][title='tier2: tier2 mutation']").length, 1);
-                assert.equal(tooltipOutput.find("img[src$='driver_tiers.png'][title='tier4: mutation tier4']").length, 1);
-                assert.equal(tooltipOutput.find("img[src$='driver_tiers.png']").length, 3, "should be three tiers icons");
-                assert.equal(tooltipOutput.find("img[src$='driver.png'][title='Putative_Driver: annotation 1']").length, 1);
-                assert.equal(tooltipOutput.find("img[src$='driver.png'][title='Putative_Driver: annotation 2']").length, 1);
-                assert.equal(tooltipOutput.find("img[src$='driver.png'][title='Putative_Driver: 3 annotation']").length, 1);
-                assert.equal(tooltipOutput.find("img[src$='driver.png']").length, 3, "should be three binary icons");
+                assert.equal(tooltipOutput.find("img[title='tier1: tier1 mutation']").length, 1);
+                assert.equal(tooltipOutput.find("img[title='tier2: tier2 mutation']").length, 1);
+                assert.equal(tooltipOutput.find("img[title='tier4: mutation tier4']").length, 1);
+                assert.equal(tooltipOutput.find("img[alt='driver tiers filter']").length, 3, "should be three tiers icons");
+                assert.equal(tooltipOutput.find("img[title='Putative_Driver: annotation 1']").length, 1);
+                assert.equal(tooltipOutput.find("img[title='Putative_Driver: annotation 2']").length, 1);
+                assert.equal(tooltipOutput.find("img[title='Putative_Driver: 3 annotation']").length, 1);
+                assert.equal(tooltipOutput.find("img[alt='driver filter']").length, 3, "should be three binary icons");
             });
 
             it("should show neither icon if theres no custom driver annotations", ()=>{
                 const datum = {
-                    sample: "sample",
+                    sample: "sample", study_id:"",
                     data: [makeMutation({
                         driverFilter:"Putative_Passenger",
                         driverFilterAnnotation: "paosidjp"
@@ -165,14 +165,14 @@ describe("Oncoprint TooltipUtils", ()=>{
                     coverage: []
                 };
                 const tooltipOutput = tooltip(datum);
-                assert.equal(tooltipOutput.find("img[src$='driver.png']").length, 0, "should be no binary icons");
-                assert.equal(tooltipOutput.find("img[src$='driver_tiers.png']").length, 0, "should be no tiers icons");
+                assert.equal(tooltipOutput.find("img[alt='driver filter']").length, 0, "should be no binary icons");
+                assert.equal(tooltipOutput.find("img[alt='driver tiers filter']").length, 0, "should be no tiers icons");
             });
         });
         describe("profiled and not profiled", ()=>{
             it("should say 'Not profiled' if 'profiled_in' is empty and 'not_profiled_in' is not", ()=>{
                 const datum = {
-                    sample: "sample",
+                    sample: "sample", study_id:"",
                     data: [] as AnnotatedExtendedAlteration[],
                     na:true,
                     coverage: [],
@@ -184,7 +184,7 @@ describe("Oncoprint TooltipUtils", ()=>{
             });
             it("should say 'profiled' if 'not_profiled_in' is empty and 'profiled_in' is not", ()=>{
                 const datum = {
-                    sample: "sample",
+                    sample: "sample", study_id:"",
                     data: [] as AnnotatedExtendedAlteration[],
                     na:true,
                     coverage: [],

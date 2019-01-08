@@ -12,30 +12,38 @@ import SampleManager from "../sampleManager";
 
 import {PatientViewPageStore} from "../clinicalInformation/PatientViewPageStore";
 import {ClinicalEvent, ClinicalEventData} from "../../../shared/api/generated/CBioPortalAPI";
+import DownloadControls from "../../../shared/components/downloadControls/DownloadControls";
+import autobind from "autobind-decorator";
 
 interface ITimelineProps {
     sampleManager:SampleManager;
     store:PatientViewPageStore;
-    getWidth:() => number;
+    width:number;
 }
 
 export default class Timeline extends React.Component<ITimelineProps, {}> {
 
-    shouldComponentUpdate() {
+    private currentWidth:number;
+
+    shouldComponentUpdate(nextProps:ITimelineProps){
+        if (nextProps.width !== this.currentWidth) {
+            // only rerender to resize
+            this.drawTimeline(nextProps.width);
+        }
         return false;
     }
 
     componentDidMount() {
 
-        this.drawTimeline();
+        this.drawTimeline(this.props.width);
 
-        var debouncedResize =  _.debounce(()=>this.drawTimeline(),500);
+        /*var debouncedResize =  _.debounce(()=>this.drawTimeline(),500);
 
-        $(window).resize(debouncedResize);
+        $(window).resize(debouncedResize);*/
 
     }
 
-    drawTimeline(){
+    drawTimeline(width:number){
 
         let clinicalDataMap = this.props.store.patientViewData.result.samples!.reduce((memo:any,item)=>{
             memo[item.id] = item.clinicalData.reduce((innerMemo:any,innerItem)=>{
@@ -76,16 +84,29 @@ export default class Timeline extends React.Component<ITimelineProps, {}> {
             }
         });
 
-        buildTimeline(params, caseIds, patientInfo, clinicalDataMap, caseMetaData, timelineData, this.props.getWidth());
+        buildTimeline(params, caseIds, patientInfo, clinicalDataMap, caseMetaData, timelineData, width);
+        this.currentWidth = width;
 
+    }
 
+    private svgContainer: HTMLDivElement;
+    @autobind
+    private getSvg() {
+        return this.svgContainer.firstChild as SVGElement;
     }
 
     public render() {
 
         return (
-            <div id="timeline-container">
-                <div id="timeline"></div>
+            <div id="timeline-container" className="timelineContainer">
+                <div id="timeline" ref = {(container) => {this.svgContainer = container!}}></div>
+                <DownloadControls
+                getSvg={this.getSvg}
+                filename="timeline"
+                dontFade={true}
+                collapse={true}
+                style={{position:"absolute", top:0, right:5}}
+                />
             </div>
         )
     }

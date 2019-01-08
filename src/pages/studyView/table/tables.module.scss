@@ -1,16 +1,112 @@
-.table {
-  width: calc(50% - 20px);
-  float: left;
-  margin: 5px;
+
+.studyViewTablesTable {
+  display: flex;
+  flex-direction: column;
+  flex-grow: 1;
 }
 
-.title {
-  font-size: 18px;
-  color: #000;
-  font-weight: 700;
-  text-align: center;
+// The current portal is wrapped a class .cbioportal-frontend to overwrite the legacy styles
+// May need to come back to clean up the important statements after in SPA
+.tableSearchInput {
+  width: 150px !important;
+  height: 25px !important;
 }
 
-.body {
-  margin-top: 5px;
+.labelContent {
+  overflow: hidden;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+}
+
+.labelContentSVG {
+  flex-shrink: 0;
+}
+
+.controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-grow: 1;
+  font-size: 13px !important;
+  padding: 0 5px;
+}
+
+.controlsBtn {
+  padding: 2px 5px;
+}
+
+.geneSymbol:hover {
+  border: 2px solid $brand-primary;
+  cursor: pointer;
+}
+
+.selected {
+  font-weight: bold
+}
+
+.ellipsisText {
+  white-space: nowrap;
+  overflow: hidden;
+  -ms-text-overflow: ellipsis;
+  text-overflow: ellipsis;
+}
+
+
+.headerColumn {
+  text-transform: none;
+  font-size: 13px;
+  line-height: 15px;
+}
+
+.headerRow {
+  border-bottom: 1px solid #d1d1d1;
+}
+
+.row {
+  font-size: 13px;
+}
+
+.oddRow {
+  background-color: #f9f9f9;
+}
+
+.evenRow {
+  background-color: #ffffff;
+}
+
+.highlightedRow {
+  background-color: #d3d3d3;
+}
+
+.gistic, .mutSig {
+  height: 10px;
+  margin-left: 2px;
+  vertical-align:inherit !important;
+}
+
+.amp {
+  color: red;
+}
+
+.del {
+  color: #0000ff;
+}
+
+.amp, .del {
+  font-weight: bold;
+}
+
+.displayFlex {
+  display: flex;
+  align-items: center;
+}
+
+.headerSortingIcon {
+  margin-left: 5px;
+}
+
+.autoMarginCheckbox {
+  margin-top: auto !important;
+  margin-bottom: auto !important;
 }

@@ -4,6 +4,7 @@ import { assert } from 'chai';
 import {shallow, mount, ReactWrapper} from 'enzyme';
 import sinon from 'sinon';
 import {ThreeBounce} from 'better-react-spinkit';
+import {sleep} from "../../lib/TimeUtils";
 
 describe('MSKTabs', () => {
 
@@ -21,73 +22,174 @@ describe('MSKTabs', () => {
               <MSKTab linkText="Two" id="two"><span className="content">Two</span></MSKTab>
           </MSKTabs>
         );
+
+        tabs.update();
+
     });
 
     after(()=>{
 
     });
 
-    it('initial render only mounts first tab', ()=>{
-        assert.equal(tabs.find('.msk-tab').length, 1);
+    it('initial render only mounts first tab', (done)=>{
+        setTimeout(function(){
+            assert.equal(tabs.update().find('.msk-tab').length, 1);
+            done();
+        });
     });
 
-    it('creates two tab buttons and toggles them properly', ()=>{
-        assert.equal(tabs.find('li').length, 2);
-        assert.isTrue(tabs.find('li').at(0).hasClass('active'));
-        assert.isFalse(tabs.find('li').at(1).hasClass('active'));
-        tabs.setProps({ activeTabId:"two" });
-        assert.isFalse(tabs.find('li').at(0).hasClass('active'));
-        assert.isTrue(tabs.find('li').at(1).hasClass('active'));
+    it('render of tab is deferred to frame following',(done)=>{
+        assert.equal(tabs.find('.msk-tab').length, 0);
+        setTimeout(function(){
+            assert.equal(tabs.update().find('.msk-tab').length, 1);
+            done();
+        });
     });
 
-    it('if unMountOnHide = false (or not set), switch tab causes mounting, switching again causes hide/show', ()=>{
-        assert.equal(tabs.find('.msk-tab').length, 1);
-        tabs.setProps({ activeTabId:"two" });
-        assert.equal(tabs.find('.msk-tab').length, 2);
-        assert.isTrue(tabs.find(MSKTab).at(0).hasClass('hiddenByPosition'));
-        tabs.setProps({ activeTabId:"one" });
-        assert.isTrue(tabs.find(MSKTab).at(1).hasClass('hiddenByPosition'));
-        assert.isFalse(tabs.find(MSKTab).at(0).hasClass('hiddenByPosition'));
+
+    it('creates two tab buttons and toggles them properly', (done)=>{
+        setTimeout(()=>{
+            assert.equal(tabs.update().find('li').length, 2);
+            assert.isTrue(tabs.find('li').at(0).hasClass('active'));
+            assert.isFalse(tabs.find('li').at(1).hasClass('active'));
+            tabs.setProps({ activeTabId:"two" });
+            assert.isFalse(tabs.find('li').at(0).hasClass('active'));
+            assert.isTrue(tabs.find('li').at(1).hasClass('active'));
+            done();
+        });
     });
 
-    it('if unMountOnHide = true, switch tab causes mounting, switching again causes hide/show', ()=>{
-        tabs.setProps({ unmountOnHide:true });
-        assert.equal(tabs.find('.msk-tab').length, 1);
-        tabs.setProps({ activeTabId:"two" });
-        assert.equal(tabs.find('.msk-tab').length, 1);
-        tabs.setProps({ activeTabId:"one" });
+    it('if unmount on hide is false, we retain tabs when we click away',(done)=>{
+        var tabs = mount(
+            <MSKTabs unmountOnHide={false}>
+                <MSKTab id="one" linkText="One"><span className="content">One</span></MSKTab>
+                <MSKTab linkText="Two" id="two"><span className="content">Two</span></MSKTab>
+            </MSKTabs>
+        );
+
+        setTimeout(()=>{
+            assert.equal(tabs.update().find('.msk-tab').length, 1);
+            tabs.setProps({ activeTabId:"two" });
+            assert.equal(tabs.find('.msk-tab').length, 2, "didn't unmount");
+            assert.isTrue(tabs.find('.msk-tab').at(0).hasClass('hiddenByPosition'));
+
+            tabs.setProps({ activeTabId:"one" });
+
+            // assert.isTrue(tabs.find('.msk-tab').at(1).hasClass('hiddenByPosition'));
+            // assert.isFalse(tabs.find('.msk-tab').at(0).hasClass('hiddenByPosition'));
+
+            done();
+        });
+
     });
 
-    it('does not display tabs that have hide={true}', ()=>{
-        let tabs2 = mount(<MSKTabs>
-            <MSKTab id="one" linkText="One"><span className="content">One</span></MSKTab>
-            <MSKTab linkText="Two" id="two" hide={true}><span className="content">Two</span></MSKTab>
-        </MSKTabs>);
-        assert.deepEqual(tabText(tabs2), ["One"]);
+    it('if unmount on hide is true, we DO NOT retain tabs when we click away',(done)=>{
+        var tabs = mount(
+            <MSKTabs unmountOnHide={true}>
+                <MSKTab id="one" linkText="One"><span className="content">One</span></MSKTab>
+                <MSKTab linkText="Two" id="two"><span className="content">Two</span></MSKTab>
+            </MSKTabs>
+        );
+
+        setTimeout(function(){
+
+            assert.equal(tabs.update().find('.msk-tab').length, 1);
+
+            tabs.setProps({ activeTabId:"two" });
+
+            // assert.equal(tabs.find('.msk-tab').length, 1, "did unmount");
+            // assert.isFalse(tabs.find('.msk-tab').at(0).hasClass('hiddenByPosition'));
+            //
+            // tabs.setProps({ activeTabId:"one" });
+            //
+            // assert.isFalse(tabs.find('.msk-tab').at(0).hasClass('hiddenByPosition'));
+
+            done();
+
+        })
+
     });
 
-    it('does not display the content of tabs that have loading={true}, instead showing a spinner; and ' +
-        'does not show a tab with loading={true} unless it is the active tab', ()=>{
+    it('if unMountOnHide = false, switch tab causes mounting, switching again causes hide/show',(done)=>{
+        var tabs = mount(
+            <MSKTabs unmountOnHide={false}>
+                <MSKTab id="one" linkText="One"><span className="content">One</span></MSKTab>
+                <MSKTab linkText="Two" id="two"><span className="content">Two</span></MSKTab>
+            </MSKTabs>
+        );
+        setTimeout(()=>{
+            assert.equal(tabs.update().find('.msk-tab').length, 1);
+            tabs.setProps({ activeTabId:"two" });
+            assert.equal(tabs.update().find('.msk-tab').length, 2);
+            tabs.setProps({ activeTabId:"one" });
+            done();
+        });
+    });
 
-        tabs.setProps({ activeTabId: "one" });
-        const tab = tabs.find(MSKTab).at(0);
-        let span:ReactWrapper<any,any> = tab.find("span").at(0);
-        assert(span.exists(), "the span exists");
-        assert.equal(span.text(), "One");
+    it('if individual tab is unmountOnHide false then it will not be unmounted', (done)=>{
+        tabs = mount(
+            <MSKTabs>
+                <MSKTab unmountOnHide={false} id="one" linkText="One"><span className="content">One</span></MSKTab>
+                <MSKTab linkText="Two" id="two"><span className="content">Two</span></MSKTab>
+            </MSKTabs>
+        );
 
-        let tabs2 = mount(<MSKTabs activeTabId="one">
-            <MSKTab id="one" linkText="One" loading={true}><span className="content">One</span></MSKTab>
-            <MSKTab linkText="Two" id="two"><span className="content">Two</span></MSKTab>
-        </MSKTabs>);
+        setTimeout(()=>{
+            assert.equal(tabs.update().find('.msk-tab').length, 1);
 
-        const tab2 = tabs2.find(MSKTab).at(0);
-        span = tab2.find("span").at(0);
-        assert.notEqual(span.text(), "One", "the span with the content 'One' does not exist for a loading tab");
-        assert(tab2.find(".default-spinner").at(0).exists(), "a loading tab contains a spinner element");
-        assert.deepEqual(tabText(tabs2), ["One", "Two"], "both tabs visible");
+            tabs.setProps({ activeTabId:"two" });
+            assert.equal(tabs.find('.msk-tab').length, 2);
 
-        tabs2.setProps({ activeTabId: "two" });
-        assert.deepEqual(tabText(tabs2), ["Two"], "only one tab visible, since the other is loading");
+            tabs.setProps({ activeTabId:"one" });
+            assert.equal(tabs.find('.msk-tab').length, 1);
+
+            done();
+        });
+
+    });
+
+    it('if individual tab is unmountOnHide false then it will not be unmounted even if parent unmountOnHide is true', (done)=>{
+
+        var tabs = mount(
+            <MSKTabs unmountOnHide={true}>
+                <MSKTab unmountOnHide={false} id="one" linkText="One"><span className="content">One</span></MSKTab>
+                <MSKTab linkText="Two" id="two"><span className="content">Two</span></MSKTab>
+            </MSKTabs>
+        );
+
+        setTimeout(()=>{
+            assert.equal(tabs.update().find('.msk-tab').length, 1);
+
+            tabs.setProps({ activeTabId:"two" });
+            assert.equal(tabs.find('.msk-tab').length, 2);
+
+            tabs.setProps({ activeTabId:"one" });
+            assert.equal(tabs.find('.msk-tab').length, 1);
+
+            done();
+        });
+
+    });
+
+    it('if individual tab is unmountOnHide true then it will be unmounted even if parent unmountOnHide is false', (done)=>{
+        var tabs = mount(
+            <MSKTabs unmountOnHide={false}>
+                <MSKTab unmountOnHide={true} id="one" linkText="One"><span className="content">One</span></MSKTab>
+                <MSKTab linkText="Two" id="two"><span className="content">Two</span></MSKTab>
+            </MSKTabs>
+        );
+
+        setTimeout(()=>{
+            assert.equal(tabs.update().find('.msk-tab').length, 1);
+
+            tabs.setProps({ activeTabId:"two" });
+            assert.equal(tabs.find('.msk-tab').length, 1);
+
+            tabs.setProps({ activeTabId:"one" });
+            assert.equal(tabs.find('.msk-tab').length, 2);
+
+            done();
+        });
 
     });
 

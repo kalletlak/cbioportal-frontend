@@ -1,21 +1,25 @@
 import * as React from 'react';
 import * as _ from 'lodash';
 import Collapse from 'react-collapse';
-import {If, Then, Else} from 'react-if';
+import {Else, If, Then} from 'react-if';
 import DefaultTooltip from 'shared/components/defaultTooltip/DefaultTooltip';
 import {mergeAlterations} from 'shared/lib/OncoKbUtils';
 import {ICache} from "shared/lib/SimpleCache";
+import {action, computed, observable} from "mobx";
+import {observer} from "mobx-react";
 // TODO these need to be defined as modules, and class names used in this component need to be updated
 import "./styles/oncoKbCard.scss";
 import "./styles/oncoKbCard.custom.scss";
+import {ArticleAbstract, Citations} from "../../api/generated/OncoKbAPI";
 
 type OncoKbCardPropsBase = {
     title: string;
     gene: string;
+    variant: string,
     oncogenicity: string;
     oncogenicityPmids: number[];
     mutationEffect: string;
-    mutationEffectPmids: number[];
+    mutationEffectCitations: Citations;
     geneSummary: string;
     variantSummary: string;
     tumorTypeSummary: string;
@@ -29,16 +33,26 @@ export type OncoKbCardProps =
     (OncoKbCardPropsBase & { geneNotExist:false}) |
     (Partial<OncoKbCardPropsBase> & {geneNotExist: true});
 
-export interface IOncoKbCardState {
-    activeTab: "oncogenicity" | "mutationEffect";
-    levelsCollapsed: boolean;
-}
-
-export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKbCardState>
+@observer
+export default class OncoKbCard extends React.Component<OncoKbCardProps>
 {
-    public static get LEVELS(): string[]
-    {
-        return ['1', '2A', '2B', '3A', '3B', '4', 'R1'];
+    @observable activeTab:"oncogenicity" | "mutationEffect" = "oncogenicity";
+    @observable levelsCollapsed: boolean = true;
+
+    @computed
+    get oncokbLinkOut() {
+        let link: string | undefined = undefined;
+        if (this.props.gene) {
+            link = `http://oncokb.org/#/gene/${this.props.gene}`;
+            if (this.props.variant) {
+                link = `${link}/variant/${this.props.variant}`;
+            }
+        }
+        return link;
+    }
+
+    public static get LEVELS(): string[] {
+        return ['1', '2A', '2B', '3A', '3B', '4', 'R1', 'R2'];
     }
 
     public static get LEVEL_ICON_STYLE()
@@ -54,21 +68,17 @@ export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKb
             '1': (<span><b>FDA-recognized</b> biomarker predictive of response to an <b>FDA-approved</b> drug <b>in this indication</b></span>),
             '2A': (<span><b>Standard care</b> biomarker predictive of response to an <b>FDA-approved</b> drug <b>in this indication</b></span>),
             '2B': (<span><b>Standard care</b> biomarker predictive of response to an <b>FDA-approved</b> drug <b>in another indication</b>, but not standard care for this indication</span>),
-            '3A': (<span><b>Compelling clinical evidence</b> supports the biomarker as being predictive of response to a drug <b>in this indication</b>, but neither biomarker and drug are standard care</span>),
-            '3B': (<span><b>Compelling clinical evidence</b> supports the biomarker as being predictive of response to a drug <b>in another indication</b>, but neither biomarker and drug are standard care</span>),
-            '4': (<span><b>Compelling biological evidence</b> supports the biomarker as being predictive of response to a drug, but neither biomarker and drug are standard care</span>),
-            'R1': (<span><b>Standard care</b> biomarker predictive of <b>resistance</b> to an <b>FDA-approved</b> drug <b>in this indication</b></span>)
+            '3A': (<span><b>Compelling clinical evidence</b> supports the biomarker as being predictive of response to a drug <b>in this indication</b></span>),
+            '3B': (<span><b>Compelling clinical evidence</b> supports the biomarker as being predictive of response to a drug <b>in another indication</b></span>),
+            '4': (<span><b>Compelling biological evidence</b> supports the biomarker as being predictive of response to a drug</span>),
+            'R1': (<span><b>Standard care</b> biomarker predictive of <b>resistance</b> to an <b>FDA-approved</b> drug <b>in this indication</b></span>),
+            'R2': (<span><b>Compelling clinical evidence</b> supports the biomarker as being predictive of <b>resistance</b> to a drug</span>)
         };
     }
 
     constructor()
     {
         super();
-
-        this.state = {
-            activeTab: "oncogenicity",
-            levelsCollapsed: true
-        };
 
         this.handleOncogenicityTabSelect = this.handleOncogenicityTabSelect.bind(this);
         this.handleMutationEffectTabSelect = this.handleMutationEffectTabSelect.bind(this);
@@ -84,7 +94,7 @@ export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKb
                         cancerType: string,
                         pmidData: ICache<any>,
                         pmids:number[],
-                        abstracts:any[])
+                        abstracts:ArticleAbstract[])
     {
         const levelTooltipContent = () => (
             <div style={{maxWidth: "200px"}}>
@@ -94,8 +104,8 @@ export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKb
 
         const treatmentTooltipContent = (abstracts.length > 0 || pmids.length > 0) ?
             () => (
-                <div style={{maxWidth: "400px", maxHeight: "200px", overflowY: "auto"}}>
-                    <ul className="list-group" style={{marginBottom: 0}}>
+                <div style={{maxWidth: "400px", maxHeight: "400px", overflowY: "auto"}}>
+                    <ul className="list-group" style={{margin: '0 5px'}}>
                         {this.abstractList(abstracts)}
                         {this.pmidList(pmids, pmidData)}
                     </ul>
@@ -185,7 +195,7 @@ export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKb
                     <b>{title}</b>
                 </a>
                 <br/>
-                <div style={{width: "100%"}}>
+                <div style={{width: "100%", display: 'inline-block'}}>
                     {author} {source}. {date} <span style={{float: "right"}}>PMID: {pmid}</span>
                 </div>
             </li>
@@ -233,7 +243,7 @@ export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKb
         return rows;
     }
 
-    public generateTreatmentRows(treatments:any[], levelDes:{[level:string]: JSX.Element}, pmidData:ICache<any>):JSX.Element[]
+    public generateTreatmentRows(treatments:any[], levelDes:{[level:string]: JSX.Element},  pmidData:ICache<any>):JSX.Element[]
     {
         const rows:JSX.Element[] = [];
 
@@ -258,6 +268,7 @@ export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKb
     // also divide this component into smaller components
     public render()
     {
+        const oncokbLogo = <img src={require("./images/oncokb.png")} className="oncokb-logo" alt="OncoKB"/>;
         return (
             <div className="oncokb-card" data-test='oncokb-card'>
                 <div className="z-depth-2">
@@ -290,7 +301,7 @@ export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKb
                                             <div className="indicator"/>
                                         </ul>
                                     </div>
-                                    <If condition={this.state.activeTab === "oncogenicity"}>
+                                    <If condition={this.activeTab === "oncogenicity"}>
                                         <div className="col s12 oncogenicity">
                                             <div className="summary" style={{padding:'10px 0'}}>
                                                 <p>
@@ -332,7 +343,7 @@ export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKb
                                             </If>
                                         </div>
                                     </If>
-                                    <If condition={this.state.activeTab === "mutationEffect"}>
+                                    <If condition={this.activeTab === "mutationEffect"}>
                                         <div className="col s12 tab-pane mutation-effect">
                                             <If condition={this.props.biologicalSummary !== undefined && this.props.biologicalSummary.length > 0}>
                                                 <Then>
@@ -343,16 +354,15 @@ export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKb
                                                     </div>
                                                 </Then>
                                                 <Else>
-                                                    <If condition={this.props.mutationEffectPmids.length > 0}>
+                                                    <If condition={this.props.mutationEffectCitations && (this.props.mutationEffectCitations.abstracts.length > 0 || this.props.mutationEffectCitations.pmids.length > 0)}>
                                                         <Then>
                                                             <div className="refs">
                                                                 <ul className="list-group" style={{marginBottom: 0}}>
-                                                                    {
-                                                                        this.pmidList(
-                                                                            this.props.mutationEffectPmids,
-                                                                            this.props.pmidData
-                                                                        )
-                                                                    }
+                                                                    {this.abstractList(this.props.mutationEffectCitations.abstracts)}
+                                                                    {this.pmidList(
+                                                                        this.props.mutationEffectCitations.pmids.map((pmid)=>Number(pmid)),
+                                                                        this.props.pmidData
+                                                                    )}
                                                                 </ul>
                                                             </div>
                                                         </Then>
@@ -376,15 +386,15 @@ export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKb
                                 <div className="item-list levels-wrapper">
                                     <div className="collapsible-header" onClick={this.handleLevelCollapse}>Levels
                                         <span className="secondary-content">
-                                            <If condition={this.state.levelsCollapsed}>
+                                            <If condition={this.levelsCollapsed}>
                                                 <i className="fa fa-chevron-down"/>
                                             </If>
-                                            <If condition={!this.state.levelsCollapsed}>
+                                            <If condition={!this.levelsCollapsed}>
                                                 <i className="fa fa-chevron-up"/>
                                             </If>
                                         </span>
                                     </div>
-                                    <Collapse isOpened={!this.state.levelsCollapsed}>
+                                    <Collapse isOpened={!this.levelsCollapsed}>
                                         <div className="levels oncokb-card-levels-collapse">
                                             <ul>
                                                 {this.generateLevelRows(OncoKbCard.LEVELS, OncoKbCard.LEVEL_DESC)}
@@ -399,9 +409,16 @@ export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKb
                     )}
 
                     <div className="item footer">
-                        <a href={`http://oncokb.org/#/gene/${this.props.gene}`} target="_blank">
-                            <img src={require("./images/oncokb.png")} className="oncokb-logo" alt="OncoKB"/>
-                        </a>
+                        <If condition={this.oncokbLinkOut===undefined}>
+                            <Then>
+                                {oncokbLogo}
+                            </Then>
+                            <Else>
+                                <a href={`${this.oncokbLinkOut}`} target="_blank">
+                                    {oncokbLogo}
+                                </a>
+                            </Else>
+                        </If>
                         <span className="pull-right feedback">
                             <button className="btn btn-default btn-sm" onClick={this.props.handleFeedbackOpen}>
                                 Feedback
@@ -421,12 +438,14 @@ export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKb
         this.handleTabSelect("mutationEffect");
     }
 
-    private handleTabSelect(tabName:'oncogenicity'|'mutationEffect'): void {
-        this.setState(({activeTab : tabName} as IOncoKbCardState));
+    @action
+    handleTabSelect(tabName:'oncogenicity'|'mutationEffect'): void {
+        this.activeTab = tabName;
     }
 
-    private handleLevelCollapse(): void {
-        this.setState(({levelsCollapsed : !this.state.levelsCollapsed} as IOncoKbCardState));
+    @action
+    handleLevelCollapse(): void {
+        this.levelsCollapsed = !this.levelsCollapsed;
     }
 
     public insertLink(str:string, link:any)
@@ -463,13 +482,13 @@ export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKb
         const parts = str.split(/pmid|nct/i);
 
         if (parts.length < 2) {
-            return null;
+            return str;
         }
 
         const ids = parts[1].match(/[0-9]+/g);
 
         if (!ids) {
-            return null;
+            return str;
         }
 
         let baseUrl:string|undefined;
@@ -500,8 +519,8 @@ export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKb
         if (componentType === 'tooltip')
         {
             const tooltipContent = () => (
-                <div style={{maxWidth: "400px", maxHeight: "200px", overflowY: "auto"}}>
-                    <ul className="list-group" style={{marginBottom: 0}}>
+                <div style={{maxWidth: "400px", maxHeight: "400px", overflowY: "auto"}}>
+                    <ul className="list-group" style={{margin: '0 5px'}}>
                         {this.pmidList(ids.map((id:string) => parseInt(id)), this.props.pmidData)}
                     </ul>
                 </div>
@@ -533,7 +552,7 @@ export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKb
             );
         }
         else {
-            return null;
+            return str;
         }
     }
 
@@ -559,7 +578,7 @@ export default class OncoKbCard extends React.Component<OncoKbCardProps, IOncoKb
             // if delimiter convert to a JSX component
             if(part.match(regex))
             {
-                let component:JSX.Element|null = this.refComponent(part, type);
+                let component:JSX.Element|string = this.refComponent(part, type);
 
                 if (component) {
                     content.push(component);

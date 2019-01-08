@@ -4,7 +4,6 @@
     "description": "OncoKB, a comprehensive and curated precision oncology knowledge base, offers oncologists detailed, evidence-based information about individual somatic mutations and structural alterations present in patient tumors with the goal of supporting optimal treatment decisions.",
     "version": "v1.0.0",
     "title": "OncoKB APIs",
-    "termsOfService": "http://oncokb.org/#/terms",
     "contact": {
       "name": "OncoKB",
       "url": "http://www.oncokb.org",
@@ -15,8 +14,6 @@
       "url": "http://oncokb.org/#/terms"
     }
   },
-  "host": "oncokb.org",
-  "basePath": "/api/v1",
   "tags": [
     {
       "name": "levels-api-controller",
@@ -29,6 +26,10 @@
     {
       "name": "genes-api-controller",
       "description": "The genes API"
+    },
+    {
+      "name": "info-api-controller",
+      "description": "This includes all OncoKB general information"
     },
     {
       "name": "search-api-controller",
@@ -647,6 +648,29 @@
         }
       }
     },
+    "/info": {
+      "get": {
+        "tags": [
+          "Info"
+        ],
+        "summary": "infoGet",
+        "operationId": "infoGetUsingGET",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "application/json"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/OncoKBInfo"
+            }
+          }
+        }
+      }
+    },
     "/levels": {
       "get": {
         "tags": [
@@ -671,14 +695,14 @@
         }
       }
     },
-    "/levels/resistence": {
+    "/levels/resistance": {
       "get": {
         "tags": [
           "Levels"
         ],
-        "summary": "levelsResistenceGet",
-        "description": "Get all resistence levels.",
-        "operationId": "levelsResistenceGetUsingGET",
+        "summary": "levelsResistanceGet",
+        "description": "Get all resistance levels.",
+        "operationId": "levelsResistanceGetUsingGET",
         "consumes": [
           "application/json"
         ],
@@ -1036,13 +1060,64 @@
         }
       }
     },
+    "/utils/allCuratedGenes": {
+      "get": {
+        "tags": [
+          "Utils"
+        ],
+        "summary": "utilsAllCuratedGenesGet",
+        "description": "Get list of genes OncoKB curated",
+        "operationId": "utilsAllCuratedGenesGetUsingGET",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "*/*"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "array",
+              "items": {
+                "$ref": "#/definitions/CuratedGene"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/utils/allCuratedGenes.txt": {
+      "get": {
+        "tags": [
+          "Utils"
+        ],
+        "summary": "utilsAllCuratedGenesTxtGet",
+        "description": "Get list of genes OncoKB curated in text file.",
+        "operationId": "utilsAllCuratedGenesTxtGetUsingGET",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "*/*"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    },
     "/utils/cancerGeneList": {
       "get": {
         "tags": [
           "Utils"
         ],
         "summary": "utilsCancerGeneListGet",
-        "description": "Get cancer gene list in text file.",
+        "description": "Get cancer gene list",
         "operationId": "utilsCancerGeneListGetUsingGET",
         "consumes": [
           "application/json"
@@ -1058,6 +1133,30 @@
               "items": {
                 "$ref": "#/definitions/CancerGene"
               }
+            }
+          }
+        }
+      }
+    },
+    "/utils/cancerGeneList.txt": {
+      "get": {
+        "tags": [
+          "Utils"
+        ],
+        "summary": "utilsCancerGeneListTxtGet",
+        "description": "Get cancer gene list in text file.",
+        "operationId": "utilsCancerGeneListTxtGetUsingGET",
+        "consumes": [
+          "application/json"
+        ],
+        "produces": [
+          "*/*"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "type": "string"
             }
           }
         }
@@ -1408,6 +1507,9 @@
         "oncogenicity": {
           "type": "string"
         },
+        "proteinChange": {
+          "type": "string"
+        },
         "refSeq": {
           "type": "string"
         },
@@ -1522,6 +1624,17 @@
         "tissue": {
           "type": "string",
           "description": "The tissue this tumor type belongs to."
+        }
+      }
+    },
+    "Version": {
+      "type": "object",
+      "properties": {
+        "date": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
         }
       }
     },
@@ -1661,13 +1774,13 @@
             "LEVEL_R1",
             "LEVEL_R2",
             "LEVEL_R3",
-            "LEVEL_P1",
-            "LEVEL_P2",
-            "LEVEL_P3",
-            "LEVEL_P4",
-            "LEVEL_D1",
-            "LEVEL_D2",
-            "LEVEL_D3"
+            "LEVEL_Px1",
+            "LEVEL_Px2",
+            "LEVEL_Px3",
+            "LEVEL_Px4",
+            "LEVEL_Dx1",
+            "LEVEL_Dx2",
+            "LEVEL_Dx3"
           ]
         },
         "oncoTreeType": {
@@ -1716,13 +1829,13 @@
             "LEVEL_R1",
             "LEVEL_R2",
             "LEVEL_R3",
-            "LEVEL_P1",
-            "LEVEL_P2",
-            "LEVEL_P3",
-            "LEVEL_P4",
-            "LEVEL_D1",
-            "LEVEL_D2",
-            "LEVEL_D3"
+            "LEVEL_Px1",
+            "LEVEL_Px2",
+            "LEVEL_Px3",
+            "LEVEL_Px4",
+            "LEVEL_Dx1",
+            "LEVEL_Dx2",
+            "LEVEL_Dx3"
           ]
         },
         "highestSensitiveLevel": {
@@ -1739,13 +1852,13 @@
             "LEVEL_R1",
             "LEVEL_R2",
             "LEVEL_R3",
-            "LEVEL_P1",
-            "LEVEL_P2",
-            "LEVEL_P3",
-            "LEVEL_P4",
-            "LEVEL_D1",
-            "LEVEL_D2",
-            "LEVEL_D3"
+            "LEVEL_Px1",
+            "LEVEL_Px2",
+            "LEVEL_Px3",
+            "LEVEL_Px4",
+            "LEVEL_Dx1",
+            "LEVEL_Dx2",
+            "LEVEL_Dx3"
           ]
         },
         "hotspot": {
@@ -1776,13 +1889,13 @@
               "LEVEL_R1",
               "LEVEL_R2",
               "LEVEL_R3",
-              "LEVEL_P1",
-              "LEVEL_P2",
-              "LEVEL_P3",
-              "LEVEL_P4",
-              "LEVEL_D1",
-              "LEVEL_D2",
-              "LEVEL_D3"
+              "LEVEL_Px1",
+              "LEVEL_Px2",
+              "LEVEL_Px3",
+              "LEVEL_Px4",
+              "LEVEL_Dx1",
+              "LEVEL_Dx2",
+              "LEVEL_Dx3"
             ]
           }
         },
@@ -1802,13 +1915,13 @@
               "LEVEL_R1",
               "LEVEL_R2",
               "LEVEL_R3",
-              "LEVEL_P1",
-              "LEVEL_P2",
-              "LEVEL_P3",
-              "LEVEL_P4",
-              "LEVEL_D1",
-              "LEVEL_D2",
-              "LEVEL_D3"
+              "LEVEL_Px1",
+              "LEVEL_Px2",
+              "LEVEL_Px3",
+              "LEVEL_Px4",
+              "LEVEL_Dx1",
+              "LEVEL_Dx2",
+              "LEVEL_Dx3"
             ]
           }
         },
@@ -1863,6 +1976,9 @@
         "pmids": {
           "type": "string"
         },
+        "proteinChange": {
+          "type": "string"
+        },
         "refSeq": {
           "type": "string"
         },
@@ -1899,6 +2015,39 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "CuratedGene": {
+      "type": "object",
+      "properties": {
+        "entrezGeneId": {
+          "type": "integer",
+          "format": "int32"
+        },
+        "highestResistancLevel": {
+          "type": "string"
+        },
+        "highestSensitiveLevel": {
+          "type": "string"
+        },
+        "hugoSymbol": {
+          "type": "string"
+        },
+        "isoform": {
+          "type": "string"
+        },
+        "oncogene": {
+          "type": "boolean"
+        },
+        "refSeq": {
+          "type": "string"
+        },
+        "summary": {
+          "type": "string"
+        },
+        "tsg": {
+          "type": "boolean"
         }
       }
     },
@@ -1945,13 +2094,13 @@
               "LEVEL_R1",
               "LEVEL_R2",
               "LEVEL_R3",
-              "LEVEL_P1",
-              "LEVEL_P2",
-              "LEVEL_P3",
-              "LEVEL_P4",
-              "LEVEL_D1",
-              "LEVEL_D2",
-              "LEVEL_D3"
+              "LEVEL_Px1",
+              "LEVEL_Px2",
+              "LEVEL_Px3",
+              "LEVEL_Px4",
+              "LEVEL_Dx1",
+              "LEVEL_Dx2",
+              "LEVEL_Dx3"
             ]
           }
         },
@@ -2017,6 +2166,17 @@
       },
       "description": "General tumor type category."
     },
+    "OncoKBInfo": {
+      "type": "object",
+      "properties": {
+        "dataVersion": {
+          "$ref": "#/definitions/Version"
+        },
+        "oncoTreeVersion": {
+          "type": "string"
+        }
+      }
+    },
     "VariantConsequence": {
       "type": "object",
       "properties": {
@@ -2069,13 +2229,13 @@
             "LEVEL_R1",
             "LEVEL_R2",
             "LEVEL_R3",
-            "LEVEL_P1",
-            "LEVEL_P2",
-            "LEVEL_P3",
-            "LEVEL_P4",
-            "LEVEL_D1",
-            "LEVEL_D2",
-            "LEVEL_D3"
+            "LEVEL_Px1",
+            "LEVEL_Px2",
+            "LEVEL_Px3",
+            "LEVEL_Px4",
+            "LEVEL_Dx1",
+            "LEVEL_Dx2",
+            "LEVEL_Dx3"
           ]
         },
         "pmids": {
@@ -2146,7 +2306,6 @@
             "428",
             "429",
             "431",
-            "451",
             "500",
             "501",
             "502",
@@ -2160,10 +2319,6 @@
             "510",
             "511"
           ]
-        },
-        "statusCodeValue": {
-          "type": "integer",
-          "format": "int32"
         }
       }
     },
@@ -2213,13 +2368,13 @@
               "LEVEL_R1",
               "LEVEL_R2",
               "LEVEL_R3",
-              "LEVEL_P1",
-              "LEVEL_P2",
-              "LEVEL_P3",
-              "LEVEL_P4",
-              "LEVEL_D1",
-              "LEVEL_D2",
-              "LEVEL_D3"
+              "LEVEL_Px1",
+              "LEVEL_Px2",
+              "LEVEL_Px3",
+              "LEVEL_Px4",
+              "LEVEL_Dx1",
+              "LEVEL_Dx2",
+              "LEVEL_Dx3"
             ]
           }
         },

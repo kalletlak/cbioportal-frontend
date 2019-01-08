@@ -14,7 +14,12 @@ import {SyntheticEvent} from "react";
 export type LollipopSpec = {
     codon:number;
     count:number;
-    label?:string;
+    label?: {
+        text: string;
+        textAnchor?: string;
+        fontSize?: number;
+        fontFamily?: string;
+    };
     color?:string;
     tooltip?:JSX.Element;
 };
@@ -460,6 +465,7 @@ export default class LollipopPlotNoTooltip extends React.Component<LollipopPlotN
                      ref={this.handlers.ref}
                      width={this.svgWidth}
                      height={this.svgHeight}
+                     className="lollipop-svgnode"
                      onMouseLeave={this.handlers.onSVGMouseLeave}
                 >
                     <rect
@@ -510,7 +516,7 @@ export default class LollipopPlotNoTooltip extends React.Component<LollipopPlotN
                         rangeUpper={this.yMax}
                         ticks={this.yTicks}
                         vertical={true}
-                        label="# Mutations"
+                        label={`# ${this.props.hugoGeneSymbol} Mutations`}
                     />
                 </svg>
             </div>

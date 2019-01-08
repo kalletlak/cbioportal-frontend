@@ -1,8 +1,8 @@
 import MobxPromise from "mobxpromise";
 import {ILazyMobXTableApplicationLazyDownloadDataFetcher} from "shared/lib/ILazyMobXTableApplicationLazyDownloadDataFetcher";
 import LazyMobXCache from "shared/lib/LazyMobXCache";
-import {default as GenomeNexusEnrichmentCache, fetch as fetchGenomeNexusData} from "shared/cache/GenomeNexusEnrichment";
 import {default as MutationCountCache, fetch as fetchMutationCountData} from "shared/cache/MutationCountCache";
+import {default as GenomeNexusCache, fetch as fetchGenomeNexusData } from "shared/cache/GenomeNexusCache";
 import {Mutation} from "shared/api/generated/CBioPortalAPI";
 
 export class MutationTableDownloadDataFetcher implements ILazyMobXTableApplicationLazyDownloadDataFetcher
@@ -10,7 +10,7 @@ export class MutationTableDownloadDataFetcher implements ILazyMobXTableApplicati
     private allData:any[]|undefined = undefined;
 
     constructor(private mutationData: MobxPromise<Mutation[]>,
-                private genomeNexusEnrichmentCache?: () => GenomeNexusEnrichmentCache,
+                private genomeNexusCache?: () => GenomeNexusCache,
                 private mutationCountCache?: () => MutationCountCache) {
         // TODO labelMobxPromises(this); ?
     }
@@ -42,10 +42,10 @@ export class MutationTableDownloadDataFetcher implements ILazyMobXTableApplicati
         const promises:Promise<any>[] = [];
         const caches:LazyMobXCache<any, any>[] = [];
 
-        if (this.genomeNexusEnrichmentCache)
+        if (this.genomeNexusCache)
         {
-            promises.push(this.fetchAllGenomeNexusEnrichmentData());
-            caches.push(this.genomeNexusEnrichmentCache());
+            promises.push(this.fetchAllGenomeNexusData());
+            caches.push(this.genomeNexusCache());
         }
 
         if (this.mutationCountCache)
@@ -57,7 +57,7 @@ export class MutationTableDownloadDataFetcher implements ILazyMobXTableApplicati
         return {promises, caches};
     }
 
-    private async fetchAllGenomeNexusEnrichmentData()
+    private async fetchAllGenomeNexusData()
     {
         if (this.mutationData.result)
         {
@@ -73,7 +73,7 @@ export class MutationTableDownloadDataFetcher implements ILazyMobXTableApplicati
         if (this.mutationData.result)
         {
             const queries = this.mutationData.result.map(
-                mutation => ({sampleId: mutation.sampleId, molecularProfileId: mutation.molecularProfileId}));
+                mutation => ({sampleId: mutation.sampleId, studyId: mutation.studyId}));
 
             return await fetchMutationCountData(queries);
         }

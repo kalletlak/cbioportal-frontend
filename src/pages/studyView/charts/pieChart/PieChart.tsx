@@ -1,134 +1,272 @@
 import * as React from "react";
-import styles from "./styles.scss";
-import { observer } from "mobx-react";
-import { VictoryPie, VictoryContainer, VictoryLabel, Slice } from 'victory';
-import { observable, computed } from "mobx";
+import {observer} from "mobx-react";
+import {Slice, VictoryContainer, VictoryLabel, VictoryLegend, VictoryPie} from 'victory';
+import {action, computed, observable, toJS} from "mobx";
 import _ from "lodash";
-import { COLORS, UNSELECTED_COLOR, NA_COLOR } from "pages/studyView/StudyViewUtils";
+import {getFrequencyStr, toSvgDomNodeWithLegend} from "pages/studyView/StudyViewUtils";
 import CBIOPORTAL_VICTORY_THEME from "shared/theme/cBioPoralTheme";
-import { AbstractChart } from "pages/studyView/charts/ChartContainer";
-import { ClinicalDataCount } from "shared/api/generated/CBioPortalAPIInternal";
+import {AbstractChart} from "pages/studyView/charts/ChartContainer";
 import ifndef from "shared/lib/ifndef";
+import autobind from 'autobind-decorator';
+import {ClinicalDataCountWithColor} from "pages/studyView/StudyViewPageStore";
+import ClinicalTable from "pages/studyView/table/ClinicalTable";
+import {If} from 'react-if';
+import {STUDY_VIEW_CONFIG} from "../../StudyViewConfig";
+import DefaultTooltip from "../../../../shared/components/defaultTooltip/DefaultTooltip";
+import {getTextWidth} from "../../../../shared/lib/wrapText";
 
 export interface IPieChartProps {
-    data: ClinicalDataCount[];
-    filters:string[];
-    onUserSelection:(values:string[])=>void;
+    width: number;
+    height: number;
+    data: ClinicalDataCountWithColor[];
+    filters: string[];
+    onUserSelection: (values: string[]) => void;
+    placement: 'left' | 'right';
+    patientAttribute: boolean;
+    label?: string;
+    labelDescription?: string;
 }
 
 @observer
-export default class PieChart extends React.Component<IPieChartProps, {}> implements AbstractChart{
+export default class PieChart extends React.Component<IPieChartProps, {}> implements AbstractChart {
 
-    // used in saving slice color
-    private colorSet:{[id:string]:string} = {};
-    private svgContainer: any;
+    private svg: SVGElement;
 
     constructor(props: IPieChartProps) {
         super(props);
     }
 
-    private get userEvents(){
+    @autobind
+    private onUserSelection(filter: string) {
+        let filters = toJS(this.props.filters);
+        if (_.includes(filters, filter)) {
+            filters = _.filter(filters, obj => obj !== filter);
+        } else {
+            filters.push(filter);
+        }
+        this.props.onUserSelection(filters);
+    }
+
+    private get userEvents() {
         const self = this;
         return [{
             target: "data",
-            eventHandlers: {
-                onClick: () => {
-                    return [
-                        {
-                            target: "data",
-                            mutation: (props:any) => {
-                                let filters = self.props.filters;
-                                if(_.includes(filters,props.datum.x)){
-                                    filters = _.filter(filters, filter=> filter !== props.datum.x);
-                                }else{
-                                    filters.push(props.datum.x);
-                                }
-                                self.props.onUserSelection(filters);
-                            }
-                        }
-                    ];
-                }
-            }
+            eventHandlers: this.pieSliceOnClickEventHandlers
+        }, {
+            target: "labels",
+            eventHandlers: this.pieSliceOnClickEventHandlers
         }];
     }
 
+    private get pieSliceOnClickEventHandlers() {
+        return {
+            onClick: () => {
+                return [
+                    {
+                        target: "data",
+                        mutation: (props: any) => {
+                            this.onUserSelection(props.datum.value);
+                        }
+                    }
+                ];
+            }
+        }
+    }
+
+    @observable isTooltipHovered: boolean = false;
+    @observable tooltipHighlightedRow: string | undefined = undefined;
+
+    @autobind
+    @action
+    private highlightedRow(value: string): void {
+        this.tooltipHighlightedRow = value;
+    }
+
     public downloadData() {
-        return this.props.data.map(obj=>obj.value+'\t'+obj.count).join('\n');
+        return this.props.data.map(obj => obj.value + '\t' + obj.count).join('\n');
     }
 
-    public toSVGDOMNode():Element {
-        return this.svgContainer.firstChild
+    public toSVGDOMNode(): Element {
+        return toSvgDomNodeWithLegend(this.svg, ".studyViewPieChartLegend", ".studyViewPieChartGroup", true);
     }
 
-    @computed get totalCount(){
-        return _.sumBy(this.props.data, obj=>obj.count)
+    @computed
+    get totalCount() {
+        return _.sumBy(this.props.data, obj => obj.count)
     }
 
-    /* Add style properties for each slice datum and make sure
-    that the slice color remain same with and without filters
-
-    Step1: check if the slice already has a color assigned
-            a. YES -> Go to Step 2
-            b. No  -> assign a color depending on the value and update the set
-    Step2: check if the filters is empty
-            a. Yes -> add fill property to slice datum
-            b. No  -> add appropriate slice style properties depending on the filters
-    */
-    @computed get annotatedData() {
-        return this.props.data.map(slice => {
-            let color = this.colorSet[slice.value];
-            if (_.isUndefined(color)) {
-                if (slice.value.toLowerCase().includes('na')) {
-                    color = NA_COLOR;
-                } else {
-                    color = COLORS[Object.keys(this.colorSet).length];
-                }
-                this.colorSet[slice.value] = color;
+    @computed
+    get fill() {
+        return (d: ClinicalDataCountWithColor) => {
+            if (!_.isEmpty(this.props.filters) && !_.includes(this.props.filters, d.value)) {
+                return STUDY_VIEW_CONFIG.colors.na;
             }
-            if (_.isEmpty(this.props.filters)) {
-                return { ...slice, fill: color };
-            } else {
-                if (_.includes(this.props.filters, slice.value)) {
-                    return { ...slice, fill: color, stroke: "#cccccc", strokeWidth: 3 };
-                } else {
-                    return { ...slice, fill: UNSELECTED_COLOR, fillOpacity: '0.5' };
-                }
+            return d.color;
+        };
+    }
+
+    @computed
+    get stroke() {
+        return (d: ClinicalDataCountWithColor) => {
+            if (!_.isEmpty(this.props.filters) && _.includes(this.props.filters, d.value)) {
+                return "#cccccc";
             }
-        })
+            return null;
+        };
+    }
+
+    @computed
+    get strokeWidth() {
+        return (d: ClinicalDataCountWithColor) => {
+            if (!_.isEmpty(this.props.filters) && _.includes(this.props.filters, d.value)) {
+                return 3;
+            }
+            return 0;
+        };
+    }
+
+    @computed
+    get fillOpacity() {
+        return (d: ClinicalDataCountWithColor) => {
+            if (!_.isEmpty(this.props.filters) && !_.includes(this.props.filters, d.value)) {
+                return '0.5';
+            }
+            return 1;
+        };
+    }
+
+    @autobind
+    private x(d: ClinicalDataCountWithColor) {
+        return d.value;
+    }
+
+    @autobind
+    private y(d: ClinicalDataCountWithColor) {
+        return d.count;
+    }
+
+    @autobind
+    private label(d: ClinicalDataCountWithColor) {
+        return d.count / this.totalCount > 0.5 ? d.count.toLocaleString() : (
+            this.maxLength(d.count / this.totalCount, this.pieSliceRadius / 3) <
+            getTextWidth(
+                d.count.toLocaleString(),
+                CBIOPORTAL_VICTORY_THEME.axis.style.tickLabels.fontFamily,
+                `${CBIOPORTAL_VICTORY_THEME.axis.style.tickLabels.fontSize}px`
+            ) ? '' : d.count.toLocaleString());
+    }
+
+    // We do want to show a bigger pie chart when the height is way smaller than width
+    @computed
+    get chartSize() {
+        return (this.props.width + this.props.height ) / 2;
+    }
+
+    @computed
+    get pieSliceRadius(): number {
+        const chartWidth = this.props.width > this.props.height ? this.props.height : this.props.width;
+        return chartWidth / 2 - STUDY_VIEW_CONFIG.thresholds.piePadding;
+    }
+
+    @computed
+    get victoryPie() {
+        return (
+            <VictoryPie
+                standalone={false}
+                theme={CBIOPORTAL_VICTORY_THEME}
+                containerComponent={<VictoryContainer responsive={false}/>}
+                groupComponent={<g className="studyViewPieChartGroup"/>}
+                width={this.props.width}
+                height={this.chartSize}
+                labelRadius={this.pieSliceRadius / 3}
+                radius={this.pieSliceRadius}
+                labels={this.label}
+                data={this.props.data}
+                dataComponent={<CustomSlice/>}
+                labelComponent={<VictoryLabel/>}
+                events={this.userEvents}
+                style={{
+                    data: {
+                        fill: ifndef(this.fill, "#cccccc"),
+                        stroke: ifndef(this.stroke, "0x000000"),
+                        strokeWidth: ifndef(this.strokeWidth, 0),
+                        fillOpacity: ifndef(this.fillOpacity, 1),
+                        cursor: 'pointer'
+                    },
+                    labels: {
+                        fill: "white",
+                        cursor: 'pointer'
+                    }
+                }}
+                x={this.x}
+                y={this.y}
+            />
+        );
+    }
+
+    @computed
+    get victoryLegend() {
+        const legendData = this.props.data.map(data =>
+            ({name: `${data.value}: ${data.count} (${getFrequencyStr(100 * data.count / this.totalCount)})`}));
+        const colorScale = this.props.data.map(data => data.color);
+
+        // override the legend style without mutating the actual theme object
+        const theme = _.cloneDeep(CBIOPORTAL_VICTORY_THEME);
+        theme.legend.style.data = {
+            type: "square",
+            size: 5,
+            strokeWidth: 0,
+            stroke: "black"
+        };
+
+        return (
+            <VictoryLegend
+                standalone={false}
+                theme={theme}
+                colorScale={colorScale}
+                x={0} y={this.props.height + 1}
+                rowGutter={-10}
+                title={this.props.label || "Legend"}
+                centerTitle={true}
+                style={{title: {fontWeight: "bold"}}}
+                data={legendData}
+                groupComponent={<g className="studyViewPieChartLegend"/>}
+            />
+        );
+    }
+
+    private maxLength(ratioOfPie: number, radius: number) {
+        return Math.abs(Math.tan(Math.PI * ratioOfPie / 2)) * radius * 2;
     }
 
     public render() {
-        //to hide label if the angle is too small(currently set to 20 degrees)
         return (
-            <VictoryPie
-                containerComponent={<VictoryContainer
-                                        theme={CBIOPORTAL_VICTORY_THEME}
-                                        standalone={false}
-                                        containerRef={(ref: any) => this.svgContainer = ref}
-                                    />}
-                width={190}
-                height={185}
-                labelRadius={30}
-                padding={30}
-                labels={(d:any) => ((d.y*360)/this.totalCount)<20?'':d.y}
-                data={this.annotatedData}
-                dataComponent={<CustomSlice/>}
-                events={this.userEvents}
-                labelComponent={<VictoryLabel/>}
-                style={{
-                    data: { 
-                        fill: (d:any) => ifndef(d.fill, "0x000000"),
-                        stroke: (d:any) => ifndef(d.stroke, "0x000000"),
-                        strokeWidth: (d:any) => ifndef(d.strokeWidth, 0),
-                        fillOpacity: (d:any) => ifndef(d.fillOpacity, 1)
-                    },
-                    labels: { 
-                        fill: "white" 
-                    }
-                }}
-                x="value"
-                y="count"
-            />
+            <DefaultTooltip
+                placement="right"
+                overlay={(
+                    <ClinicalTable
+                        width={300}
+                        height={150}
+                        data={this.props.data}
+                        labelDescription={this.props.labelDescription}
+                        patientAttribute={this.props.patientAttribute}
+                        showAddRemoveAllButtons={true}
+                        filters={this.props.filters}
+                        highlightedRow={this.highlightedRow}
+                        onUserSelection={this.props.onUserSelection}
+                    />)}
+                destroyTooltipOnHide={true}
+                trigger={["hover"]}
+            >
+                <svg
+                    width={this.props.width}
+                    height={this.props.height}
+                    ref={(ref: any) => this.svg = ref}
+                >
+                    {this.victoryPie}
+                    {this.victoryLegend}
+                </svg>
+            </DefaultTooltip>
         );
     }
 
@@ -136,12 +274,12 @@ export default class PieChart extends React.Component<IPieChartProps, {}> implem
 
 class CustomSlice extends React.Component<{}, {}> {
     render() {
-        const d:any = this.props;
+        const d: any = this.props;
         return (
-        <g>
-            <Slice {...this.props}/>
-            <title>{`${d.datum.x}:${d.datum.y}`}</title>
-        </g>
+            <g>
+                <Slice {...this.props} />
+                <title>{`${d.datum.value}:${d.datum.count}`}</title>
+            </g>
         );
     }
 }

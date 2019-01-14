@@ -140,6 +140,7 @@ import {ResultsViewQuery} from "./ResultsViewQuery";
 import {annotateAlterationTypes} from "../../shared/lib/oql/annotateAlterationTypes";
 import ErrorMessage from "../../shared/components/ErrorMessage";
 import {ErrorMessages} from "../../shared/enums/ErrorEnums";
+import { SampleGroup } from "pages/groupComparison/GroupComparisonUtils";
 
 type Optional<T> = (
     {isApplicable: true, value: T}
@@ -2877,7 +2878,7 @@ export class ResultsViewPageStore {
 
     });
 
-    public readonly sampleGroups = remoteData({
+    public readonly sampleGroups = remoteData<SampleGroup[]>({
         // not sure how we'll get these from the server, if we'll have to process or fetch more
         // for now let's just do this for testing purposes, and it won't be hard to switch around
         await:()=>[this.samples, this.alteredSamples, this.unalteredSamples],
@@ -2885,16 +2886,20 @@ export class ResultsViewPageStore {
             return Promise.resolve([
                 {
                     name: "Altered Samples",
-                    sampleIdentifiers: this.alteredSamples.result!.map(s=>({ sampleId: s.sampleId, studyId: s.studyId }))
+                    sampleIdentifiers: this.alteredSamples.result!.map(s=>({ sampleId: s.sampleId, studyId: s.studyId })),
+                    color: "red",
+                    legendText: "Cases with Alteration(s) in Query Gene(s)"
                 },
                 {
                     name: "Unaltered Samples",
-                    sampleIdentifiers: this.unalteredSamples.result!.map(s=>({ sampleId: s.sampleId, studyId: s.studyId }))
+                    sampleIdentifiers: this.unalteredSamples.result!.map(s=>({ sampleId: s.sampleId, studyId: s.studyId })),
+                    color: "blue",
+                    legendText: "Cases without Alteration(s) in Query Gene(s)"
                 },
-                {
+                /* {
                     name: "All Samples",
                     sampleIdentifiers: this.samples.result!.map(s=>({ sampleId: s.sampleId, studyId: s.studyId }))
-                }
+                } */
             ]);
         }
     });

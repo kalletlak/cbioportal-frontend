@@ -20,7 +20,7 @@ export default class Survival extends React.Component<ISurvivalProps, {}> {
         if (this.props.store.overallPatientSurvivals.isPending ||
             this.props.store.diseaseFreePatientSurvivals.isPending ||
             this.props.store.sampleGroups.isPending ||
-            this.props.store.patientToAnalysisGroup.isPending) {
+            this.props.store.patientToAnalysisGroups.isPending) {
             return <LoadingIndicator isLoading={true} size={"big"} center={true} />;
         }
 
@@ -31,7 +31,7 @@ export default class Survival extends React.Component<ISurvivalProps, {}> {
         if (this.props.store.overallPatientSurvivals.isComplete &&
             this.props.store.overallPatientSurvivals.result.length > 0 &&
             this.props.store.sampleGroups.isComplete &&
-            this.props.store.patientToAnalysisGroup.isComplete) {
+            this.props.store.patientToAnalysisGroups.isComplete) {
             content.push(
                 <div style={{marginBottom:40}}>
                     <h4 className='forceHeaderStyle h4'>{this.overallSurvivalTitleText}</h4>
@@ -40,7 +40,7 @@ export default class Survival extends React.Component<ISurvivalProps, {}> {
                             className='borderedChart'
                             patientSurvivals = {this.props.store.overallPatientSurvivals.result}
                             analysisGroups={this.props.store.sampleGroups.result!}
-                            patientToAnalysisGroup={this.props.store.patientToAnalysisGroup.result!}
+                            patientToAnalysisGroups={this.props.store.patientToAnalysisGroups.result!}
                             title={this.overallSurvivalTitleText}
                             xAxisLabel="Months Survival"
                             yAxisLabel="Overall Survival"
@@ -61,7 +61,7 @@ export default class Survival extends React.Component<ISurvivalProps, {}> {
         if (this.props.store.diseaseFreePatientSurvivals.isComplete &&
             this.props.store.diseaseFreePatientSurvivals.result.length > 0 &&
             this.props.store.sampleGroups.isComplete &&
-            this.props.store.patientToAnalysisGroup.isComplete) {
+            this.props.store.patientToAnalysisGroups.isComplete) {
             content.push(
                 <div>
                     <h4 className='forceHeaderStyle h4'>{ this.diseaseFreeSurvivalTitleText }</h4>
@@ -70,7 +70,7 @@ export default class Survival extends React.Component<ISurvivalProps, {}> {
                             className='borderedChart'
                             patientSurvivals = {this.props.store.diseaseFreePatientSurvivals.result}
                             analysisGroups={this.props.store.sampleGroups.result!}
-                            patientToAnalysisGroup={this.props.store.patientToAnalysisGroup.result!}
+                            patientToAnalysisGroups={this.props.store.patientToAnalysisGroups.result!}
                             title={this.diseaseFreeSurvivalTitleText}
                             xAxisLabel="Months Disease/Progression-free"
                             yAxisLabel="Disease/Progression-free Survival"

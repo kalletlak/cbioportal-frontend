@@ -18,8 +18,14 @@ export function makeSurvivalChartData(
         });
     }
 
+    let patientToAnalysisGroups = _.reduce(patientToAnalysisGroup, (acc, group, uniquePatientKey)=>{
+        acc[uniquePatientKey] = [group];
+        return acc;
+    }, {} as {[uniquePatientKey:string]:string[]});
+    
+
     return {
-        patientToAnalysisGroup, patientSurvivals, analysisGroups
+        patientToAnalysisGroups, patientSurvivals, analysisGroups
     };
 }
 

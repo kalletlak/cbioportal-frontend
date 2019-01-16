@@ -34,7 +34,7 @@ export enum LegendLocation {
 
 export interface ISurvivalChartProps {
     patientSurvivals:ReadonlyArray<PatientSurvival>;
-    patientToAnalysisGroup:{[uniquePatientKey:string]:string};
+    patientToAnalysisGroups:{[uniquePatientKey:string]:string[]};
     analysisGroups:ReadonlyArray<AnalysisGroup>; // identified by `value`
     analysisClinicalAttribute?:ClinicalAttribute;
     naPatientsHiddenInSurvival?:boolean;
@@ -159,13 +159,16 @@ export default class SurvivalChart extends React.Component<ISurvivalChartProps, 
     }
 
     @computed get sortedGroupedSurvivals():{[groupValue:string]:PatientSurvival[]} {
-        const patientToAnalysisGroup = this.props.patientToAnalysisGroup;
+        const patientToAnalysisGroups = this.props.patientToAnalysisGroups;
         const survivalsByAnalysisGroup = _.reduce(this.props.patientSurvivals, (map, nextSurv)=>{
-            if (nextSurv.uniquePatientKey in patientToAnalysisGroup) {
+            if (nextSurv.uniquePatientKey in patientToAnalysisGroups) {
                 // only include this data if theres an analysis group (curve) to put it in
-                const group = patientToAnalysisGroup[nextSurv.uniquePatientKey];
-                map[group] = map[group] || [];
-                map[group].push(nextSurv);
+                const groups = patientToAnalysisGroups[nextSurv.uniquePatientKey];
+                groups.forEach(group=>{
+                    map[group] = map[group] || [];
+                    map[group].push(nextSurv);
+                })
+                
             }
             return map;
         }, {} as {[groupValue:string]:PatientSurvival[]});
@@ -501,7 +504,7 @@ export default class SurvivalChart extends React.Component<ISurvivalChartProps, 
                                 "(censored)"}<br/>
                                 {this.props.analysisClinicalAttribute && (
                                     <span>
-                                        {this.props.analysisClinicalAttribute.displayName}: {this.props.patientToAnalysisGroup[this.tooltipModel.datum.uniquePatientKey]}
+                                        {this.props.analysisClinicalAttribute.displayName}: {this.props.patientToAnalysisGroups[this.tooltipModel.datum.uniquePatientKey]}
                                     </span>
                                 )}
                             </div>

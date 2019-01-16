@@ -2896,10 +2896,10 @@ export class ResultsViewPageStore {
                     color: "blue",
                     legendText: "Cases without Alteration(s) in Query Gene(s)"
                 },
-                /* {
+                {
                     name: "All Samples",
                     sampleIdentifiers: this.samples.result!.map(s=>({ sampleId: s.sampleId, studyId: s.studyId }))
-                } */
+                }
             ]);
         }
     });

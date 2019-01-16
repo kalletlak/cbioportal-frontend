@@ -42,17 +42,19 @@ export default class GroupComparisonStore {
         }
     });
 
-    public readonly patientToAnalysisGroup = remoteData({
+    public readonly patientToAnalysisGroups = remoteData({
         await: () => [
             this.sampleGroups
         ],
         invoke: () => {
             return Promise.resolve(_.reduce(this.sampleGroups.result, (acc, next) => {
                 next.samples.forEach(sample => {
-                    acc[sample.uniquePatientKey] = next.name;
+                    let groups = acc[sample.uniquePatientKey] || [];
+                    groups.push(next.name);
+                    acc[sample.uniquePatientKey] = groups;
                 })
                 return acc;
-            }, {} as { [id: string]: string }));
+            }, {} as { [id: string]: string []}));
         }
     });
 

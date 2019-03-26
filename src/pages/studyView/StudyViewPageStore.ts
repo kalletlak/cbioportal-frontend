@@ -90,6 +90,7 @@ import {getMDAndersonHeatmapStudyMetaUrl, getStudyDownloadListUrl} from "../../s
 import onMobxPromise from "../../shared/lib/onMobxPromise";
 import request from 'superagent';
 import {trackStudyViewFilterEvent} from "../../shared/lib/tracking";
+import Timer = NodeJS.Timer;
 
 export enum ClinicalDataTypeEnum {
     SAMPLE = 'SAMPLE',
@@ -295,7 +296,20 @@ export class StudyViewPageStore {
         this.reactionDisposers.push(reaction(() => this.loadingInitialDataForSummaryTab, () => {
             if (!this.loadingInitialDataForSummaryTab) {
                 this.updateChartStats();
+                this.loadUserSettings();
             }
+        }));
+
+        this.reactionDisposers.push(reaction(() => this._chartVisibility.toJS(), () => {
+            this.updateUserSettings(true,false,false);
+        }));
+
+        this.reactionDisposers.push(reaction(() => this._customChartDataSet.toJS(), () => {
+            this.updateUserSettings(false,false,true);
+        }));
+
+        this.reactionDisposers.push(reaction(() => this.chartsType.toJS(), () => {
+            this.updateUserSettings(false,true,false);
         }));
 
         // Include special charts into custom charts list
@@ -544,6 +558,7 @@ export class StudyViewPageStore {
     @autobind
     updateCurrentGridLayout(newGridLayout: ReactGridLayout.Layout[]) {
         this.currentGridLayout = newGridLayout;
+        this.updateUserSettings(false,false,false);
     }
 
     private currentGridLayout: ReactGridLayout.Layout[] | undefined = undefined;
@@ -562,6 +577,8 @@ export class StudyViewPageStore {
 
     @observable numberOfSelectedSamplesInCustomSelection: number = 0;
 
+    //used in saving custom added charts
+    @observable private _customChartDataSet = observable.shallowMap<NewChart>();
     @observable private _customCharts = observable.shallowMap<ChartMeta>();
     @observable private _customChartsSelectedCases = observable.shallowMap<CustomChartIdentifierWithValue[]>();
 
@@ -1885,8 +1902,7 @@ export class StudyViewPageStore {
     }
 
     @autobind
-    @action addCustomChart(newChart:NewChart) {
-        const uniqueKey = this.newCustomChartUniqueKey();
+    @action addCustomChart(newChart:NewChart, uniqueKey:string = this.newCustomChartUniqueKey(), newlyAdded:boolean=true) {
         const newChartName = newChart.name ? newChart.name : this.getDefaultCustomChartName();
         let chartMeta = {
             uniqueKey: uniqueKey,
@@ -1919,13 +1935,18 @@ export class StudyViewPageStore {
             }, allCases)
         });
         this._customCharts.set(uniqueKey, chartMeta);
+        this._customChartDataSet.set(uniqueKey, newChart)
         this._chartVisibility.set(uniqueKey, true);
         this._customChartsSelectedCases.set(uniqueKey, allCases);
+        this.chartsDimension[uniqueKey] = chartMeta.dimension
+        this.chartsType.set(uniqueKey, chartMeta.chartType)
 
         // Autoselect the groups
-        this.setCustomChartFilters(chartMeta, newChart.groups.map(group=>group.name));
-        this.newlyAddedCharts.clear();
-        this.newlyAddedCharts.push(uniqueKey);
+        if(newlyAdded) {
+            this.setCustomChartFilters(chartMeta, newChart.groups.map(group=>group.name));
+            this.newlyAddedCharts.clear();
+            this.newlyAddedCharts.push(uniqueKey);
+        }
     }
 
     @autobind
@@ -2046,6 +2067,7 @@ export class StudyViewPageStore {
 
     @computed
     get visibleAttributes(): ChartMeta[] {
+        //
         return _.reduce(this._chartVisibility.entries(), (acc, [chartUniqueKey, visible]) => {
             if (visible && this.chartMetaSet[chartUniqueKey]) {
                 let chartMeta = this.chartMetaSet[chartUniqueKey];
@@ -2067,11 +2089,127 @@ export class StudyViewPageStore {
             this.initialVisibleAttributesClinicalDataBinCountData.isPending ||
             this.initialVisibleAttributesClinicalDataCountData.isPending ||
             this.mutationProfiles.isPending ||
-            this.cnaProfiles.isPending
+            this.cnaProfiles.isPending ||
+            this.fetchUserSettings.isPending
         ) {
             return true;
         } else {
             return false;
+        }
+    }
+
+    private updateSettingsTimeout: Timer;
+    private studySettings: any = {};
+
+    @autobind
+    updateUserSettings(chartVisibilityUpdated: boolean, chartTypeUpdated: boolean, customChartAdded: boolean) {
+        clearTimeout(this.updateSettingsTimeout);
+        this.updateSettingsTimeout = setTimeout(() => {
+            const studyIdString = this.studyIds.join(",");
+            let updatedUserSetting = _.cloneDeep(this.studySettings);
+            if (chartVisibilityUpdated) {
+                updatedUserSetting["visibleCharts"] = this._chartVisibility.toJS();
+            }
+
+            if (chartTypeUpdated) {
+                const filteredChartsType: { [id: string]: ChartType } = {};
+                const filteredChartsDimension: { [uniqueKey: string]: ChartDimension } = {};
+                const chartsType = this.chartsType.toJS();
+
+                _.forEach(chartsType, (chartype, chartId) => {
+                    if (this._chartVisibility.has(chartId) && this._chartVisibility.get(chartId)) {
+                        filteredChartsType[chartId] = chartype;
+                        filteredChartsDimension[chartId] = this.chartsDimension[chartId];
+                    }
+                });
+                updatedUserSetting["chartTypes"] = filteredChartsType;
+                updatedUserSetting["chartDimensions"] = filteredChartsDimension;
+            }
+
+            if (customChartAdded) {
+                const customCharts = this._customChartDataSet.toJS();
+                if (_.isEmpty(customCharts)) {
+                    delete updatedUserSetting["customCharts"]
+                } else {
+                    updatedUserSetting["customCharts"] = _.reduce(customCharts, (acc, newChart, chartId) => {
+                        const customChartMeta = this._customCharts.get(chartId);
+                        if (customChartMeta) {
+                            acc.push({
+                                id: chartId,
+                                name: customChartMeta.displayName,
+                                groups: newChart.groups
+                            });
+                        }
+                        return acc;
+                    }, [] as any[]);
+                }
+            }
+
+            updatedUserSetting["layout"] = this.currentGridLayout;
+
+            if (!_.isEqual(JSON.stringify(this.studySettings), JSON.stringify(updatedUserSetting))) {
+                let userSettings = {} as any;
+                userSettings[studyIdString] = updatedUserSetting;
+                //TODO: replace with api call once the model is finalized and session service is ready
+                localStorage.setItem("userSettings", JSON.stringify(userSettings));
+                this.studySettings = updatedUserSetting;
+            }
+        }, 1000)
+    }
+
+    readonly fetchUserSettings = remoteData({
+        invoke: async () => {
+            if (this.studyIds.length > 0) {
+                const studyIdString = this.studyIds.join(",");
+                //TODO: replace with api call once the model is finalized and session service is ready
+                const userSettings: { [id: string]: any } = JSON.parse(localStorage.getItem("userSettings") || "{}");
+                const studySettings = userSettings[studyIdString] || {};
+                return studySettings;
+            }
+            return {};
+        },
+        default: {},
+        onResult: (studySettings) => {
+            this.studySettings = studySettings;
+        }
+    });
+
+    @autobind
+    @action
+    loadUserSettings() {
+        const studySettings = this.fetchUserSettings.result;
+        const chartVisibilities: { [id: string]: boolean } = studySettings["visibleCharts"];
+        const chartTypes: { [id: string]: ChartType } = studySettings["chartTypes"];
+        const chartDimensions: { [id: string]: ChartDimension } = studySettings["chartDimensions"];
+        const customCharts: { id: string, name: string, groups: CustomGroup[] }[] = studySettings["customCharts"] || [];
+        const layout = studySettings["layout"]
+
+        if(layout){
+            this.currentGridLayout = layout
+        }
+
+        customCharts.forEach(customChart => {
+            this.addCustomChart({
+                name: customChart.name,
+                groups: customChart.groups
+            }, customChart.id, false);
+        })
+
+        if (!_.isEmpty(chartVisibilities)) {
+            this._chartVisibility.clear();
+            this.changeChartsVisibility(chartVisibilities);
+        }
+
+        if (!_.isEmpty(chartTypes)) {
+            _.forEach(chartTypes, (chartType, chartId) => {
+                this.chartsType.set(chartId, chartType);
+            });
+        }
+
+        if (!_.isEmpty(chartDimensions)) {
+            _.forEach(chartDimensions, (chartDimension, chartId) => {
+                this.chartsDimension[chartId] = chartDimension;
+            });
         }
     }
 

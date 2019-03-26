@@ -974,16 +974,28 @@ export function calculateLayout(visibleAttributes: ChartMeta[], cols: number, cu
     // sort the visibleAttributes by priority
     visibleAttributes.sort(chartMetaComparator);
 
+    const visibleAttributeSet = _.keyBy(visibleAttributes,attribute=>attribute.uniqueKey)
+
     // look if we need to put the chart to a fixed position and add the position to the matrix
-    if (currentGridLayout && currentGridLayout.length > 0 && currentFocusedChartByUser) {
-        const currentChartLayout = currentGridLayout.find((layout) => layout.i === currentFocusedChartByUser.uniqueKey)!;
-        if (currentChartLayout) {
-            const newChartLayout = calculateNewLayoutForFocusedChart(currentChartLayout, currentFocusedChartByUser, cols);
-            layout.push(newChartLayout);
-            matrix = generateMatrixByLayout(newChartLayout, cols);
-        }
-        else {
-            throw(new Error("cannot find matching unique key in the grid layout"));
+    if (currentGridLayout && currentGridLayout.length > 0) {
+        if(currentFocusedChartByUser) {
+            const currentChartLayout = currentGridLayout.find((layout) => layout.i === currentFocusedChartByUser.uniqueKey)!;
+            if (currentChartLayout) {
+                const newChartLayout = calculateNewLayoutForFocusedChart(currentChartLayout, currentFocusedChartByUser, cols);
+                layout.push(newChartLayout);
+                matrix = generateMatrixByLayout(newChartLayout, cols);
+            }
+            else {
+                throw(new Error("cannot find matching unique key in the grid layout"));
+            }
+        } else {
+            currentGridLayout.forEach(chartLayout=>{
+                //add only visible charts
+                if(chartLayout.i && visibleAttributeSet[chartLayout.i]) {
+                    layout.push(chartLayout);
+                    matrix = generateMatrixByLayout(chartLayout, cols);
+                }
+            });
         }
     }
 

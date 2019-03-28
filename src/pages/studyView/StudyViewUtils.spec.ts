@@ -1298,13 +1298,13 @@ describe('StudyViewUtils', () => {
         }
 
         it("Empty array should be returned when no attributes given", () => {
-            let layout: Layout[] = calculateLayout([], 6);
+            let layout: Layout[] = calculateLayout([], 6, []);
             assert.isArray(layout);
             assert.equal(layout.length, 0);
         });
 
         it("The layout is not expected - 1", () => {
-            let layout: Layout[] = calculateLayout(visibleAttrs, 6);
+            let layout: Layout[] = calculateLayout(visibleAttrs, 6, []);
             assert.equal(layout.length, 8);
             assert.equal(layout[0].i, 'test0');
             assert.equal(layout[0].x, 0);
@@ -1333,7 +1333,7 @@ describe('StudyViewUtils', () => {
         });
 
         it("The layout is not expected - 2", () => {
-            let layout: Layout[] = calculateLayout(visibleAttrs, 2);
+            let layout: Layout[] = calculateLayout(visibleAttrs, 2, []);
             assert.equal(layout.length, 8);
             assert.equal(layout[0].i, 'test0');
             assert.equal(layout[0].x, 0);
@@ -1386,7 +1386,7 @@ describe('StudyViewUtils', () => {
                 priority: 20,
             }];
 
-            let layout: Layout[] = calculateLayout(visibleAttrs, 4);
+            let layout: Layout[] = calculateLayout(visibleAttrs, 4, []);
             assert.equal(layout.length, 2);
             assert.equal(layout[0].i, 'test1');
             assert.equal(layout[0].x, 0);
@@ -1433,7 +1433,7 @@ describe('StudyViewUtils', () => {
                 priority: 2,
             }];
 
-            let layout: Layout[] = calculateLayout(visibleAttrs, 4);
+            let layout: Layout[] = calculateLayout(visibleAttrs, 4, []);
             assert.equal(layout.length, 3);
             assert.equal(layout[0].i, 'test0');
             assert.equal(layout[0].x, 0);
@@ -1507,7 +1507,7 @@ describe('StudyViewUtils', () => {
                 priority: 1,
             }];
 
-            let layout: Layout[] = calculateLayout(visibleAttrs, 4);
+            let layout: Layout[] = calculateLayout(visibleAttrs, 4, []);
             assert.equal(layout.length, 5);
             assert.equal(layout[0].i, 'test0');
             assert.equal(layout[0].x, 0);

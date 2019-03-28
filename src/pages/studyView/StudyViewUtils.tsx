@@ -968,16 +968,14 @@ export function isOccupied(matrix: string[][], position: Position, chartDimensio
     return occupied;
 }
 
-export function calculateLayout(visibleAttributes: ChartMeta[], cols: number, currentGridLayout?: Layout[], currentFocusedChartByUser?: ChartMeta): Layout[] {
+export function calculateLayout(visibleAttributes: ChartMeta[], cols: number, currentGridLayout: Layout[], currentFocusedChartByUser?: ChartMeta): Layout[] {
     let layout: Layout[] = [];
     let matrix = [new Array(cols).fill('')] as string[][];
     // sort the visibleAttributes by priority
     visibleAttributes.sort(chartMetaComparator);
-
-    const visibleAttributeSet = _.keyBy(visibleAttributes,attribute=>attribute.uniqueKey)
-
+    const visibleAttributeIds = _.map(visibleAttributes, attribute=>attribute.uniqueKey)
     // look if we need to put the chart to a fixed position and add the position to the matrix
-    if (currentGridLayout && currentGridLayout.length > 0) {
+    if (currentGridLayout.length > 0) {
         if(currentFocusedChartByUser) {
             const currentChartLayout = currentGridLayout.find((layout) => layout.i === currentFocusedChartByUser.uniqueKey)!;
             if (currentChartLayout) {
@@ -991,7 +989,7 @@ export function calculateLayout(visibleAttributes: ChartMeta[], cols: number, cu
         } else {
             currentGridLayout.forEach(chartLayout=>{
                 //add only visible charts
-                if(chartLayout.i && visibleAttributeSet[chartLayout.i]) {
+                if(chartLayout.i && visibleAttributeIds.includes(chartLayout.i)) {
                     layout.push(chartLayout);
                     matrix = generateMatrixByLayout(chartLayout, cols);
                 }

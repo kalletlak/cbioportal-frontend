@@ -4,10 +4,9 @@ import {inject, Observer, observer} from "mobx-react";
 import {MSKTab, MSKTabs} from "../../shared/components/MSKTabs/MSKTabs";
 import {computed, IReactionDisposer, reaction, observable} from 'mobx';
 import {
-    NewChart,
+    CustomChart,
     StudyViewPageStore,
     StudyViewPageTabDescriptions,
-    StudyViewPageTabKey,
     StudyViewPageTabKeyEnum, StudyViewURLQuery
 } from 'pages/studyView/StudyViewPageStore';
 import LoadingIndicator from "shared/components/loadingIndicator/LoadingIndicator";
@@ -22,9 +21,6 @@ import StudyPageHeader from "./studyPageHeader/StudyPageHeader";
 import CNSegments from "./tabs/CNSegments";
 import "./styles.scss";
 import styles from './styles.module.scss';
-import SelectedInfo from "./SelectedInfo/SelectedInfo";
-import LabeledCheckbox from "../../shared/components/labeledCheckbox/LabeledCheckbox";
-import {Alert} from 'react-bootstrap';
 import AddChartButton from "./addChartButton/AddChartButton";
 import {CSSTransition} from "react-transition-group";
 import {sleep} from "../../shared/lib/TimeUtils";
@@ -234,7 +230,7 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
                                                             submitButtonText={"Select"}
                                                             disableGrouping={true}
                                                             queriedStudies={this.store.queriedPhysicalStudyIds.result}
-                                                            onSubmit={(chart: NewChart) => {
+                                                            onSubmit={(chart: CustomChart) => {
                                                                 this.showCustomSelectTooltip = false;
                                                                 this.store.updateCustomSelect(chart);
                                                             }}

@@ -2,8 +2,7 @@ import {
     ClinicalDataType,
     ClinicalDataTypeEnum,
     CustomChartIdentifier,
-    CustomGroup,
-    NewChart
+    CustomGroup
 } from "../../StudyViewPageStore";
 import * as _ from 'lodash';
 import {Sample} from "../../../../shared/api/generated/CBioPortalAPI";

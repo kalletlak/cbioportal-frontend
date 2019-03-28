@@ -103,7 +103,6 @@ export type ChartType = 'PIE_CHART' | 'BAR_CHART' | 'SURVIVAL' | 'TABLE' | 'SCAT
 export type ChartUserSetting = {
     id: string,
     name?: string,
-    visible?: boolean,
     chartType?: ChartType,
     groups?: CustomGroup[], //used when it is custom chart
     layout?: {
@@ -2111,13 +2110,11 @@ export class StudyViewPageStore {
             let _updatedUserSetting: { [id: string]: ChartUserSetting } = {};
             this._chartVisibility.entries().forEach(([id, visible]) => {
                 if (visible) {
-                    if (!_updatedUserSetting[id]) {
-                        _updatedUserSetting[id] = { id };
+                    _updatedUserSetting[id] = {
+                        id,
+                        chartType: this.chartsType.get(id)
                     }
-                    _updatedUserSetting[id].visible = visible;
-
-                    _updatedUserSetting[id].chartType = this.chartsType.get(id)
-
+                    
                     const customChartData = this._customChartDataSet.get(id);
                     if (customChartData) {
                         _updatedUserSetting[id].groups = customChartData.groups;
@@ -2192,7 +2189,7 @@ export class StudyViewPageStore {
                         h: chartUserSettings.layout.h
                     };
                 }
-                this.changeChartVisibility(chartUserSettings.id, chartUserSettings.visible || false);
+                this.changeChartVisibility(chartUserSettings.id, true);
                 chartUserSettings.chartType && this.chartsType.set(chartUserSettings.id, chartUserSettings.chartType);
             });
         }

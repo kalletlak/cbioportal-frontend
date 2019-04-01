@@ -68,6 +68,7 @@ export default class CustomCaseSelection extends React.Component<ICustomCaseSele
     get newChartInfo(): CustomChart {
         return {
             name: this.chartName ? this.chartName : this.props.getDefaultChartName ? this.props.getDefaultChartName() : '',
+            patientAttribute: this.caseIdsMode === ClinicalDataTypeEnum.PATIENT,
             groups: this.result.validationResult.error.length === 0 ? this.result.groups : []
         }
     }

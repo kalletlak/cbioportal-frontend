@@ -110,7 +110,8 @@ export type ChartUserSetting = {
         y: number,
         w: number;
         h: number;
-    }
+    },
+    patientAttribute: boolean
 }
 
 export enum UniqueKey {
@@ -244,11 +245,12 @@ export const SPECIAL_CHARTS: ChartMeta[] = [{
 
 export type CustomGroup = {
     name: string,
-    cases: CustomChartIdentifier[]
+    sampleIdentifiers: CustomChartIdentifier[]
 }
 
 export type CustomChart = {
     name?: string,
+    patientAttribute: boolean,
     groups: CustomGroup[]
 }
 
@@ -269,7 +271,6 @@ export type StudyViewFilterWithSampleIdentifierFilters = StudyViewFilter & {
 
 export type CustomChartIdentifier = {
     studyId: string,
-    patientAttribute: boolean,
     sampleId: string,
     patientId: string
 }
@@ -1922,16 +1923,16 @@ export class StudyViewPageStore {
             priority: 1
         };
         let allCases: CustomChartIdentifierWithValue[] = [];
+        if(newChart.patientAttribute) {
+            chartMeta.patientAttribute = true;
+        }
         _.each(newChart.groups, (group:CustomGroup) => {
-            _.reduce(group.cases, (acc, next) => {
-                if(next.patientAttribute) {
-                    chartMeta.patientAttribute = true;
-                }
+            _.reduce(group.sampleIdentifiers, (acc, next) => {
                 acc.push({
                     studyId: next.studyId,
                     sampleId: next.sampleId,
                     patientId: next.patientId,
-                    patientAttribute: next.patientAttribute,
+                   // patientAttribute: next.patientAttribute,
                     value: group.name
                 });
                 return acc;
@@ -1956,7 +1957,7 @@ export class StudyViewPageStore {
     @action
     updateCustomSelect(newChart: CustomChart) {
         const sampleIdentifiers = _.reduce(newChart.groups, (acc, next) => {
-            acc.push(...next.cases.map((customCase: CustomChartIdentifier) => {
+            acc.push(...next.sampleIdentifiers.map((customCase: CustomChartIdentifier) => {
                 return {
                     sampleId: customCase.sampleId,
                     studyId: customCase.studyId
@@ -2112,14 +2113,14 @@ export class StudyViewPageStore {
                 if (visible) {
                     _updatedUserSetting[id] = {
                         id,
-                        chartType: this.chartsType.get(id)
+                        chartType: this.chartsType.get(id),
+                        patientAttribute: this.chartMetaSet[id].patientAttribute
                     }
-                    
+
                     const customChartData = this._customChartDataSet.get(id);
                     if (customChartData) {
                         _updatedUserSetting[id].groups = customChartData.groups;
-                        const customChartMeta = this._customCharts.get(id);
-                        _updatedUserSetting[id].name = customChartMeta!.displayName;
+                        _updatedUserSetting[id].name = this.chartMetaSet[id].displayName;
                     }
                 }
             });
@@ -2172,7 +2173,8 @@ export class StudyViewPageStore {
                 if (chartUserSettings.name && chartUserSettings.groups && chartUserSettings.groups.length > 0) {
                     this.addCustomChart({
                         name: chartUserSettings.name,
-                        groups: chartUserSettings.groups || []
+                        groups: chartUserSettings.groups || [],
+                        patientAttribute: chartUserSettings.patientAttribute,
                     }, chartUserSettings.id, true);
                 }
 
@@ -2716,7 +2718,7 @@ export class StudyViewPageStore {
                 let isPatientChart = false;
                 let header = ["Study ID", "Patient ID",]
 
-                if (this._customChartsSelectedCases.get(chartMeta.uniqueKey)!.length > 0 && this._customChartsSelectedCases.get(chartMeta.uniqueKey)![0].patientAttribute) {
+                if (this._customChartsSelectedCases.get(chartMeta.uniqueKey)!.length > 0 && chartMeta.patientAttribute) {
                     isPatientChart = true;
                     header.push('Sample ID');
                 }

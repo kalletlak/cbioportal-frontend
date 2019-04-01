@@ -242,19 +242,19 @@ export function getGroups(lines: InputLine[], singleStudyId: string, caseType: C
         if (acc[groupName] == undefined) {
             acc[groupName] = {
                 name: groupName,
-                cases: []
+                sampleIdentifiers: []
             }
         }
 
         const caseId = line.studyId === undefined ? `${singleStudyId}:${line.caseId}` : `${line.studyId}:${line.caseId}`;
         const maps = isPatientId ? patientMap[caseId] : [sampleMap[caseId]];
-        const matches = maps === undefined ? [] : parseCase(isPatientId, maps);
-        acc[groupName].cases.push(...matches);
+        const matches = maps === undefined ? [] : parseCase(maps);
+        acc[groupName].sampleIdentifiers.push(...matches);
         return acc;
     }, {} as { [key: string]: CustomGroup }));
 
     return groups.map(group=>{
-        group.cases = _.uniqBy(group.cases, item => `${item.studyId}:${item.sampleId}`);
+        group.sampleIdentifiers = _.uniqBy(group.sampleIdentifiers, item => `${item.studyId}:${item.sampleId}`);
         return group;
     });
 }
@@ -287,11 +287,10 @@ export function parseContent(content: string, needToValidate: boolean = false, s
     }
 }
 
-export function parseCase(isPatientId: boolean, mappedSamples: Sample[]): CustomChartIdentifier[] {
+export function parseCase(mappedSamples: Sample[]): CustomChartIdentifier[] {
     return mappedSamples.map(sample => {
         return {
             studyId: sample.studyId,
-            patientAttribute: isPatientId,
             sampleId: sample.sampleId,
             patientId: sample.patientId
         }

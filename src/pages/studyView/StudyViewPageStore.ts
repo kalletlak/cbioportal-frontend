@@ -114,6 +114,11 @@ export type ChartUserSetting = {
     patientAttribute: boolean
 }
 
+export type StudyPageSettings = {
+    chartSettings:ChartUserSetting[],
+    origin:string[]
+}
+
 export enum UniqueKey {
     MUTATED_GENES_TABLE = 'MUTATED_GENES_TABLE',
     CNA_GENES_TABLE = 'CNA_GENES_TABLE',
@@ -319,7 +324,10 @@ export class StudyViewPageStore {
         // Include special charts into custom charts list
        SPECIAL_CHARTS.forEach(chartMeta => {
            const uniqueKey = chartMeta.uniqueKey;
-           const chartType = this.chartsType.get(uniqueKey) || chartMeta.chartType;
+           if (!this.chartsType.has(uniqueKey)) {
+               this.chartsType.set(uniqueKey, chartMeta.chartType);
+           }
+           const chartType = this.chartsType.get(uniqueKey);
            if (chartType !== undefined) {
                this._customCharts.set(uniqueKey, {
                    displayName: chartMeta.displayName,
@@ -348,6 +356,12 @@ export class StudyViewPageStore {
     }
 
     @observable private initialFiltersQuery: Partial<StudyViewFilter> = {};
+
+    @observable userLoggedIn: boolean|undefined;
+
+    @observable isRestorePossible: boolean = false;
+
+    @observable loadInitialUserSettings: boolean = false;
 
     @observable studyIds: string[] = [];
 
@@ -460,6 +474,17 @@ export class StudyViewPageStore {
         if(!_.isEqual(toJS(this.initialFiltersQuery), filters)) {
             this.initialFiltersQuery = filters;
         }
+    }
+
+    @action
+    async updateUserState(isLoggedIn:boolean) {
+        //on initial load
+        if(this.userLoggedIn === undefined) {
+            this.loadInitialUserSettings = isLoggedIn;
+        } else {
+            this.isRestorePossible = isLoggedIn;
+        }
+        this.userLoggedIn = isLoggedIn;
     }
 
     @action
@@ -2087,31 +2112,55 @@ export class StudyViewPageStore {
     }
 
     @computed
+    get showSettingRestoreMsg() {
+        if (this.isRestorePossible && this.fetchUserSettings.isComplete) {
+            return !_.isEqual(this.currentChartSettings, _.keyBy(this.fetchUserSettings.result, x => x.id));
+        }
+        return false;
+    }
+
+    @computed
     get loadingInitialDataForSummaryTab() {
-        if (this.defaultVisibleAttributes.isPending ||
+        let pending = this.defaultVisibleAttributes.isPending ||
             this.initialVisibleAttributesClinicalDataBinCountData.isPending ||
             this.initialVisibleAttributesClinicalDataCountData.isPending ||
             this.mutationProfiles.isPending ||
-            this.cnaProfiles.isPending ||
-            this.fetchUserSettings.isPending
-        ) {
-            return true;
-        } else {
-            return false;
+            this.cnaProfiles.isPending;
+
+        if (this.loadInitialUserSettings) {
+            pending = pending || this.fetchUserSettings.isPending
         }
+        return pending;
     }
 
     private updateSettingsTimeout: Timer;
-    private studySettings: ChartUserSetting[] = [];
+    private previousSettings: {[id:string]:ChartUserSetting} = {};
 
     @autobind
-    updateUserSettings() {
+    @action
+    updateUserSettings(forceSave?:boolean) {
         clearTimeout(this.updateSettingsTimeout);
+        //instantly save settings for any of these conditions
+        const timeout = forceSave || _.isEmpty(this.currentChartSettings) ? 0 : 3000;
+
         this.updateSettingsTimeout = setTimeout(() => {
-            let _updatedUserSetting: { [id: string]: ChartUserSetting } = {};
+            if(forceSave || _.isEmpty(this.previousSettings) || !_.isEqual(this.previousSettings, this.currentChartSettings)){
+                this.previousSettings = this.currentChartSettings;
+                if(!_.isEmpty(this.currentChartSettings) && this.userLoggedIn) {
+                    sessionServiceClient.updateUserSettings({
+                        origin: toJS(this.studyIds),
+                        chartSettings: _.values(this.currentChartSettings)
+                    });
+                }
+            }
+        }, timeout)
+    }
+
+    @computed get currentChartSettings(){
+        let settings: { [id: string]: ChartUserSetting } = {};
             this._chartVisibility.entries().forEach(([id, visible]) => {
                 if (visible) {
-                    _updatedUserSetting[id] = {
+                    settings[id] = {
                         id,
                         chartType: this.chartsType.get(id),
                         patientAttribute: this.chartMetaSet[id].patientAttribute
@@ -2119,15 +2168,15 @@ export class StudyViewPageStore {
 
                     const customChartData = this._customChartDataSet.get(id);
                     if (customChartData) {
-                        _updatedUserSetting[id].groups = customChartData.groups;
-                        _updatedUserSetting[id].name = this.chartMetaSet[id].displayName;
+                        settings[id].groups = customChartData.groups;
+                        settings[id].name = this.chartMetaSet[id].displayName;
                     }
                 }
             });
 
             (this.currentGridLayout || []).forEach(layout => {
-                if (layout.i && _updatedUserSetting[layout.i]) {
-                    _updatedUserSetting[layout.i].layout = {
+                if (layout.i && settings[layout.i]) {
+                    settings[layout.i].layout = {
                         x: layout.x,
                         y: layout.y,
                         w: layout.w,
@@ -2135,40 +2184,33 @@ export class StudyViewPageStore {
                     };
                 }
             });
-
-            if (!_.isEqual(JSON.stringify(this.studySettings), JSON.stringify(_updatedUserSetting) && !_.isEmpty(_updatedUserSetting))) {
-                //TODO: replace with api call once the model is finalized and session service is ready
-                let userSettings: { [id: string]: ChartUserSetting[] } = JSON.parse(localStorage.getItem("userSettings") || "{}");
-                this.studySettings = _.values(_updatedUserSetting);
-                const studyIdString = this.studyIds.join(",");
-                userSettings[studyIdString] = this.studySettings;
-                localStorage.setItem("userSettings", JSON.stringify(userSettings));
-
-            }
-        }, 2000)
+        return settings;
     }
 
     readonly fetchUserSettings = remoteData<ChartUserSetting[]>({
         invoke: async () => {
-            if (this.studyIds.length > 0) {
-                const studyIdString = this.studyIds.join(",");
-                //TODO: replace with api call once the model is finalized and session service is ready
-                const userSettings: { [id: string]: ChartUserSetting[] } = JSON.parse(localStorage.getItem("userSettings") || "{}");
-                return userSettings[studyIdString] || [];
+            if (this.userLoggedIn && this.studyIds.length > 0) {
+                let userSettings = await sessionServiceClient.fetchUserSettings(toJS(this.studyIds));
+                return userSettings.chartSettings || [];
             }
             return [];
         },
-        default: [],
-        onResult: (studySettings) => {
-            this.studySettings = studySettings;
-        }
+        default: []
     });
 
     @autobind
     @action
     loadUserSettings() {
         if (!_.isEmpty(this.fetchUserSettings.result)) {
+            this.previousSettings = _.keyBy(this.fetchUserSettings.result,x=>x.id)
             this._chartVisibility.clear();
+            this.currentGridLayout = [];
+            this._customCharts.clear();
+            this._customChartDataSet.clear();
+            this._customChartsSelectedCases.clear();
+            this.chartsType.clear();
+            this.chartsDimension = {}
+
             _.map(this.fetchUserSettings.result, chartUserSettings => {
                 if (chartUserSettings.name && chartUserSettings.groups && chartUserSettings.groups.length > 0) {
                     this.addCustomChart({

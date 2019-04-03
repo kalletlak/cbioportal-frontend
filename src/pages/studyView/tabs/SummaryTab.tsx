@@ -28,6 +28,7 @@ import {ChartTypeEnum, STUDY_VIEW_CONFIG} from "../StudyViewConfig";
 import ProgressIndicator, {IProgressIndicatorItem} from "../../../shared/components/progressIndicator/ProgressIndicator";
 import autobind from 'autobind-decorator';
 import LabeledCheckbox from "../../../shared/components/labeledCheckbox/LabeledCheckbox";
+import { Button } from 'react-bootstrap';
 
 export interface IStudySummaryTabProps {
     store: StudyViewPageStore
@@ -382,6 +383,36 @@ export class StudySummaryTab extends React.Component<IStudySummaryTabProps, {}> 
                             </ul>
                         </div>
                     </div>
+                }
+                {
+                    this.store.showSettingRestoreMsg &&
+                    <div>
+                        <div className="alert alert-info">
+                            <button type="button" className="close"
+                                    onClick={() => {
+                                        this.store.isRestorePossible = false;
+                                        this.store.updateUserSettings(true)
+                                    }
+                                   }>&times;</button>
+                            Current view is different from your previous one. would you like to restore it?
+                            <button className='btn btn-primary btn-sm'
+                                    onClick={() => {
+                                        this.store.loadUserSettings()
+                                        this.store.isRestorePossible = false;
+                                    }}
+                                    style={{marginLeft: '10px'}}>Yes
+                            </button>
+
+                            <button className='btn btn-primary btn-sm'
+                                    onClick={() => {
+                                        this.store.updateUserSettings(true)
+                                        this.store.isRestorePossible = false;
+                                    }}
+                                    style={{marginLeft: '10px'}}>No
+                            </button>
+                        </div>
+                    </div>
+
                 }
 
                 {!this.store.loadingInitialDataForSummaryTab &&

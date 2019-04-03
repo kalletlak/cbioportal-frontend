@@ -63,6 +63,7 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
     private store: StudyViewPageStore;
     private enableAddChartInTabs = [StudyViewPageTabKeyEnum.SUMMARY, StudyViewPageTabKeyEnum.CLINICAL_DATA];
     private queryReaction:IReactionDisposer;
+    private appStoreReaction:IReactionDisposer;
     @observable showCustomSelectTooltip = false;
     private inCustomSelectTooltip = false;
     private studyViewQueryFilter:StudyViewURLQuery;
@@ -86,6 +87,14 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
                     this.store.updateStoreFromURL(newStudyViewFilter);
                     this.studyViewQueryFilter = newStudyViewFilter;
                 }
+            },
+            {fireImmediately: true}
+        );
+
+        this.appStoreReaction = reaction(
+            () => props.appStore.isLoggedIn,
+            isLoggedIn => {
+                this.store.updateUserState(isLoggedIn)
             },
             {fireImmediately: true}
         );
@@ -265,6 +274,7 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
 
     componentWillUnmount(): void {
         this.queryReaction();
+        this.appStoreReaction();
         this.store.destroy();
     }
 

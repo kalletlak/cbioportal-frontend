@@ -90,8 +90,8 @@ export default class sessionServiceAPI {
 
     fetchUserSettings(studyIds:string[]): Promise<StudyPageSettings> {
         return request
-            .post(`${this.getUserSettingUrl()}/study_view/fetch`)
-            .send(studyIds)
+            .post(`${this.getUserSettingUrl()}/fetch`)
+            .send({page:'study_view', origin:studyIds})
             // @ts-ignore: this method comes from caching plugin and isn't in typing
             .forceUpdate(true)
             .then((res:any) => {
@@ -101,8 +101,8 @@ export default class sessionServiceAPI {
 
     updateUserSettings(data:StudyPageSettings) {
         return request
-            .post(`${this.getUserSettingUrl()}/study_view`)
-            .send(data)
+            .post(`${this.getUserSettingUrl()}`)
+            .send({page:'study_view', ...data})
             // @ts-ignore: this method comes from caching plugin and isn't in typing
             .forceUpdate(true)
             .then((res:any) => {

@@ -2208,7 +2208,6 @@ export class StudyViewPageStore {
             this._customCharts.clear();
             this._customChartDataSet.clear();
             this._customChartsSelectedCases.clear();
-            this.chartsType.clear();
             this.chartsDimension = {}
 
             _.map(this.fetchUserSettings.result, chartUserSettings => {

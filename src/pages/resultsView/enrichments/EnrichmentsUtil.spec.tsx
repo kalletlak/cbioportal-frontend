@@ -73,7 +73,7 @@ const exampleAlterationEnrichmentRowData = [
                 "name": "altered group",
                 "alteredCount": 3,
                 "profiledCount": 4,
-                "alteredPercentage": 0.75
+                "alteredPercentage": 75
             },
             "unaltered group": {
                 "name": "unaltered group",
@@ -98,7 +98,7 @@ const exampleAlterationEnrichmentRowData = [
                 "name":"altered group",
                 "alteredCount": 2,
                 "profiledCount": 4,
-                "alteredPercentage": 0.5
+                "alteredPercentage": 50
             },
             "unaltered group": {
                 "name":"unaltered group",
@@ -123,7 +123,7 @@ const exampleAlterationEnrichmentRowData = [
                 "name":"altered group",
                 "alteredCount": 2,
                 "profiledCount": 4,
-                "alteredPercentage": 0.5
+                "alteredPercentage": 50
             },
             "unaltered group": {
                 "name":"unaltered group",
@@ -420,7 +420,7 @@ describe("EnrichmentsUtil", () => {
                     "altered group": {
                         "name": "altered group",
                         "alteredCount": 1,
-                        "alteredPercentage": 1
+                        "alteredPercentage": 100
                     }
                 }
             } as any), "1 (1.00%)");
@@ -538,7 +538,7 @@ describe("EnrichmentsUtil", () => {
                             "name":"altered group",
                             "alteredCount": 2,
                             "profiledCount": 4,
-                            "alteredPercentage": 0.5
+                            "alteredPercentage": 50
                         },
                         "unaltered group": {
                             "name":"unaltered group",

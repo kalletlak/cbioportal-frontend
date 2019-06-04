@@ -312,7 +312,8 @@ export function MakeEnrichmentsTabUI(
     getStore:()=>GroupComparisonStore,
     getEnrichmentsUI:()=>MobxViewAlwaysComponent,
     enrichmentType:string,
-    multiGroupAnalysisPossible?:boolean
+    multiGroupAnalysisPossible?:boolean,
+    multiStudyAnalysisPossible?:boolean
 ) {
     return MakeMobxView({
         await:()=>{
@@ -336,7 +337,7 @@ export function MakeEnrichmentsTabUI(
                         {ENRICHMENTS_NOT_2_GROUPS_MSG(store.activeGroups.result!.length, store._activeGroupsNotOverlapRemoved.result!.length, multiGroupAnalysisPossible)}
                     </span>
                 );
-            } else if (store.activeStudyIds.result!.length > 1) {
+            } else if (store.activeStudyIds.result!.length > 1 && !multiStudyAnalysisPossible) {
                 return <span>{ENRICHMENTS_TOO_MANY_STUDIES_MSG(enrichmentType)}</span>;
             } else {
                 const content:any = [];

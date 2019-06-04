@@ -9,6 +9,7 @@ import ErrorMessage from "../../shared/components/ErrorMessage";
 import GroupComparisonStore from "./GroupComparisonStore";
 import ExpressionEnrichmentContainer from "../resultsView/enrichments/ExpressionEnrichmentsContainer";
 import {MakeEnrichmentsTabUI} from "./GroupComparisonUtils";
+import _ from "lodash";
 
 export interface IMRNAEnrichmentsProps {
     store: GroupComparisonStore
@@ -17,8 +18,8 @@ export interface IMRNAEnrichmentsProps {
 @observer
 export default class MRNAEnrichments extends React.Component<IMRNAEnrichmentsProps, {}> {
     @autobind
-    private onChangeProfile(m:MolecularProfile) {
-        this.props.store.setMRNAEnrichmentProfile(m);
+    private onChangeProfile(profileMap:{[studyId:string]:MolecularProfile}) {
+        this.props.store.setMRNAEnrichmentProfileMap(profileMap);
     }
 
     readonly tabUI = MakeEnrichmentsTabUI(()=>this.props.store, ()=>this.enrichmentsUI, "mRNA");
@@ -26,17 +27,27 @@ export default class MRNAEnrichments extends React.Component<IMRNAEnrichmentsPro
     readonly enrichmentsUI = MakeMobxView({
         await:()=>[
             this.props.store.mRNAEnrichmentData,
-            this.props.store.mRNAEnrichmentProfile,
+            this.props.store.selectedmRNAEnrichmentProfileMap,
             this.props.store.enrichmentsGroup1,
-            this.props.store.enrichmentsGroup2
+            this.props.store.enrichmentsGroup2,
+            this.props.store.studies
         ],
         render:()=>{
             const group1 = this.props.store.enrichmentsGroup1.result!;
             const group2 = this.props.store.enrichmentsGroup2.result!;
+            // since mRNA enrichments tab is enabled only for one study, selectedProteinEnrichmentProfileMap
+            // would contain only one key.
+            const studyIds = Object.keys(this.props.store.selectedmRNAEnrichmentProfileMap.result!);
+            const selectedProfile = this.props.store.selectedmRNAEnrichmentProfileMap.result![studyIds[0]];
             return (
                 <div data-test="GroupComparisonMRNAEnrichments">
-                    <EnrichmentsDataSetDropdown dataSets={this.props.store.mRNAEnrichmentProfiles} onChange={this.onChangeProfile}
-                                                selectedValue={this.props.store.mRNAEnrichmentProfile.result!.molecularProfileId}/>
+                    <EnrichmentsDataSetDropdown
+                        dataSets={this.props.store.mRNAEnrichmentProfiles}
+                        onChange={this.onChangeProfile}
+                        selectedProfileByStudyId={this.props.store.selectedmRNAEnrichmentProfileMap.result!}
+                        alwaysShow={true}
+                        studies={this.props.store.studies.result!}
+                    />
                     <ExpressionEnrichmentContainer data={this.props.store.mRNAEnrichmentData.result!}
                                                    group1Name={group1.nameWithOrdinal}
                                                    group2Name={group2.nameWithOrdinal}
@@ -44,7 +55,7 @@ export default class MRNAEnrichments extends React.Component<IMRNAEnrichmentsPro
                                                    group2Description={`samples in ${group2.nameWithOrdinal}.`}
                                                    group1Color={group1.color}
                                                    group2Color={group2.color}
-                                                   selectedProfile={this.props.store.mRNAEnrichmentProfile.result!}
+                                                   selectedProfile={selectedProfile}
                                                    alteredVsUnalteredMode={false}
                     />
                 </div>

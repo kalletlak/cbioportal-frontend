@@ -494,7 +494,7 @@ export function getMultipleGeneResultKey(groupedOql: MergedTrackLineFilterOutput
 export function makeEnrichmentDataPromise<T extends {hugoGeneSymbol:string, pValue:number, qValue?:number}>(params:{
     store?:ResultsViewPageStore,
     await: MobxPromise_await,
-    getSelectedProfile:()=>MolecularProfile|undefined,
+    getSelectedProfileMap:()=>{[studyId:string]:MolecularProfile},
     fetchData:()=>Promise<T[]>
 }):MobxPromise<(T & {qValue:number})[]> {
     return remoteData({
@@ -506,14 +506,13 @@ export function makeEnrichmentDataPromise<T extends {hugoGeneSymbol:string, pVal
             return ret;
         },
         invoke:async()=>{
-            const profile = params.getSelectedProfile();
-            if (profile) {
+            const profileMap = params.getSelectedProfileMap();
+            if (profileMap) {
                 let data = await params.fetchData();
-
                 // filter out query genes, if looking at a queried profile
                 // its important that we filter out *before* calculating Q values
                 if (params.store && params.store.selectedMolecularProfiles.result!
-                        .findIndex(x=>x.molecularProfileId === profile.molecularProfileId) > -1) {
+                    .findIndex(molecularProfile => profileMap[molecularProfile.studyId] !== undefined) > -1) {
                     const queryGenes = _.keyBy(params.store.hugoGeneSymbols, x=>x.toUpperCase());
                     data = data.filter(d=>!(d.hugoGeneSymbol.toUpperCase() in queryGenes));
                 }

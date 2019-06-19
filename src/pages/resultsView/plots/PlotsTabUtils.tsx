@@ -22,7 +22,7 @@ import {
     MUT_COLOR_FUSION, MUT_COLOR_INFRAME, MUT_COLOR_INFRAME_PASSENGER,
     MUT_COLOR_MISSENSE, MUT_COLOR_MISSENSE_PASSENGER, MUT_COLOR_OTHER, MUT_COLOR_PROMOTER, MUT_COLOR_TRUNC,
     MUT_COLOR_TRUNC_PASSENGER
-} from "../../../shared/components/oncoprint/geneticrules";
+} from "shared/lib/Colors";
 import {CoverageInformation} from "../ResultsViewPageStoreUtils";
 import {IBoxScatterPlotData} from "../../../shared/components/plots/BoxScatterPlot";
 import {AlterationTypeConstants, AnnotatedMutation, AnnotatedNumericGeneMolecularData} from "../ResultsViewPageStore";
@@ -32,6 +32,7 @@ import {isSampleProfiled} from "../../../shared/lib/isSampleProfiled";
 import GenesetMolecularDataCache from "../../../shared/cache/GenesetMolecularDataCache";
 import {GenesetMolecularData} from "../../../shared/api/generated/CBioPortalAPIInternal";
 import {MUTATION_COUNT} from "../../studyView/StudyViewPageStore";
+import ClinicalDataCache from "../../../shared/cache/ClinicalDataCache";
 
 export const CLIN_ATTR_DATA_TYPE = "clinical_attribute";
 export const GENESET_DATA_TYPE = "GENESET_SCORE";
@@ -385,7 +386,7 @@ function scatterPlotCnaLegendData(
 
 function makeAxisDataPromise_Clinical(
     attribute:ClinicalAttribute,
-    clinicalDataCache:MobxPromiseCache<ClinicalAttribute, ClinicalData[]>,
+    clinicalDataCache:ClinicalDataCache,
     patientKeyToSamples:MobxPromise<{[uniquePatientKey:string]:Sample[]}>,
     studyToMutationMolecularProfile: MobxPromise<{[studyId: string]: MolecularProfile}>
 ):MobxPromise<IAxisData> {
@@ -394,7 +395,7 @@ function makeAxisDataPromise_Clinical(
         await:()=>[promise, patientKeyToSamples],
         invoke:()=>{
             const _patientKeyToSamples = patientKeyToSamples.result!;
-            const data:ClinicalData[] = promise.result!;
+            const data:ClinicalData[] = promise.result! as ClinicalData[]; // we know it won't be MutationSpectrum
             const axisData:IAxisData = { data:[], datatype:attribute.datatype.toLowerCase() };
             const shouldParseFloat = attribute.datatype.toLowerCase() === "number";
             const axisData_Data = axisData.data;
@@ -607,7 +608,7 @@ export function makeAxisDataPromise(
     molecularProfileIdToMolecularProfile:MobxPromise<{[molecularProfileId:string]:MolecularProfile}>,
     patientKeyToSamples:MobxPromise<{[uniquePatientKey:string]:Sample[]}>,
     entrezGeneIdToGene:MobxPromise<{[entrezGeneId:number]:Gene}>,
-    clinicalDataCache:MobxPromiseCache<ClinicalAttribute, ClinicalData[]>,
+    clinicalDataCache:ClinicalDataCache,
     mutationCache:MobxPromiseCache<{entrezGeneId:number}, Mutation[]>,
     numericGeneMolecularDataCache:MobxPromiseCache<{entrezGeneId:number, molecularProfileId:string}, NumericGeneMolecularData[]>,
     studyToMutationMolecularProfile: MobxPromise<{[studyId: string]: MolecularProfile}>,
@@ -618,6 +619,8 @@ export function makeAxisDataPromise(
 
     let ret:MobxPromise<IAxisData> = remoteData(()=>new Promise<IAxisData>(()=>0)); // always isPending
     switch (selection.dataType) {
+        case undefined:
+            break;
         case CLIN_ATTR_DATA_TYPE:
             if (selection.dataSourceId !== undefined && clinicalAttributeIdToClinicalAttribute.isComplete) {
                 const attribute = clinicalAttributeIdToClinicalAttribute.result![selection.dataSourceId];
@@ -1089,6 +1092,11 @@ export function boxPlotTooltip(
     return generalScatterPlotTooltip(d, horizontal ? "value" : "category", horizontal ? "category" : "value");
 }
 
+export function logScalePossibleForProfile(profileId:string) {
+    return !(/zscore/i.test(profileId)) &&
+        /rna_seq/i.test(profileId);
+}
+
 export function logScalePossible(
     axisSelection: AxisMenuSelection
 ) {
@@ -1096,8 +1104,7 @@ export function logScalePossible(
         // molecular profile
         return !!(
             axisSelection.dataSourceId &&
-            !(/zscore/i.test(axisSelection.dataSourceId)) &&
-            /rna_seq/i.test(axisSelection.dataSourceId)
+            logScalePossibleForProfile(axisSelection.dataSourceId)
         );
     } else {
         // clinical attribute
@@ -1315,12 +1322,8 @@ function makeScatterPlotData_profiledReport(
 
 export function getCnaQueries(
     horzSelection:AxisMenuSelection,
-    vertSelection:AxisMenuSelection,
-    cnaDataShown:boolean
+    vertSelection:AxisMenuSelection
 ) {
-    if (!cnaDataShown) {
-        return [];
-    }
     const queries:{entrezGeneId:number}[] = [];
     if (horzSelection.dataType !== CLIN_ATTR_DATA_TYPE && horzSelection.entrezGeneId !== undefined) {
         queries.push({entrezGeneId: horzSelection.entrezGeneId});
@@ -1454,4 +1457,43 @@ export function getMutationProfileDuplicateSamplesReport(
         showMessage: numSamples > 0,
         numSamples, numSurplusPoints
     };
+}
+
+export function makeClinicalAttributeOptions(
+    attributes:Pick<ClinicalAttribute, "datatype"|"clinicalAttributeId"|"displayName"|"priority">[]
+) {
+    {
+
+        // filter out anything but NUMBER or STRING
+        const validDataTypes = ["number", "string"];
+        const validClinicalAttributes = attributes.filter(
+            attribute=>(validDataTypes.indexOf(attribute.datatype.toLowerCase()) > -1)
+        );
+
+        // sort
+        let options = _.sortBy<{value:string, label:string, priority:number}>(validClinicalAttributes.map(attribute=>(
+            {
+                value: attribute.clinicalAttributeId,
+                label: attribute.displayName,
+                priority: parseFloat(attribute.priority || "-1")
+            }
+        )), [(o: any)=>-o.priority, (o: any)=>o.label]);
+
+        // to load more quickly, only filter and annotate with data availability once its ready
+        // TODO: temporarily disabled because cant figure out a way right now to make this work nicely
+        /*if (this.props.store.clinicalAttributeIdToAvailableSampleCount.isComplete) {
+            const sampleCounts = this.props.store.clinicalAttributeIdToAvailableSampleCount.result!;
+            _clinicalAttributes = _clinicalAttributes.filter(option=>{
+                const count = sampleCounts[option.value];
+                if (!count) {
+                    return false;
+                } else {
+                    option.label = `${option.label} (${count} samples)`;
+                    return true;
+                }
+            });
+        }*/
+
+        return options;
+    }
 }

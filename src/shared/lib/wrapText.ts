@@ -1,6 +1,14 @@
 import measureText from "measure-text";
 import _ from "lodash";
 
+export function getTextDiagonal(textHeight:number, textWidth:number) {
+    return Math.sqrt(Math.pow(textWidth, 2) + Math.pow(textHeight, 2));
+}
+
+export function getTextHeight(text:string, fontFamily:string, fontSize:string) {
+    return measureText({text, fontFamily, fontSize, lineHeight: 1}).height.value;
+}
+
 export function getTextWidth(text:string, fontFamily:string, fontSize:string) {
     return measureText({text, fontFamily, fontSize, lineHeight: 1}).width.value;
 }
@@ -56,5 +64,14 @@ export function wrapText(text:string, maxWidth:number, fontFamily:string, fontSi
             ret.push(currentLine);
         }
         return ret;
+    }
+}
+
+export function truncateWithEllipsis(text:string, maxWidth:number, fontFamily:string, fontSize:string):string {
+    const wrapped = splitTextByWidth(text, maxWidth, fontFamily, fontSize);
+    if (wrapped.length > 1) {
+        return wrapped[0]+"...";
+    } else {
+        return wrapped[0];
     }
 }

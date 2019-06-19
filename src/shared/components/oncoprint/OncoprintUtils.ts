@@ -40,8 +40,9 @@ import {
     Patient,
     Sample
 } from "../../api/generated/CBioPortalAPI";
-import {clinicalAttributeIsPROFILEDIN, SpecialAttribute} from "../../cache/OncoprintClinicalDataCache";
+import {clinicalAttributeIsPROFILEDIN, SpecialAttribute} from "../../cache/ClinicalDataCache";
 import {STUDY_VIEW_CONFIG} from "../../../pages/studyView/StudyViewConfig";
+import {getClinicalValueColor, RESERVED_CLINICAL_VALUE_COLORS} from "shared/lib/Colors";
 
 interface IGenesetExpansionMap {
         [genesetTrackKey: string]: IGeneHeatmapTrackSpec[];
@@ -142,7 +143,7 @@ export function doWithRenderingSuppressedAndSortingOff(oncoprint:OncoprintJS<any
 export function getHeatmapTrackRuleSetParams(molecularAlterationType: string) {
     let value_range:[number, number];
     let legend_label:string;
-    let colors:number[][];
+    let colors:[number, number, number, number][];
     let value_stop_points:number[];
     if (molecularAlterationType === "METHYLATION") {
         value_range = [0,1];
@@ -190,7 +191,7 @@ export function getGenesetHeatmapTrackRuleSetParams() {
             [222, 119, 174, 1],
             [197,  27, 125, 1],
             [142,   1,  82, 1]
-        ],
+        ] as [number,number,number,number][],
         value_stop_points: [
             -1, -0.8, -0.6, -0.4, -0.2,
             0, 0.2, 0.4, 0.6, 0.8, 1
@@ -245,7 +246,7 @@ export function getClinicalTrackRuleSetParams(track:ClinicalTrackSpec) {
             params = {
                 type: 'categorical',
                 category_key: "attr_val",
-                category_to_color: STUDY_VIEW_CONFIG.colors.reservedValue
+                category_to_color: RESERVED_CLINICAL_VALUE_COLORS
             };
             break;
     }
@@ -492,7 +493,7 @@ export function makeClinicalTracksMobxPromise(oncoprint:ResultsViewOncoprint, sa
                 const attributes = oncoprint.selectedClinicalAttributeIds.keys().map(attrId=>{
                     return oncoprint.props.store.clinicalAttributeIdToClinicalAttribute.result![attrId];
                 }).filter(x=>!!x);
-                ret = ret.concat(oncoprint.props.store.oncoprintClinicalDataCache.getAll(attributes));
+                ret = ret.concat(oncoprint.props.store.clinicalDataCache.getAll(attributes));
             }
             return ret;
         },
@@ -504,7 +505,7 @@ export function makeClinicalTracksMobxPromise(oncoprint:ResultsViewOncoprint, sa
                 return oncoprint.props.store.clinicalAttributeIdToClinicalAttribute.result![attrId];
             }).filter(x=>!!x);// filter out nonexistent attributes
             return attributes.map((attribute:ClinicalAttribute)=>{
-                const data = oncoprint.props.store.oncoprintClinicalDataCache.get(attribute).result!;
+                const data = oncoprint.props.store.clinicalDataCache.get(attribute).result!;
                 let altered_uids = undefined;
                 if (oncoprint.onlyShowClinicalLegendForAlteredCases) {
                     altered_uids = oncoprint.alteredKeys.result!;

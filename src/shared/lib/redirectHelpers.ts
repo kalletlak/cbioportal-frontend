@@ -4,15 +4,22 @@ import {QueryParams} from "url";
 import {PatientViewUrlParams} from "../../pages/patientView/PatientViewPage";
 import {Patient} from "../api/generated/CBioPortalAPI";
 import {StudyViewURLQuery} from "../../pages/studyView/StudyViewPageStore";
+import AppConfig from "appConfig";
 
 export function restoreRouteAfterRedirect(injected: { routing:ExtendedRouterStore }){
 
+    const win = getBrowserWindow();
+
     const key = injected.routing.location.query.key;
-    let restoreRoute = window.localStorage.getItem(key);
+    let restoreRoute = win.localStorage.getItem(key);
     if (restoreRoute) {
         restoreRoute = restoreRoute.replace(/^#/, '');
-        window.localStorage.removeItem(key);
-        injected.routing.push(restoreRoute);
+        win.localStorage.removeItem(key);
+        if (restoreRoute.includes(win.location.hostname)) {
+            win.location.href = restoreRoute;
+        } else {
+            injected.routing.push(restoreRoute);
+        }
     } else {
         injected.routing.push('/');
     }
@@ -58,6 +65,27 @@ export function handleCaseDO(){
 
     (getBrowserWindow().routingStore as ExtendedRouterStore).updateRoute(newParams, "/patient", true);
 
+}
+
+/*
+ * Handle LinkOut of style /ln?q=TP53:MUT and ln?cancer_study_id=gbm_tcga&q=EGFR+NF1.
+ */
+export function handleLinkOut() {
+    const routingStore:ExtendedRouterStore = getBrowserWindow().routingStore;
+    const currentQuery = routingStore.location.query;
+
+    const data = {
+        case_set_id: 'all',
+        gene_list: currentQuery.q.replace("+",","),
+        cancer_study_list:
+            currentQuery.cancer_study_id ||
+            // use same set of studies as quick search gene query if no
+            // specific study is supplied
+            AppConfig.serverConfig.default_cross_cancer_study_session_id ||
+            AppConfig.serverConfig.default_cross_cancer_study_list
+    };
+
+    (getBrowserWindow().routingStore as ExtendedRouterStore).updateRoute(data, "/results/mutations", true, true);
 }
 
 export function handleStudyDO(){

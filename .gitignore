@@ -1,5 +1,4 @@
 node_modules
-config/
 npm-debug.log
 .env
 .awsDetails
@@ -11,7 +10,6 @@ stats.json
 .DS_Store
 tsDist/
 dist/
-common-dist/
 .sass-cache
 frontend-cbioportal.iml
 test/
@@ -29,3 +27,5 @@ env/custom.sh
 image-compare/errors.js
 errorshots/
 TESTS.xml
+key.pem
+cert.pem

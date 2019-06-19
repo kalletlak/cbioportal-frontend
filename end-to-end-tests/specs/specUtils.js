@@ -1,3 +1,5 @@
+const clipboardy = require('clipboardy');
+
 function waitForOncoprint(timeout) {
     browser.pause(100); // give oncoprint time to disappear
     browser.waitUntil(()=>{
@@ -56,7 +58,7 @@ function waitForNumberOfStudyCheckboxes(expectedNumber, text) {
             }
         }
         return ret;
-    }, 2000);
+    }, 60000);
 }
 
 function getNthOncoprintTrackOptionsElements(n) {
@@ -78,12 +80,12 @@ const useExternalFrontend = !process.env.FRONTEND_TEST_DO_NOT_LOAD_EXTERNAL_FRON
 
 const useLocalDist = process.env.FRONTEND_TEST_USE_LOCAL_DIST;
 
-function waitForNetworkQuiet(){
+function waitForNetworkQuiet(timeout){
     browser.waitUntil(()=>{
         return browser.execute(function(){
             return window.ajaxQuiet === true;
         }).value == true
-    });
+    }, timeout);
 }
 
 function toStudyViewSummaryTab() {
@@ -106,6 +108,13 @@ function toStudyViewClinicalDataTab() {
     }
 }
 
+function removeAllStudyViewFilters() {
+    const clearAllFilter = "[data-test='clear-all-filters']";
+    if (browser.isVisible(clearAllFilter)) {
+        browser.click(clearAllFilter);
+    }
+}
+
 function waitForStudyViewSelectedInfo() {
     browser.waitForVisible("[data-test='selected-info']", 5000);
     // pause to wait the animation finished
@@ -121,6 +130,25 @@ function getNumberOfStudyViewCharts() {
     return browser.elements('div.react-grid-item').value.length;
 }
 
+function setInputText(selector, text){
+    browser.setValue(selector, '\uE003'.repeat(browser.getValue(selector).length) + text);
+}
+
+function pasteToElement(elementSelector, text){
+
+    clipboardy.writeSync(text);
+    browser.setValue(elementSelector, ["Shift","Insert"]);
+
+}
+
+function checkOncoprintElement(selector) {
+    browser.execute(function() {
+        frontendOnc.clearMouseOverEffects(); // clear mouse hover effects for uniform screenshot
+    });
+    return browser.checkElement(selector || "#oncoprintDiv", { hide:[".qtip", '.dropdown-menu', ".oncoprintjs__track_options__dropdown", ".oncoprintjs__cell_overlay_div"] });
+}
+
+
 module.exports = {
     waitForOncoprint: waitForOncoprint,
     goToUrlAndSetLocalStorage: goToUrlAndSetLocalStorage,
@@ -131,9 +159,15 @@ module.exports = {
     getTextInOncoprintLegend: getTextInOncoprintLegend,
     toStudyViewSummaryTab: toStudyViewSummaryTab,
     toStudyViewClinicalDataTab: toStudyViewClinicalDataTab,
+    removeAllStudyViewFilters: removeAllStudyViewFilters,
     waitForStudyViewSelectedInfo: waitForStudyViewSelectedInfo,
     getTextFromElement: getTextFromElement,
     getNumberOfStudyViewCharts: getNumberOfStudyViewCharts,
     setOncoprintMutationsMenuOpen: setOncoprintMutationsMenuOpen,
-    getNthOncoprintTrackOptionsElements: getNthOncoprintTrackOptionsElements
+    getNthOncoprintTrackOptionsElements: getNthOncoprintTrackOptionsElements,
+    setInputText: setInputText,
+    pasteToElement: pasteToElement,
+    checkOncoprintElement: checkOncoprintElement
 };
+
+

@@ -1,44 +1,44 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import { Provider } from 'mobx-react';
-import { hashHistory, browserHistory, createMemoryHistory, Router, useRouterHistory } from 'react-router';
+import { Router, useRouterHistory } from 'react-router';
 import { createHistory } from 'history'
-import { RouterStore, syncHistoryWithStore  } from 'mobx-react-router';
+import { syncHistoryWithStore  } from 'mobx-react-router';
 import ExtendedRoutingStore from './shared/lib/ExtendedRouterStore';
 import {
     fetchServerConfig,
     initializeAPIClients,
     initializeAppStore,
     initializeConfiguration,
-    setServerConfig,
-    setConfigDefaults
+    setConfigDefaults,
+    setServerConfig
 } from './config/config';
 
 import './shared/lib/ajaxQuiet';
-import {computed, extendObservable} from 'mobx';
 import makeRoutes from './routes';
 import * as _ from 'lodash';
 import $ from 'jquery';
-import URL from 'url';
 import * as superagent from 'superagent';
-import { getHost } from './shared/api/urls';
-import { validateParametersPatientView } from './shared/lib/validateParameters';
+import { getHost, buildCBioPortalPageUrl } from './shared/api/urls';
 import AppConfig from "appConfig";
 import browser from 'bowser';
 import { setNetworkListener } from './shared/lib/ajaxQuiet';
-import {initializeTracking} from "shared/lib/tracking";
-import {CancerStudyQueryUrlParams} from "shared/components/query/QueryStore";
-import {MolecularProfile} from "shared/api/generated/CBioPortalAPI";
-import {molecularProfileParams} from "shared/components/query/QueryStoreUtils";
-import ExtendedRouterStore from "shared/lib/ExtendedRouterStore";
+import { initializeTracking } from "shared/lib/tracking";
 import superagentCache from 'superagent-cache';
 import getBrowserWindow from "shared/lib/getBrowserWindow";
-import {getConfigurationServiceApiUrl} from "shared/api/urls";
 import {AppStore} from "./AppStore";
+import {handleLongUrls} from "shared/lib/handleLongUrls";
+import "shared/polyfill/canvasToBlob";
 
 superagentCache(superagent);
 
+// this must occur before we initialize tracking
+// it fixes the hash portion of url when cohort patient list is too long
+handleLongUrls();
+
+
 // YOU MUST RUN THESE initialize and then set the public path after
+
 initializeConfiguration();
 // THIS TELLS WEBPACK BUNDLE LOADER WHERE TO LOAD SPLIT BUNDLES
 __webpack_public_path__ = AppConfig.frontendUrl;
@@ -46,6 +46,8 @@ __webpack_public_path__ = AppConfig.frontendUrl;
 if (!window.hasOwnProperty("$")) {
     window.$ = $;
 }
+
+
 
 if (!window.hasOwnProperty("jQuery")) {
     window.jQuery = $;
@@ -110,8 +112,15 @@ superagent.Request.prototype.end = function (callback) {
         }
         if (response && response.statusCode === 401) {
             var storageKey = `redirect${Math.floor(Math.random() * 1000000000000)}`
-            localStorage.setItem(storageKey, window.location.hash);
-            const loginUrl = `//${getHost()}/?spring-security-redirect=${encodeURIComponent(window.location.pathname)}${encodeURIComponent(window.location.search)}${encodeURIComponent('#/restore?key=' + storageKey)}`;
+            localStorage.setItem(storageKey, window.location.href);
+
+            // build URL with a reference to storage key so that /restore route can restore it after login
+            const loginUrl = buildCBioPortalPageUrl({
+                query: {
+                    "spring-security-redirect":buildCBioPortalPageUrl({ pathname:"restore", query: { key: storageKey} })
+                }
+            });
+
             redirecting = true;
             window.location.href = loginUrl;
         } else {
@@ -149,6 +158,10 @@ if (__DEBUG__ && module.hot) {
 
 $(document).ready(async () => {
 
+    // we show blank page if the window.name is "blank"
+    if (window.name === "blank") {
+        return;
+    }
     // we use rawServerConfig (written by JSP) if it is present
     // or fetch from config service if not
     // need to use jsonp, so use jquery
@@ -164,4 +177,5 @@ $(document).ready(async () => {
 
     render();
 
+    stores.appStore.setAppReady();
 });

@@ -2,24 +2,10 @@ import AppConfig from "appConfig";
 import {StudyView} from "../../config/IAppConfig";
 import {Layout} from 'react-grid-layout';
 import * as _ from 'lodash';
-import {ChartType} from "./StudyViewPageStore";
-import {
-    CNA_COLOR_AMP, CNA_COLOR_GAIN, CNA_COLOR_HETLOSS, CNA_COLOR_HOMDEL,
-    DEFAULT_GREY,
-    MUT_COLOR_FUSION,
-    MUT_COLOR_INFRAME,
-    MUT_COLOR_MISSENSE, MUT_COLOR_OTHER, MUT_COLOR_PROMOTER,
-    MUT_COLOR_TRUNC
-} from "../../shared/components/oncoprint/geneticrules";
+import {ChartType} from "./StudyViewUtils";
 
 export type StudyViewColor = {
-    theme: StudyViewColorTheme,
-    reservedValue: { [val: string]: string },
-
-    na: string
-    mutatedGene: string,
-    deletion: string,
-    amplification: string,
+    theme: StudyViewColorTheme
 }
 
 export type StudyViewColorTheme = {
@@ -40,7 +26,7 @@ export type StudyViewThreshold = {
     escapeTick: number,
     barRatio: number,
     rowsInTableForOneGrid: number,
-    clinicalChartsPerGroup: number,
+    clinicalCharts: number,
     chartHighlight: number,
 }
 
@@ -97,12 +83,6 @@ export enum ChartTypeNameEnum {
 
 export const DEFAULT_SORTING_COLUMN = 'Freq';
 
-// TODO: The priority and tableAttrs are duplicated in serverConfigDefaults.
-const YES_COLOR = "#109618";
-const NO_COLOR = "#DC3912";
-const FEMALE_COLOR = '#DC3912';
-const MALE_COLOR = '#2986E2';
-
 const studyViewFrontEnd = {
     alwaysShownClinicalAttributes: ['SAMPLE_CANCER_TYPE', 'SAMPLE_CANCER_TYPE_DETAILED'],
     defaultPriority: 1,
@@ -112,7 +92,9 @@ const studyViewFrontEnd = {
     },
     priority: {
         "SAMPLE_CANCER_TYPE": 3000,
+        "PATIENT_CANCER_TYPE": 3000,
         "SAMPLE_CANCER_TYPE_DETAILED": 2000,
+        "PATIENT_CANCER_TYPE_DETAILED": 2000,
         "OS_SURVIVAL": 400,
         "DFS_SURVIVAL": 300,
         "MUTATION_COUNT_CNA_FRACTION": 200,
@@ -125,8 +107,25 @@ const studyViewFrontEnd = {
         "MUTATION_COUNT": 30,
         "FRACTION_GENOME_ALTERED": 20,
         "PATIENT_GENDER": 9,
+        "SAMPLE_GENDER": 9,
         "PATIENT_SEX": 9,
-        "PATIENT_AGE": 9
+        "SAMPLE_SEX": 9,
+        "PATIENT_AGE": 9,
+        "SAMPLE_AGE": 9,
+        "PATIENT_RACE": 8,
+        "SAMPLE_RACE": 8,
+        "PATIENT_ETHNICITY": 8,
+        "SAMPLE_ETHNICITY": 8,
+        "SAMPLE_SAMPLE_TYPE": 8,
+        "PATIENT_SAMPLE_TYPE": 8,
+        "PATIENT_HISTOLOGY": 8,
+        "SAMPLE_HISTOLOGY": 8,
+        "SAMPLE_TUMOR_TYPE": 8,
+        "PATIENT_TUMOR_TYPE": 8,
+        "PATIENT_SUBTYPE": 8,
+        "SAMPLE_SUBTYPE": 8,
+        "PATIENT_TUMOR_SITE": 8,
+        "SAMPLE_TUMOR_SITE": 8
     },
     thresholds: {
         pieToTable: 20,
@@ -134,7 +133,7 @@ const studyViewFrontEnd = {
         escapeTick: 10,
         barRatio: 0.8,
         rowsInTableForOneGrid: 4,
-        clinicalChartsPerGroup: 10,
+        clinicalCharts: 20,
         chartHighlight: 10000
     },
     layout: {
@@ -195,42 +194,8 @@ const studyViewFrontEnd = {
             selectedGroup: '#DC3912',
             clinicalFilterTitle: '#A9A9A9',
             clinicalFilterContent: '#2986E2',
-        },
-        reservedValue: {
-            TRUE: YES_COLOR,
-            FALSE: NO_COLOR,
-            YES: YES_COLOR,
-            NO: NO_COLOR,
-            FEMALE: FEMALE_COLOR,
-            MALE: MALE_COLOR,
-            F: FEMALE_COLOR,
-            M: MALE_COLOR,
-            POSITIVE: YES_COLOR,
-            NEGATIVE: NO_COLOR,
-            MISSENSE: MUT_COLOR_MISSENSE,
-            INFRAME: MUT_COLOR_INFRAME,
-            TRUNCATING: MUT_COLOR_TRUNC,
-            FUSION: MUT_COLOR_FUSION,
-            PROMOTER: MUT_COLOR_PROMOTER,
-            OTHER: MUT_COLOR_OTHER,
-            "WILD TYPE": DEFAULT_GREY,
-            AMPLIFICATION: CNA_COLOR_AMP,
-            GAIN: CNA_COLOR_GAIN,
-            DIPLOID: DEFAULT_GREY,
-            "SHALLOW DELETION": CNA_COLOR_HETLOSS,
-            "DEEP DELETION": CNA_COLOR_HOMDEL
-        },
-
-        na: "#CCCCCC",
-        mutatedGene: '#008000',
-        deletion: '#0000FF',
-        amplification: '#FF0000',
+        }
     }
 };
 
-_.forEach(studyViewFrontEnd.colors.reservedValue, (color, key)=>{
-    // expand reservedValue entries to handle other case possibilities. eg expand TRUE to True and true
-    (studyViewFrontEnd.colors.reservedValue as any)[key.toLowerCase()] = color;
-    (studyViewFrontEnd.colors.reservedValue as any)[key[0] + key.slice(1).toLowerCase()] = color;
-});
 export const STUDY_VIEW_CONFIG: StudyViewConfig = _.assign(studyViewFrontEnd, AppConfig.serverConfig.study_view);

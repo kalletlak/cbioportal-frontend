@@ -2,6 +2,8 @@ import {default as URL, QueryParams} from "url";
 import AppConfig from "appConfig";
 import getBrowserWindow from "../lib/getBrowserWindow";
 import * as _ from 'lodash';
+import {GroupComparisonURLQuery} from "../../pages/groupComparison/GroupComparisonPage";
+import {GroupComparisonLoadingParams} from "../../pages/groupComparison/GroupComparisonLoading";
 
 export function trimTrailingSlash(str:string){
    return str.replace(/\/$/g,"");
@@ -36,6 +38,15 @@ export function buildCBioPortalPageUrl(pathnameOrParams:string | BuildUrlParams,
         protocol: window.location.protocol,
         host: AppConfig.baseUrl,
         ...params
+    });
+}
+
+export function getCurrentURLWithoutHash() {
+    return URL.format({
+        protocol: window.location.protocol,
+        host: window.location.host,
+        pathname: window.location.pathname,
+        search: window.location.search
     });
 }
 
@@ -80,6 +91,21 @@ export function getPatientViewUrl(studyId:string, caseId:string, navIds?:{patien
     }
     return buildCBioPortalPageUrl('patient', { studyId, caseId }, hash);
 }
+
+export function getComparisonUrl(params:Partial<GroupComparisonURLQuery>){
+    return buildCBioPortalPageUrl('comparison', params)
+}
+
+export function redirectToComparisonPage(win:Window, params:Partial<GroupComparisonURLQuery>) {
+    (win as any).location.href = getComparisonUrl(params);
+
+    //(win as any).routingStore.updateRoute(params, "comparison", true);
+}
+
+export function getComparisonLoadingUrl(params?:Partial<GroupComparisonLoadingParams>) {
+    return buildCBioPortalPageUrl("loading/comparison",params || {});
+}
+
 export function getPubMedUrl(pmid:string) {
     return _.template(AppConfig.serverConfig.pubmed_url!)({ pmid });
 }
@@ -149,6 +175,39 @@ export function getSessionServiceUrl() {
     }
 }
 
+export function fetchComparisonGroupsServiceUrl() {
+    if (AppConfig.serverConfig && AppConfig.serverConfig.hasOwnProperty("apiRoot")) {
+        // TODO: remove this after switch to AWS. This is a hack to use proxy
+        // session-service from non apiRoot. We'll have to come up with a better
+        // solution for auth portals
+        return buildCBioPortalPageUrl("api-legacy/proxy/session/groups/fetch");
+    } else {
+        return buildCBioPortalAPIUrl("api-legacy/proxy/session/groups/fetch");
+    }
+}
+
+export function getComparisonGroupServiceUrl() {
+    if (AppConfig.serverConfig && AppConfig.serverConfig.hasOwnProperty("apiRoot")) {
+        // TODO: remove this after switch to AWS. This is a hack to use proxy
+        // session-service from non apiRoot. We'll have to come up with a better
+        // solution for auth portals
+        return buildCBioPortalPageUrl("api-legacy/proxy/session/group");
+    } else {
+        return buildCBioPortalAPIUrl("api-legacy/proxy/session/group");
+    }
+}
+
+export function getComparisonSessionServiceUrl() {
+    if (AppConfig.serverConfig && AppConfig.serverConfig.hasOwnProperty("apiRoot")) {
+        // TODO: remove this after switch to AWS. This is a hack to use proxy
+        // session-service from non apiRoot. We'll have to come up with a better
+        // solution for auth portals
+        return buildCBioPortalPageUrl("api-legacy/proxy/session/comparison_session");
+    } else {
+        return buildCBioPortalAPIUrl("api-legacy/proxy/session/comparison_session");
+    }
+}
+
 export function getConfigurationServiceApiUrl() {
     return AppConfig.configurationServiceUrl || buildCBioPortalAPIUrl("config_service.jsp");
 }
@@ -207,4 +266,26 @@ export function getDocsUrl(sourceUrl:string,docsBaseUrl?:string): string {
     } else {
         return docsBaseUrl + "/" + sourceUrl;
     }
+}
+
+export function getWholeSlideViewerUrl(ids: string[], userName: string): string {
+    try {
+        const tokenInfo = JSON.parse(AppConfig.serverConfig.mskWholeSlideViewerToken);
+        const token = `&token=${tokenInfo.token}`;
+        const time = `&t=${tokenInfo.time}`;
+        const filterTree = ids.length === 1 ? '&filetree=off' : '';
+        return ids.length >= 1 ? `https://slides.mskcc.org/cbioportal?ids=${_.map(ids, (id)=>id+".svs").join(";")}&user=${userName}${time}${token}&annotation=off${filterTree}` : "";
+    }
+    catch (ex) {
+        throw("error parsing mskWholeSlideViewerToken");
+    }
+}
+
+export function getNCBIlink(pathnameOrParams?: BuildUrlParams | string): string {
+    let params = typeof pathnameOrParams === 'string' ? {pathname: pathnameOrParams} : pathnameOrParams;
+    return URL.format({
+        protocol: 'https',
+        host: 'www.ncbi.nlm.nih.gov',
+        ...params
+    });
 }

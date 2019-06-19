@@ -2,7 +2,7 @@ import {assert} from "chai";
 import {GenePanelData, MolecularProfile} from "../../api/generated/CBioPortalAPI";
 import {AlterationTypeConstants} from "../../../pages/resultsView/ResultsViewPageStore";
 import {alterationTypeToProfiledForText, makeProfiledInClinicalAttributes} from "./ResultsViewOncoprintUtils";
-import {SpecialAttribute} from "../../cache/OncoprintClinicalDataCache";
+import {SpecialAttribute} from "../../cache/ClinicalDataCache";
 
 describe("ResultsViewOncoprintUtils",()=>{
     describe("makeProfiledInClinicalAttributes", ()=>{
@@ -114,12 +114,26 @@ describe("ResultsViewOncoprintUtils",()=>{
             const selectedMolecularProfiles = [molecularProfileIdToMolecularProfile.linearCna];
             assert.deepEqual(
                 makeProfiledInClinicalAttributes(coverageInformation, molecularProfileIdToMolecularProfile, selectedMolecularProfiles, true),
-                [],
+                [{
+                    clinicalAttributeId: `${SpecialAttribute.ProfiledInPrefix}_linearCna`,
+                    datatype: "STRING",
+                    description: `Profiled in ${molecularProfileIdToMolecularProfile.linearCna.name}: ${molecularProfileIdToMolecularProfile.linearCna.description}`,
+                    displayName: `Profiled in ${molecularProfileIdToMolecularProfile.linearCna.name}`,
+                    molecularProfileIds: ["linearCna"],
+                    patientAttribute: false
+                }] as any,
                 "single study"
             );
             assert.deepEqual(
                 makeProfiledInClinicalAttributes(coverageInformation, molecularProfileIdToMolecularProfile, selectedMolecularProfiles, false),
-                [],
+                [{
+                    clinicalAttributeId: `${SpecialAttribute.ProfiledInPrefix}_${AlterationTypeConstants.COPY_NUMBER_ALTERATION}`,
+                    datatype: "STRING",
+                    description: "",
+                    displayName: `Profiled for ${alterationTypeToProfiledForText[AlterationTypeConstants.COPY_NUMBER_ALTERATION]}`,
+                    molecularProfileIds: ["linearCna"],
+                    patientAttribute: false
+                }] as any,
                 "multiple study"
             );
         });

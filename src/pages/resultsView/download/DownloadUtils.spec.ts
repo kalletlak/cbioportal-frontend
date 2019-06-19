@@ -75,7 +75,7 @@ describe('DownloadUtils', () => {
         },
         molecularProfileAlterationType: "MRNA_EXPRESSION",
         alterationType: "MRNA_EXPRESSION",
-        alterationSubType: "up"
+        alterationSubType: "high"
     };
 
     const proteinDataForTCGAEEA20C = {
@@ -97,7 +97,7 @@ describe('DownloadUtils', () => {
         },
         molecularProfileAlterationType: "PROTEIN_LEVEL",
         alterationType: "PROTEIN_LEVEL",
-        alterationSubType: "up"
+        alterationSubType: "high"
     };
 
     const cnaDataForTCGAEEA20C = {
@@ -318,6 +318,7 @@ describe('DownloadUtils', () => {
 
             const geneticTrackDatum: GeneticTrackDatum = {
                 sample: "TCGA-BF-A1PV-01",
+                patient: "TCGA-BF-A1PV",
                 study_id: "skcm_tcga",
                 uid: "VENHQS1CRi1BMVBWLTAxOnNrY21fdGNnYQ",
                 trackLabel: "PTEN",
@@ -344,12 +345,13 @@ describe('DownloadUtils', () => {
 
             const geneticTrackDatum: GeneticTrackDatum = {
                 sample: "TCGA-EE-A20C-06",
+                patient: "TCGA-EE-A20C",
                 study_id: "skcm_tcga",
                 uid: "VENHQS1FRS1BMjBDLTA2OnNrY21fdGNnYQ",
                 trackLabel: "PTEN",
                 data: [mrnaDataForTCGAEEA20C, proteinDataForTCGAEEA20C] as any[],
-                disp_mrna: "up",
-                disp_prot: "up"
+                disp_mrna: "high",
+                disp_prot: "high"
             };
 
             const oqlData = generateOqlData(geneticTrackDatum);
@@ -368,9 +370,9 @@ describe('DownloadUtils', () => {
             assert.equal(oqlData.proteinLevel.length, 1,
                 "protein level data exists for the sample with mrna and protein data only");
 
-            assert.deepEqual(oqlData.mrnaExp, [{type: "UP", value: 2.4745}],
+            assert.deepEqual(oqlData.mrnaExp, [{type: "HIGH", value: 2.4745}],
                 "mRNA expression data is correct for the sample with mrna and protein data only");
-            assert.deepEqual(oqlData.proteinLevel, [{type: "UP", value: 2.5406}],
+            assert.deepEqual(oqlData.proteinLevel, [{type: "HIGH", value: 2.5406}],
                 "protein level data is correct for the sample with mrna and protein data only");
         });
 
@@ -378,6 +380,7 @@ describe('DownloadUtils', () => {
 
             const geneticTrackDatum: GeneticTrackDatum = {
                 sample: "P-0000378-T01-IM3",
+                patient: "P-0000378",
                 study_id: "msk_impact_2017",
                 uid: "UC0wMDAwMzc4LVQwMS1JTTM6bXNrX2ltcGFjdF8yMDE3",
                 trackLabel: "EGFR",
@@ -657,10 +660,10 @@ describe('DownloadUtils', () => {
             assert.isTrue(caseAlterationData[1].altered,
                 "sample VENHQS1FRS1BMjBDLTA2OnNrY21fdGNnYQ is altered");
             assert.deepEqual(caseAlterationData[1].oqlData["PTEN: AMP HOMDEL MUT FUSION;"].mrnaExp,
-                [{type: 'UP', value: 2.4745}],
+                [{type: 'HIGH', value: 2.4745}],
                 "mRNA data is correct for the sample key VENHQS1FRS1BMjBDLTA2OnNrY21fdGNnYQ");
             assert.deepEqual(caseAlterationData[1].oqlData["PTEN: AMP HOMDEL MUT FUSION;"].proteinLevel,
-                [{type: 'UP', value: 2.5406}],
+                [{type: 'HIGH', value: 2.5406}],
                 "protein data is correct for the sample key VENHQS1FRS1BMjBDLTA2OnNrY21fdGNnYQ");
         });
     });
@@ -686,6 +689,7 @@ describe('DownloadUtils', () => {
             const notProfiledGeneticTrackDatum: GeneticTrackDatum[] = [
                 {
                     "sample": "TCGA-S9-A7J0-01",
+                    "patient": "TCGA-S9-A7J0",
                     "study_id": "lgg_tcga",
                     "uid": "VENHQS1TOS1BN0owLTAxOmxnZ190Y2dh",
                     "profiled_in": [
@@ -713,6 +717,7 @@ describe('DownloadUtils', () => {
                 },
                 {
                     "sample": "TCGA-F6-A8O3-01",
+                    "patient": "TCGA-F6-A8O3",
                     "study_id": "lgg_tcga",
                     "uid": "VENHQS1GNi1BOE8zLTAxOmxnZ190Y2dh",
                     "profiled_in": [
@@ -742,6 +747,7 @@ describe('DownloadUtils', () => {
                 },
                 {
                     "sample": "TCGA-DU-6396-01",
+                    "patient": "TCGA-DU-6396",
                     "study_id": "lgg_tcga",
                     "uid": "VENHQS1EVS02Mzk2LTAxOmxnZ190Y2dh",
                     "profiled_in": [],

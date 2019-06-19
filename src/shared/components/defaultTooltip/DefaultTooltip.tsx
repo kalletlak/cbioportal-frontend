@@ -1,13 +1,17 @@
 import * as React from 'react';
-import Tooltip from 'rc-tooltip';
+import Tooltip, {RCTooltip} from 'rc-tooltip';
 import 'rc-tooltip/assets/bootstrap_white.css';
 import $ from "jquery";
 import "./styles.scss";
+import {observer} from "mobx-react";
 
-export type DefaultTooltipProps = Tooltip.Props & { disabled?:boolean, getTooltipContainer?:()=>Element };
+export const TOOLTIP_MOUSE_ENTER_DELAY = 0.5;
+
+export type DefaultTooltipProps = RCTooltip.Props & { disabled?:boolean, getTooltipContainer?:()=>Element };
+@observer
 export default class DefaultTooltip extends React.Component<DefaultTooltipProps, {}> {
     static readonly defaultProps = {
-        mouseEnterDelay: 0.5,
+        mouseEnterDelay: TOOLTIP_MOUSE_ENTER_DELAY,
         mouseLeaveDelay: 0.05,
         arrowContent: <div className="rc-tooltip-arrow-inner"/>,
         onPopupAlign:setArrowLeft
@@ -15,7 +19,7 @@ export default class DefaultTooltip extends React.Component<DefaultTooltipProps,
 
     render() {
         let {disabled, visible, ...restProps} = this.props;
-        let tooltipProps:Tooltip.Props = restProps;
+        let tooltipProps:RCTooltip.Props = restProps;
         if (disabled) {
             visible = false;
         }

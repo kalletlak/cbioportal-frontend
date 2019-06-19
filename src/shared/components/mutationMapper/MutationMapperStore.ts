@@ -4,27 +4,39 @@ import MobxPromise, {cached, labelMobxPromises} from "mobxpromise";
 
 import {Gene, Mutation} from "shared/api/generated/CBioPortalAPI";
 import {IHotspotIndex} from "shared/model/CancerHotspots";
-import {IOncoKbDataWrapper} from "shared/model/OncoKB";
+import {IOncoKbCancerGenesWrapper, IOncoKbDataWrapper} from "shared/model/OncoKB";
 import ResidueMappingCache from "shared/cache/ResidueMappingCache";
 import {remoteData} from "shared/api/remoteData";
 import {
     fetchPdbAlignmentData, fetchSwissProtAccession, fetchUniprotId, indexPdbAlignmentData,
     fetchPfamDomainData, fetchCanonicalTranscriptWithFallback,
-    fetchEnsemblTranscriptsByEnsemblFilter
+    fetchEnsemblTranscriptsByEnsemblFilter, fetchPtmData
 } from "shared/lib/StoreUtils";
-import {EnsemblTranscript, PfamDomain, PfamDomainRange, VariantAnnotation, GenomicLocation, TranscriptConsequence} from "shared/api/generated/GenomeNexusAPI";
+import {
+    EnsemblTranscript,
+    PfamDomain,
+    PfamDomainRange,
+    VariantAnnotation,
+    GenomicLocation,
+    TranscriptConsequence,
+    Hotspot, PostTranslationalModification
+} from "shared/api/generated/GenomeNexusAPI";
+import {IndicatorQueryResp} from "shared/api/generated/OncoKbAPI";
 import {IPdbChain, PdbAlignmentIndex} from "shared/model/Pdb";
-import {calcPdbIdNumericalValue, mergeIndexedPdbAlignments} from "shared/lib/PdbUtils";
+import {calcPdbIdNumericalValue, mergeIndexedPdbAlignments, PDB_IGNORELIST} from "shared/lib/PdbUtils";
 import {lazyMobXTableSort} from "shared/components/lazyMobXTable/LazyMobXTable";
 import {MutationTableDownloadDataFetcher} from "shared/lib/MutationTableDownloadDataFetcher";
 
 import PdbChainDataStore from "./PdbChainDataStore";
 import MutationMapperDataStore from "./MutationMapperDataStore";
-import { uniqueGenomicLocations, genomicLocationString } from "shared/lib/MutationUtils";
+import {uniqueGenomicLocations, genomicLocationString, groupMutationsByProteinStartPos} from "shared/lib/MutationUtils";
+import {defaultHotspotFilter, groupHotspotsByMutations} from "shared/lib/CancerHotspotsUtils";
+import {defaultOncoKbIndicatorFilter, groupOncoKbIndicatorDataByMutations} from "shared/lib/OncoKbUtils";
+import {groupPtmDataByPosition, groupPtmDataByTypeAndPosition} from "shared/lib/PtmUtils";
 import { getMutationsToTranscriptId } from "shared/lib/MutationAnnotator";
 import Mutations from "pages/resultsView/mutation/Mutations";
-import {IServerConfig} from "../../../config/IAppConfig";
 
+import {IServerConfig} from "config/IAppConfig";
 
 export interface IMutationMapperStoreConfig {
     filterMutationsBySelectedTranscript?:boolean
@@ -42,7 +54,7 @@ export default class MutationMapperStore
         // TODO: we could merge indexedVariantAnnotations and indexedHotspotData
         public indexedHotspotData:MobxPromise<IHotspotIndex|undefined>,
         public indexedVariantAnnotations:MobxPromise<{[genomicLocation: string]: VariantAnnotation}|undefined>,
-        public oncoKbAnnotatedGenes:{[entrezGeneId:number]:boolean},
+        public oncoKbCancerGenes:IOncoKbCancerGenesWrapper,
         public oncoKbData:IOncoKbDataWrapper,
         public uniqueSampleKeyToTumorType:{[uniqueSampleKey:string]:string},
     )
@@ -78,9 +90,11 @@ export default class MutationMapperStore
                     return this.getMutations();
                 }
             } else {
-                if (this.activeTranscript === undefined) {
-                    this.activeTranscript = canonicalTranscriptId;
-                }
+                try {
+                    if (this.activeTranscript === undefined) {
+                        this.activeTranscript = canonicalTranscriptId;
+                    }
+                } catch (ex) {}
                 return this.getMutations();
             }
         }
@@ -115,6 +129,37 @@ export default class MutationMapperStore
             // fail silently
         }
     }, []);
+
+    readonly ptmData = remoteData({
+        await: () => [
+            this.mutationData
+        ],
+        invoke: async () => {
+            if (this.activeTranscript) {
+                return fetchPtmData(this.activeTranscript);
+            }
+            else {
+                return [];
+            }
+        },
+        onError: (err: Error) => {
+            // fail silently
+        }
+    }, []);
+
+    readonly ptmDataByProteinPosStart = remoteData<{[pos: number]: PostTranslationalModification[]}>({
+        await: () => [
+            this.ptmData
+        ],
+        invoke: async() => this.ptmData.result ? groupPtmDataByPosition(this.ptmData.result) : {}
+    }, {});
+
+    readonly ptmDataByTypeAndProteinPosStart = remoteData<{[type: string] : {[position: number] : PostTranslationalModification[]}}>({
+        await: () => [
+            this.ptmData
+        ],
+        invoke: async() => this.ptmData.result ? groupPtmDataByTypeAndPosition(this.ptmData.result) : {}
+    }, {});
 
     readonly swissProtId = remoteData({
         invoke: async() => {
@@ -279,6 +324,64 @@ export default class MutationMapperStore
         }
     }, undefined);
 
+    @computed get unfilteredMutationsByPosition(): {[pos: number]: Mutation[]} {
+        return groupMutationsByProteinStartPos(this.dataStore.sortedData);
+    }
+
+    @computed get filteredMutationsByPosition(): {[pos: number]: Mutation[]} {
+        return groupMutationsByProteinStartPos(this.dataStore.sortedFilteredData);
+    }
+
+    @computed get hotspotsByProteinPosStart(): {[pos: number]: Hotspot[]}
+    {
+        if (this.indexedHotspotData.result)
+        {
+            return groupHotspotsByMutations(
+                this.unfilteredMutationsByPosition, this.indexedHotspotData.result, defaultHotspotFilter);
+        }
+        else {
+            return {};
+        }
+    }
+
+    @computed get filteredHotspotsByProteinPosStart(): {[pos: number]: Hotspot[]}
+    {
+        if (this.indexedHotspotData.result)
+        {
+            return groupHotspotsByMutations(
+                this.filteredMutationsByPosition, this.indexedHotspotData.result, defaultHotspotFilter);
+        }
+        else {
+            return {};
+        }
+    }
+
+    @computed get oncoKbDataByProteinPosStart(): {[pos: number]: IndicatorQueryResp[]}
+    {
+        if (this.oncoKbData.result &&
+            !(this.oncoKbData.result instanceof Error))
+        {
+            return groupOncoKbIndicatorDataByMutations(
+                this.unfilteredMutationsByPosition, this.oncoKbData.result, defaultOncoKbIndicatorFilter);
+        }
+        else {
+            return {};
+        }
+    }
+
+    @computed get filteredOncoKbDataByProteinPosStart(): {[pos: number]: IndicatorQueryResp[]}
+    {
+        if (this.oncoKbData.result &&
+            !(this.oncoKbData.result instanceof Error))
+        {
+            return groupOncoKbIndicatorDataByMutations(
+                this.filteredMutationsByPosition, this.oncoKbData.result, defaultOncoKbIndicatorFilter);
+        }
+        else {
+            return {};
+        }
+    }
+
     @computed get isoformOverrideSource(): string {
         return this.config.isoformOverrideSource || "uniprot";
     }
@@ -344,7 +447,9 @@ export default class MutationMapperStore
 
     @cached get pdbChainDataStore(): PdbChainDataStore {
         // initialize with sorted merged alignment data
-        return new PdbChainDataStore(this.sortedMergedAlignmentData);
+        return new PdbChainDataStore(this.sortedMergedAlignmentData.filter(
+            // TODO temporary workaround for problematic pdb structures
+            chain => !PDB_IGNORELIST.includes(chain.pdbId.toLowerCase())));
     }
 
     @cached get residueMappingCache()

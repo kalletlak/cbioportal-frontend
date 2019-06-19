@@ -7,7 +7,7 @@ export interface IAppConfig {
     hide_login?:boolean;
 }
 
-export type PriorityStudies = {
+export type CategorizedConfigItems = {
     [category:string]: string[]
 };
 
@@ -29,11 +29,13 @@ export interface IServerConfig {
     "app_version": string|null;   // default: "1.0"
     "authenticationMethod": string | undefined;
     "bitly_access_token": string|null;
-    "binary_custom_driver_annotation_menu_label": string|null; // default:
+    "oncoprint_custom_driver_annotation_binary_menu_label": string|null; // default:
     "disabled_tabs": string|null;
     "custom_tabs": any[];
-    "oncoprint_custom_driver_annotation_default": boolean;
-    "oncoprint_oncokb_hotspots_default": string | undefined;
+    "oncoprint_custom_driver_annotation_binary_default": boolean;
+    "oncoprint_custom_driver_annotation_tiers_default": boolean;
+    "oncoprint_oncokb_default": boolean;
+    "oncoprint_hotspots_default": boolean;
     "genomenexus_url": string|null;
     "mygene_info_url": string|null;
     "g2s_url": string|null;
@@ -75,6 +77,7 @@ export interface IServerConfig {
     "skin_right_nav_show_data_sets": boolean;
     "skin_right_nav_show_examples": boolean;
     "skin_right_nav_show_testimonials": boolean;
+    "skin_right_nav_show_whats_new": boolean;
     "skin_right_nav_whats_new_blurb": string|null;
     "skin_show_about_tab": boolean;
     "skin_show_data_tab": boolean;
@@ -88,6 +91,10 @@ export interface IServerConfig {
     "skin_show_tissue_image_tab": boolean;
     "skin_title": string;
     "skin_authorization_message": string|null;
+    "quick_search_enabled": boolean;
+    "default_cross_cancer_study_list": string; // this has a default
+    "default_cross_cancer_study_list_name": string; // this has a default
+    "default_cross_cancer_study_session_id": string|null;
     "study_view": StudyView;
     "uniprot_id_url": string|null,
     "studiesWithGermlineConsentedSamples":string[]|undefined;
@@ -96,9 +103,12 @@ export interface IServerConfig {
     "oncoprint_custom_driver_annotation_tiers_menu_label": string|null;
     "enable_darwin": boolean;
     "query_sets_of_genes": string|null;
+    "skin_quick_select_buttons": string|null;
     "base_url": string|null;
     "user_email_address": string;
     "sessionServiceEnabled": boolean;
     "session_url_length_threshold":string;
+    "mskWholeSlideViewerToken":string;
+    "query_gene_limit": number;
 
 }

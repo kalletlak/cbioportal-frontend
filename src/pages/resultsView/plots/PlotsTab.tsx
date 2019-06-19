@@ -9,14 +9,41 @@ import ReactSelect from "react-select";
 import _ from "lodash";
 import {
     getAxisDescription,
-    getAxisLabel, IScatterPlotData, isNumberData, isStringData, logScalePossible,
-    makeAxisDataPromise, makeScatterPlotData, makeScatterPlotPointAppearance, dataTypeDisplayOrder,
-    dataTypeToDisplayType, scatterPlotTooltip, scatterPlotLegendData, IStringAxisData, INumberAxisData,
-    makeBoxScatterPlotData, IScatterPlotSampleData, noMutationAppearance, IBoxScatterPlotPoint, boxPlotTooltip,
-    getCnaQueries, getMutationQueries, getScatterPlotDownloadData, getBoxPlotDownloadData,
-    mutationRenderPriority, mutationSummaryRenderPriority, MutationSummary, mutationSummaryToAppearance,
-    CNA_STROKE_WIDTH, PLOT_SIDELENGTH, CLIN_ATTR_DATA_TYPE,
-    sortMolecularProfilesForDisplay, scatterPlotZIndexSortBy, getMutationProfileDuplicateSamplesReport, GENESET_DATA_TYPE
+    getAxisLabel,
+    IScatterPlotData,
+    isNumberData,
+    isStringData,
+    logScalePossible,
+    makeAxisDataPromise,
+    makeScatterPlotData,
+    makeScatterPlotPointAppearance,
+    dataTypeDisplayOrder,
+    dataTypeToDisplayType,
+    scatterPlotTooltip,
+    scatterPlotLegendData,
+    IStringAxisData,
+    INumberAxisData,
+    makeBoxScatterPlotData,
+    IScatterPlotSampleData,
+    noMutationAppearance,
+    IBoxScatterPlotPoint,
+    boxPlotTooltip,
+    getCnaQueries,
+    getMutationQueries,
+    getScatterPlotDownloadData,
+    getBoxPlotDownloadData,
+    mutationRenderPriority,
+    mutationSummaryRenderPriority,
+    MutationSummary,
+    mutationSummaryToAppearance,
+    CNA_STROKE_WIDTH,
+    PLOT_SIDELENGTH,
+    CLIN_ATTR_DATA_TYPE,
+    sortMolecularProfilesForDisplay,
+    scatterPlotZIndexSortBy,
+    getMutationProfileDuplicateSamplesReport,
+    GENESET_DATA_TYPE,
+    makeClinicalAttributeOptions
 } from "./PlotsTabUtils";
 import {
     ClinicalAttribute, MolecularProfile, Mutation,
@@ -36,22 +63,23 @@ import setWindowVariable from "../../../shared/lib/setWindowVariable";
 import autobind from "autobind-decorator";
 import fileDownload from 'react-file-download';
 import onMobxPromise from "../../../shared/lib/onMobxPromise";
-import {SpecialAttribute} from "../../../shared/cache/OncoprintClinicalDataCache";
+import {SpecialAttribute} from "../../../shared/cache/ClinicalDataCache";
 import OqlStatusBanner from "../../../shared/components/oqlStatusBanner/OqlStatusBanner";
 import ScrollBar from "../../../shared/components/Scrollbar/ScrollBar";
 import {scatterPlotSize} from "../../../shared/components/plots/PlotUtils";
 import {getTablePlotDownloadData} from "../../../shared/components/plots/TablePlotUtils";
 import {getMobxPromiseGroupStatus} from "../../../shared/lib/getMobxPromiseGroupStatus";
-import StackedBarPlot from "../../../shared/components/plots/StackedBarPlot";
+import MultipleCategoryBarPlot from "../../../shared/components/plots/MultipleCategoryBarPlot";
 import {STUDY_VIEW_CONFIG} from "../../studyView/StudyViewConfig";
+import {RESERVED_CLINICAL_VALUE_COLORS} from "shared/lib/Colors";
 
 enum EventKey {
     horz_logScale,
     vert_logScale,
     utilities_viewMutationType,
     utilities_viewCopyNumber,
-    utilities_discreteVsDiscreteTable,
-    utilities_stackedBarHorizontalBars
+    utilities_horizontalBars,
+    utilities_showRegressionLine
 }
 
 
@@ -76,8 +104,10 @@ export enum PlotType {
 }
 
 export enum DiscreteVsDiscretePlotType {
-    Table,
-    StackedBar
+    Bar = "Bar",
+    StackedBar = "StackedBar",
+    PercentageStackedBar = "PercentageStackedBar",
+    Table = "Table"
 }
 
 export enum MutationCountBy {
@@ -115,6 +145,13 @@ const mutationCountByOptions = [
     { value: MutationCountBy.MutatedVsWildType, label: "Mutated vs Wild-type" }
 ];
 
+const discreteVsDiscretePlotTypeOptions = [
+    { value: DiscreteVsDiscretePlotType.Bar, label: "Bar chart" },
+    { value: DiscreteVsDiscretePlotType.StackedBar, label: "Stacked bar chart" },
+    { value: DiscreteVsDiscretePlotType.PercentageStackedBar, label: "100% stacked bar chart" },
+    { value: DiscreteVsDiscretePlotType.Table, label: "Table" }
+]
+
 @observer
 export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
 
@@ -126,9 +163,12 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
     @observable searchMutationInput:string;
     @observable viewMutationType:boolean = true;
     @observable viewCopyNumber:boolean = false;
+    @observable showRegressionLine = false;
     // discrete vs discrete settings
-    @observable discreteVsDiscretePlotType = DiscreteVsDiscretePlotType.StackedBar;
-    @observable stackedBarHorizontalBars = false;
+    @observable discreteVsDiscretePlotType:DiscreteVsDiscretePlotType = DiscreteVsDiscretePlotType.StackedBar;
+    @observable horizontalBars = false;
+    @observable percentageBar = false;
+    @observable stackedBar = false;
 
     @observable searchCase:string = "";
     @observable searchMutation:string = "";
@@ -362,15 +402,11 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
             case EventKey.utilities_viewMutationType:
                 this.viewMutationType = !this.viewMutationType;
                 break;
-            case EventKey.utilities_discreteVsDiscreteTable:
-                if (this.discreteVsDiscretePlotType === DiscreteVsDiscretePlotType.Table) {
-                    this.discreteVsDiscretePlotType = DiscreteVsDiscretePlotType.StackedBar;
-                } else {
-                    this.discreteVsDiscretePlotType = DiscreteVsDiscretePlotType.Table;
-                }
+            case EventKey.utilities_showRegressionLine:
+                this.showRegressionLine = !this.showRegressionLine;
                 break;
-            case EventKey.utilities_stackedBarHorizontalBars:
-                this.stackedBarHorizontalBars = !this.stackedBarHorizontalBars;
+            case EventKey.utilities_horizontalBars:
+                this.horizontalBars = !this.horizontalBars;
                 break;
         }
     }
@@ -584,34 +620,7 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
 
     readonly clinicalAttributeOptions = remoteData({
         await:()=>[this.props.store.clinicalAttributes],
-        invoke:()=>{
-
-            let _clinicalAttributes = _.sortBy<ClinicalAttribute>(this.props.store.clinicalAttributes.result!,
-                [(o: any)=>-o.priority, (o: any)=>o.label]).map(attribute=>(
-                {
-                    value: attribute.clinicalAttributeId,
-                    label: attribute.displayName,
-                    priority: attribute.priority
-                }
-            ));
-
-            // to load more quickly, only filter and annotate with data availability once its ready
-            // TODO: temporarily disabled because cant figure out a way right now to make this work nicely
-            /*if (this.props.store.clinicalAttributeIdToAvailableSampleCount.isComplete) {
-                const sampleCounts = this.props.store.clinicalAttributeIdToAvailableSampleCount.result!;
-                _clinicalAttributes = _clinicalAttributes.filter(option=>{
-                    const count = sampleCounts[option.value];
-                    if (!count) {
-                        return false;
-                    } else {
-                        option.label = `${option.label} (${count} samples)`;
-                        return true;
-                    }
-                });
-            }*/
-
-            return Promise.resolve(_clinicalAttributes);
-        }
+        invoke:()=>Promise.resolve(makeClinicalAttributeOptions(this.props.store.clinicalAttributes.result!))
     });
 
     readonly dataTypeOptions = remoteData<{value:string, label:string}[]>({
@@ -714,6 +723,12 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
 
     @autobind
     @action
+    private onDiscreteVsDiscretePlotTypeSelect(option:any){
+        this.discreteVsDiscretePlotType = option.value
+    }
+
+    @autobind
+    @action
     private swapHorzVertSelections() {
         const keys:(keyof AxisMenuSelection)[] = ["dataType", "dataSourceId", "logScale", "mutationCountBy"];
         // have to store all values for swap because values depend on each other in derived data way so the copy can mess up if you do it one by one
@@ -760,16 +775,11 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
     }
 
     readonly cnaPromise = remoteData({
-        await:()=>{
-            const queries = getCnaQueries(this.horzSelection, this.vertSelection, this.cnaDataShown);
-            if (queries.length > 0) {
-                return this.props.store.annotatedCnaCache.getAll(queries);
-            } else {
-                return [];
-            }
-        },
+        await:()=>this.props.store.annotatedCnaCache.getAll(
+            getCnaQueries(this.horzSelection, this.vertSelection)
+        ),
         invoke:()=>{
-            const queries = getCnaQueries(this.horzSelection, this.vertSelection, this.cnaDataShown);
+            const queries = getCnaQueries(this.horzSelection, this.vertSelection);
             if (queries.length > 0) {
                 return Promise.resolve(_.flatten(this.props.store.annotatedCnaCache.getAll(queries).map(p=>p.result!)));
             } else {
@@ -986,6 +996,14 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
         dataSourceOptionsByType:{[type:string]:{value:string, label:string}[]}
     ) {
         const axisSelection = vertical ? this.vertSelection : this.horzSelection;
+        if (
+            (axisSelection.dataType === CLIN_ATTR_DATA_TYPE && !this.clinicalAttributeIdToClinicalAttribute.isComplete) ||
+            (axisSelection.dataType !== CLIN_ATTR_DATA_TYPE && axisSelection.dataType !== AlterationTypeConstants.MUTATION_EXTENDED &&
+                !this.props.store.molecularProfileIdToMolecularProfile.isComplete)
+        ) {
+            return <LoadingIndicator isLoading={true}/>;
+        }
+
         const dataTestWhichAxis = vertical ? "Vertical" : "Horizontal";
 
         let dataSourceLabel = "Profile";
@@ -1010,12 +1028,21 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
                 break;
         }
 
+        let dataSourceDescription:string = "";
+        if (dataSourceValue && axisSelection.dataType !== AlterationTypeConstants.MUTATION_EXTENDED) {
+            if (axisSelection.dataType === CLIN_ATTR_DATA_TYPE) {
+                dataSourceDescription = this.clinicalAttributeIdToClinicalAttribute.result![dataSourceValue].description;
+            } else {
+                dataSourceDescription = this.props.store.molecularProfileIdToMolecularProfile.result![dataSourceValue].description;
+            }
+        }
+
         return (
-            <form>
-                <h4>{vertical ? "Vertical" : "Horizontal"} Axis</h4>
+            <form className="main-form">
+                <h4 className="tab-title">{vertical ? "Vertical" : "Horizontal"} Axis</h4>
                 <div>
-                    <div className="form-group">
-                        <label>Data Type</label>
+                <div style={{marginBottom:"5px"}} className="form-group">
+                    <label className="label-text">Data Type</label>
                         <ReactSelect
                             name={`${vertical ? "v" : "h"}-profile-type-selector`}
                             value={axisSelection.dataType}
@@ -1025,9 +1052,9 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
                             searchable={false}
                         />
                     </div>
-                    <div className="form-group">
-                        <label>{dataSourceLabel}</label>
-                        <div style={{display:"flex", flexDirection:"row"}}>
+                    <div style={{marginBottom:"5px"}} className="form-group ">
+                        <label className="label-text">{dataSourceLabel}</label>
+                        <div style={{display:"flex", alignItems:"center"}}>
                             <ReactSelect
                                 className="data-source-id"
                                 name={`${vertical ? "v" : "h"}-profile-name-selector`}
@@ -1037,6 +1064,13 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
                                 clearable={false}
                                 searchable={true}
                             />
+                            { dataSourceDescription && (
+                                <InfoIcon
+                                    tooltip={<span>{dataSourceDescription}</span>}
+                                    tooltipPlacement="right"
+                                    style={{marginLeft:7}}
+                                />
+                            )}
                         </div>
                     </div>
                     { logScalePossible(axisSelection) && (
@@ -1051,9 +1085,9 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
                             /> Apply Log Scale
                         </label></div>
                     )}
-                    {(axisSelection.dataType !== GENESET_DATA_TYPE) && (<div className="form-group" style={{opacity:(axisSelection.dataType === CLIN_ATTR_DATA_TYPE ? 0 : 1)}}>
+                    {(axisSelection.dataType !== GENESET_DATA_TYPE) && (<div className="form-group" style={{display:(axisSelection.dataType === CLIN_ATTR_DATA_TYPE ? 'none' : 'block')}}>
                         <label>Gene</label>
-                        <div style={{display:"flex", flexDirection:"row"}}>
+                        <div style={{display:"flex"}}>
                             <ReactSelect
                                 name={`${vertical ? "v" : "h"}-gene-selector`}
                                 value={axisSelection.selectedGeneOption ? axisSelection.selectedGeneOption.value : undefined}
@@ -1068,7 +1102,7 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
                     </div>)}
                     {(axisSelection.dataType === GENESET_DATA_TYPE) && (<div className="form-group" style={{opacity:1}}>
                         <label>Gene Set</label>
-                        <div style={{display:"flex", flexDirection:"row"}}>
+                        <div style={{display:"flex"}}>
                             <ReactSelect
                                 name={`${vertical ? "v" : "h"}-geneset-selector`}
                                 value={axisSelection.selectedGenesetOption ? axisSelection.selectedGenesetOption.value : undefined}
@@ -1090,15 +1124,14 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
     private getUtilitiesMenu() {
         const showSearchOptions = this.plotType.isComplete && this.plotType.result !== PlotType.DiscreteVsDiscrete;
         const showDiscreteVsDiscreteOption = this.plotType.isComplete && this.plotType.result === PlotType.DiscreteVsDiscrete;
-        const showStackedBarHorizontalOption = showDiscreteVsDiscreteOption && this.discreteVsDiscretePlotType === DiscreteVsDiscretePlotType.StackedBar;
+        const showStackedBarHorizontalOption = showDiscreteVsDiscreteOption && this.discreteVsDiscretePlotType !== DiscreteVsDiscretePlotType.Table;
         const showSampleColoringOptions = this.mutationDataCanBeShown || this.cnaDataCanBeShown;
-        if (!showSearchOptions && !showSampleColoringOptions && !showDiscreteVsDiscreteOption && !showStackedBarHorizontalOption) {
+        const showRegression = this.plotType.isComplete && this.plotType.result === PlotType.ScatterPlot;
+        if (!showSearchOptions && !showSampleColoringOptions && !showDiscreteVsDiscreteOption && !showStackedBarHorizontalOption && !showRegression) {
             return <span></span>;
         }
         return (
-            <div>
-                <hr/>
-                <h4>Utilities</h4>
+            <div style={{marginTop:10}}>
                 <div>
                     {showSearchOptions && (<div>
                         <div className="form-group">
@@ -1123,59 +1156,43 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
                         )}
                     </div>)}
                     {showDiscreteVsDiscreteOption && (
-                        <div className="checkbox"><label>
-                            <input
-                                data-test="DiscreteVsDiscreteTable"
-                                type="checkbox"
-                                name="utilities_discreteVsDiscreteTable"
-                                value={EventKey.utilities_discreteVsDiscreteTable}
-                                checked={this.discreteVsDiscretePlotType === DiscreteVsDiscretePlotType.Table}
-                                onClick={this.onInputClick}
-                            /> Show Table Plot
-                        </label></div>
+                        <div className="form-group">
+                            <label>Plot Type</label>
+                            <div style={{ display: "flex"}}>
+                                <ReactSelect
+                                    name="discrete-vs-discrete-plot-type"
+                                    value={this.discreteVsDiscretePlotType}
+                                    onChange={this.onDiscreteVsDiscretePlotTypeSelect}
+                                    options={discreteVsDiscretePlotTypeOptions}
+                                    clearable={false}
+                                    searchable={true}
+                                />
+                            </div>
+                        </div>
                     )}
                     {showStackedBarHorizontalOption && (
                         <div className="checkbox"><label>
                             <input
-                                data-test="StackedBarHorizontalBars"
+                                data-test="horizontalBars"
                                 type="checkbox"
-                                name="utilities_stackedBarHorizontalBars"
-                                value={EventKey.utilities_stackedBarHorizontalBars}
-                                checked={this.stackedBarHorizontalBars}
+                                name="utilities_horizontalBars"
+                                value={EventKey.utilities_horizontalBars}
+                                checked={this.horizontalBars}
                                 onClick={this.onInputClick}
                             /> Horizontal Bars
                         </label></div>
                     )}
-                    {showSampleColoringOptions && (
-                        <div>
-                            <label>Color Samples By</label>
-                            {this.mutationDataCanBeShown && (
-                                <div className="checkbox"><label>
-                                    <input
-                                        data-test="ViewMutationType"
-                                        type="checkbox"
-                                        name="utilities_viewMutationType"
-                                        value={EventKey.utilities_viewMutationType}
-                                        checked={this.viewMutationType}
-                                        onClick={this.onInputClick}
-                                        disabled={!this.mutationDataExists.isComplete || !this.mutationDataExists.result}
-                                    /> Mutation Type *
-                                </label></div>
-                            )}
-                            {this.cnaDataCanBeShown && (
-                                <div className="checkbox"><label>
-                                    <input
-                                        data-test="ViewCopyNumber"
-                                        type="checkbox"
-                                        name="utilities_viewCopyNumber"
-                                        value={EventKey.utilities_viewCopyNumber}
-                                        checked={this.viewCopyNumber}
-                                        onClick={this.onInputClick}
-                                        disabled={!this.cnaDataExists.isComplete || !this.cnaDataExists.result}
-                                    /> Copy Number Alteration
-                                </label></div>
-                            )}
-                        </div>
+                    {showRegression && (
+                        <div className="checkbox" style={{marginTop:14}}><label>
+                            <input
+                                data-test="ShowRegressionline"
+                                type="checkbox"
+                                name="utilities_showRegressionLine"
+                                value={EventKey.utilities_showRegressionLine}
+                                checked={this.showRegressionLine}
+                                onClick={this.onInputClick}
+                            /> Show Regression Line
+                        </label></div>
                     )}
                 </div>
             </div>
@@ -1196,8 +1213,8 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
                         {this.getHorizontalAxisMenu}
                     </Observer>
                 </div>
-                <div style={{ textAlign:'center'}}>
-                    <button className="btn btn-default" data-test="swapHorzVertButton" onClick={this.swapHorzVertSelections}><i className="fa fa-arrow-up"></i> Swap Axes <i className="fa fa-arrow-down"></i></button>
+                <div className={"swapAxes"}>
+                    <button className="btn btn-link btn-xs" data-test="swapHorzVertButton" onClick={this.swapHorzVertSelections}><i className="fa fa-arrow-up"></i> Swap Axes <i className="fa fa-arrow-down"></i></button>
                 </div>
                 <div className="axisBlock">
                     <Observer>
@@ -1277,7 +1294,7 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
                             molecularProfileIds: _.values(this.props.store.studyToMutationMolecularProfile.result!).map(p=>p.molecularProfileId),
                             data: this.mutationPromise.result!
                         } : undefined,
-                        this.cnaDataShown ? {
+                        this.cnaDataExists.result ? {
                             molecularProfileIds: _.values(this.props.store.studyToMolecularProfileDiscrete.result!).map(p=>p.molecularProfileId),
                             data: this.cnaPromise.result!
                         }: undefined
@@ -1330,7 +1347,7 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
                             molecularProfileIds: _.values(this.props.store.studyToMutationMolecularProfile.result!).map(p=>p.molecularProfileId),
                             data: this.mutationPromise.result!
                         } : undefined,
-                        this.cnaDataShown ? {
+                        this.cnaDataExists.result ? {
                             molecularProfileIds: _.values(this.props.store.studyToMolecularProfileDiscrete.result!).map(p=>p.molecularProfileId),
                             data: this.cnaPromise.result!
                         }: undefined
@@ -1362,6 +1379,10 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
     @computed get plot() {
         const promises = [this.plotType, this.horzAxisDataPromise, this.vertAxisDataPromise, this.horzLabel, this.vertLabel];
         const groupStatus = getMobxPromiseGroupStatus(...promises);
+        const isPercentage = this.discreteVsDiscretePlotType === DiscreteVsDiscretePlotType.PercentageStackedBar;
+        const isStacked = isPercentage || this.discreteVsDiscretePlotType === DiscreteVsDiscretePlotType.StackedBar;
+        const showSampleColoringOptions = this.mutationDataCanBeShown || this.cnaDataCanBeShown;
+
         switch (groupStatus) {
             case "pending":
                 return <LoadingIndicator isLoading={true} center={true} size={"big"}/>;
@@ -1390,19 +1411,22 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
                             );
                         } else {
                             plotElt = (
-                                <StackedBarPlot
+                                <MultipleCategoryBarPlot
                                     svgId={SVG_ID}
                                     horzData={(this.horzAxisDataPromise.result! as IStringAxisData).data}
                                     vertData={(this.vertAxisDataPromise.result! as IStringAxisData).data}
-                                    categoryToColor={STUDY_VIEW_CONFIG.colors.reservedValue}
+                                    categoryToColor={RESERVED_CLINICAL_VALUE_COLORS}
                                     horzCategoryOrder={(this.horzAxisDataPromise.result! as IStringAxisData).categoryOrder}
                                     vertCategoryOrder={(this.vertAxisDataPromise.result! as IStringAxisData).categoryOrder}
-                                    barWidth={50}
+                                    barWidth={20}
+                                    domainPadding={20}
                                     chartBase={PLOT_SIDELENGTH}
                                     axisLabelX={this.horzLabel.result!}
                                     axisLabelY={this.vertLabel.result!}
                                     legendLocationWidthThreshold={550}
-                                    horizontalBars={this.stackedBarHorizontalBars}
+                                    horizontalBars={this.horizontalBars}
+                                    percentage={isPercentage}
+                                    stacked={isStacked}
                                 />
                             );
                         }
@@ -1420,6 +1444,7 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
                                     chartHeight={PLOT_SIDELENGTH}
                                     tooltip={this.scatterPlotTooltip}
                                     highlight={this.scatterPlotHighlight}
+                                    showRegressionLine={this.showRegressionLine}
                                     logX={this.horzSelection.logScale}
                                     logY={this.vertSelection.logScale}
                                     fill={this.scatterPlotFill}
@@ -1485,6 +1510,36 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
                     <div>
                         <div data-test="PlotsTabPlotDiv" className="borderedChart posRelative">
                             <ScrollBar style={{position:'relative', top:-5}} getScrollEl={this.getScrollPane} />
+                            <div style={{textAlign:"center", position:"relative", zIndex:1, top:-5, marginBottom:"-20px", minWidth: this.mutationDataCanBeShown && this.cnaDataCanBeShown ? 600 : 0}}>
+                                <div style={{display:"inline-block"}}>
+                                    {this.mutationDataCanBeShown && (
+                                        <div className="checkbox color-samples-toolbar-elt"><label>
+                                            <input
+                                                data-test="ViewMutationType"
+                                                type="checkbox"
+                                                name="utilities_viewMutationType"
+                                                value={EventKey.utilities_viewMutationType}
+                                                checked={this.viewMutationType}
+                                                onClick={this.onInputClick}
+                                                disabled={!this.mutationDataExists.isComplete || !this.mutationDataExists.result}
+                                            /> Color Samples By Mutation Type *
+                                        </label></div>
+                                    )}
+                                    {this.cnaDataCanBeShown && (
+                                        <div className="checkbox color-samples-toolbar-elt"><label>
+                                            <input
+                                                data-test="ViewCopyNumber"
+                                                type="checkbox"
+                                                name="utilities_viewCopyNumber"
+                                                value={EventKey.utilities_viewCopyNumber}
+                                                checked={this.viewCopyNumber}
+                                                onClick={this.onInputClick}
+                                                disabled={!this.cnaDataExists.isComplete || !this.cnaDataExists.result}
+                                            /> Color Samples By Copy Number Alteration
+                                        </label></div>
+                                    )}
+                                </div>
+                            </div>
                             {this.plotExists && (
                                 <DownloadControls
                                     getSvg={this.getSvg}
@@ -1500,9 +1555,9 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
                                     collapse={true}
                                 />
                             )}
-                                <div ref={this.assignScrollPaneRef} style={{position:"relative", display:"inline-block"}}>
+                            <div ref={this.assignScrollPaneRef} style={{position:"relative", display:"inline-block"}}>
                                 {plotElt}
-                                </div>
+                            </div>
                         </div>
                         {this.mutationDataCanBeShown && (
                             <div style={{marginTop:5}}>* Driver annotation settings are located in the Mutation Color menu of the Oncoprint.</div>
@@ -1530,7 +1585,7 @@ export default class PlotsTab extends React.Component<IPlotsTabProps,{}> {
                 <div className={'tabMessageContainer'}>
                     <OqlStatusBanner className="plots-oql-status-banner" store={this.props.store} tabReflectsOql={false} />
                 </div>
-                <div className={"plotsTab"} style={{display:"flex", flexDirection:"row"}}>
+                <div className={"plotsTab"} style={{display:"flex"}}>
                     <div className="leftColumn">
                         { (this.dataTypeOptions.isComplete &&
                         this.dataTypeToDataSourceOptions.isComplete) ? (

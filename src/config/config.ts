@@ -1,4 +1,4 @@
-import {IAppConfig, IServerConfig, PriorityStudies} from "./IAppConfig";
+import {CategorizedConfigItems, IAppConfig, IServerConfig} from "./IAppConfig";
 import * as _ from "lodash";
 import ServerConfigDefaults from "./serverConfigDefaults";
 import memoize from "memoize-weak-decorator";
@@ -107,12 +107,14 @@ export class ServerConfigHelpers {
         return (matches) ? matches.map((s:string)=>s.trim()) : [];
     }
 
-    @memoize static priority_studies(str:string|null): PriorityStudies{
+    @memoize static parseConfigFormat(str:string|null): CategorizedConfigItems {
         if (str && str.length) {
+            // get rid of a trailing semicolon
+            str = str.replace(/;$/,"");
             return _.chain(str)
                 .split(";").map((s)=>s.split("#")).fromPairs().mapValues((s)=>s.split(",")).value();
         } else {
-            return {}
+            return {};
         }
     }
 
@@ -171,9 +173,9 @@ export function initializeConfiguration() {
     }
 
     // @ts-ignore: ENV_* are defined in webpack.config.js
-    const APIROOT = `//${trimTrailingSlash(ENV_CBIOPORTAL_URL)}/`;
+    const APIROOT = `${ENV_CBIOPORTAL_URL}/`;
     // @ts-ignore: ENV_* are defined in webpack.config.js
-    const GENOME_NEXUS_ROOT = `//${trimTrailingSlash(ENV_GENOME_NEXUS_URL)}/`;
+    const GENOME_NEXUS_ROOT = `${ENV_GENOME_NEXUS_URL}/`;
 
     // we want to respect frontUrl if it is already set (case where localdist is true)
     // @ts-ignore: ENV_* are defined in webpack.config.js
@@ -192,7 +194,7 @@ export function initializeConfiguration() {
             frontendUrl: frontendUrl,
             serverConfig: {
                 genomenexus_url: GENOME_NEXUS_ROOT
-            }
+            } as IServerConfig
         };
         updateConfig(envConfig);
     }

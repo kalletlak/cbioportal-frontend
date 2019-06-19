@@ -47,8 +47,8 @@ export type ClinicalTrackSpec = {
 export interface IBaseHeatmapTrackDatum {
     profile_data: number|null;
     sample?: string;
-    patient?: string;
-    study: string;
+    patient: string;
+    study_id: string;
     uid: string;
     na?:boolean;
 }
@@ -65,15 +65,17 @@ export type GeneticTrackDatum_Data =
         "driverFilterAnnotation" | "driverTiersFilter" | "driverTiersFilterAnnotation" | "oncoKbOncogenic" |
         "alterationSubType" | "value" | "mutationType" | "isHotspot" | "entrezGeneId" | "putativeDriver" | "mutationStatus">;
 
+export type GeneticTrackDatum_ProfiledIn = {genePanelId?:string, molecularProfileId:string};
+
 export type GeneticTrackDatum = {
     trackLabel: string;
     sample?:string;
-    patient?:string;
+    patient:string;
     study_id:string;
     uid:string;
     data:GeneticTrackDatum_Data[];
-    profiled_in?: GenePanelData[];
-    not_profiled_in?:GenePanelData[];
+    profiled_in?: GeneticTrackDatum_ProfiledIn[];
+    not_profiled_in?:GeneticTrackDatum_ProfiledIn[];
     na?: boolean;
     disp_mut?:string;
     disp_cna?:string;
@@ -132,6 +134,7 @@ export interface IOncoprintProps {
     heatmapTracks: IGeneHeatmapTrackSpec[];
     divId:string;
     width:number;
+    caseLinkOutInTooltips:boolean;
 
     molecularProfileIdToMolecularProfile?:{[molecularProfileId:string]:MolecularProfile};
 
@@ -175,8 +178,8 @@ export default class Oncoprint extends React.Component<IOncoprintProps, {}> {
     private trackSpecKeyToTrackId:{[key:string]:TrackId};
     private lastTransitionProps:IOncoprintProps;
 
-    constructor() {
-        super();
+    constructor(props:IOncoprintProps) {
+        super(props);
 
         this.trackSpecKeyToTrackId = {};
         this.divRefHandler = this.divRefHandler.bind(this);

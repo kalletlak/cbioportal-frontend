@@ -13,6 +13,7 @@ import RightBar from "../../shared/components/rightbar/RightBar";
 import getBrowserWindow from "../../shared/lib/getBrowserWindow";
 // tslint:disable-next-line:no-import-side-effect
 import "./homePage.scss";
+import autobind from "autobind-decorator";
 
 (Chart as any).plugins.register({
     beforeDraw: function (chartInstance: any) {
@@ -33,7 +34,7 @@ export function createQueryStore(currentQuery?:any) {
     const win:any = window;
 
     const queryStore = new QueryStore(currentQuery);
-
+    
     queryStore.singlePageAppSubmitRoutine = function(query:CancerStudyQueryUrlParams) {
 
         // normalize this
@@ -68,14 +69,19 @@ export default class HomePage extends React.Component<IResultsViewPageProps, {}>
         this.props.routing.updateRoute({ tab: id });
     }
 
+    @autobind
+    private getQueryStore(){
+        return this.queryStore;
+    }
+
     public render() {
 
         return (
-            <PageLayout className="HomePageLayout" noMargin={true} rightBar={<RightBar queryStore={this.queryStore} />}>
-                <div style={{padding:"0 15px"}}>
-                    <div dangerouslySetInnerHTML={{__html:AppConfig.serverConfig.skin_blurb!}}></div>
-                    <QueryAndDownloadTabs store={this.queryStore}/>
-                </div>
+            <PageLayout className="homePageLayout" noMargin={true} rightBar={<RightBar queryStore={this.queryStore} />}>
+
+                <div className={"headBlock"} dangerouslySetInnerHTML={{__html:AppConfig.serverConfig.skin_blurb!}}></div>
+                <QueryAndDownloadTabs getQueryStore={this.getQueryStore} showQuickSearchTab={AppConfig.serverConfig.quick_search_enabled} showDownloadTab={true}/>
+
             </PageLayout>
         )
 

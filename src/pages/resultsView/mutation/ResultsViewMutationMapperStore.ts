@@ -3,14 +3,16 @@ import {
 } from "shared/api/generated/CBioPortalAPI";
 import {remoteData} from "shared/api/remoteData";
 import {labelMobxPromises, MobxPromise, cached} from "mobxpromise";
-import {IOncoKbDataWrapper} from "shared/model/OncoKB";
+import {IOncoKbCancerGenesWrapper, IOncoKbDataWrapper} from "shared/model/OncoKB";
 import {IHotspotIndex} from "shared/model/CancerHotspots";
 import {ICivicGene, ICivicVariant} from "shared/model/Civic";
 import {
     fetchCosmicData, fetchCivicGenes, fetchCivicVariants
 } from "shared/lib/StoreUtils";
 import MutationCountCache from "shared/cache/MutationCountCache";
+import DiscreteCNACache from "shared/cache/DiscreteCNACache";
 import GenomeNexusCache from "shared/cache/GenomeNexusCache";
+import GenomeNexusMyVariantInfoCache from "shared/cache/GenomeNexusMyVariantInfoCache";
 import {MutationTableDownloadDataFetcher} from "shared/lib/MutationTableDownloadDataFetcher";
 import MutationMapperStore, {IMutationMapperStoreConfig} from "shared/components/mutationMapper/MutationMapperStore";
 import { VariantAnnotation } from "shared/api/generated/GenomeNexusAPI";
@@ -23,7 +25,7 @@ export default class ResultsViewMutationMapperStore extends MutationMapperStore
                 protected mutationMapperStoreConfig: IMutationMapperStoreConfig,
                 public gene:Gene,
                 public samples:MobxPromise<SampleIdentifier[]>,
-                public oncoKbAnnotatedGenes:{[entrezGeneId:number]:boolean},
+                public oncoKbCancerGenes:IOncoKbCancerGenesWrapper,
                 // getMutationDataCache needs to be a getter for the following reason:
                 // when the input parameters to the mutationDataCache change, the cache
                 // is recomputed. Mobx needs to respond to this. But if we pass the mutationDataCache
@@ -34,6 +36,9 @@ export default class ResultsViewMutationMapperStore extends MutationMapperStore
                 getMutations:()=>Mutation[],
                 private getMutationCountCache: ()=>MutationCountCache,
                 private getGenomeNexusCache: ()=>GenomeNexusCache,
+                private getGenomeNexusMyVariantInfoCache: ()=>GenomeNexusMyVariantInfoCache,
+                private getDiscreteCNACache: ()=>DiscreteCNACache,
+                public studyToMolecularProfileDiscrete: {[studyId:string]:MolecularProfile},
                 public studyIdToStudy:MobxPromise<{[studyId:string]:CancerStudy}>,
                 public molecularProfileIdToMolecularProfile:MobxPromise<{[molecularProfileId:string]:MolecularProfile}>,
                 public clinicalDataForSamples: MobxPromise<ClinicalData[]>,
@@ -51,7 +56,7 @@ export default class ResultsViewMutationMapperStore extends MutationMapperStore
             getMutations,
             indexedHotspotData,
             indexedVariantAnnotations,
-            oncoKbAnnotatedGenes,
+            oncoKbCancerGenes,
             oncoKbData,
             uniqueSampleKeyToTumorType
         );
@@ -96,6 +101,8 @@ export default class ResultsViewMutationMapperStore extends MutationMapperStore
     }, undefined);
 
     @cached get downloadDataFetcher(): MutationTableDownloadDataFetcher {
-        return new MutationTableDownloadDataFetcher(this.mutationData, this.getGenomeNexusCache, this.getMutationCountCache);
+        return new MutationTableDownloadDataFetcher(this.mutationData, this.studyToMolecularProfileDiscrete, this.getGenomeNexusCache, this.getGenomeNexusMyVariantInfoCache, this.getMutationCountCache, this.getDiscreteCNACache);
     }
+
+    
 }

@@ -174,20 +174,30 @@ export function parsedOQLAlterationToSourceOQL(alteration) {
             } else {
                 ret = ["CNA",alteration.constr_rel,alteration.constr_val].join("");
             }
-            ret += alteration.modifiers.map(function(modifier) { return "_"+modifier; }).join("");
+            if (alteration.modifiers.length > 0) {
+                ret += "_";
+                ret += alteration.modifiers.join("_");
+            }
             return ret;
         case "mut":
             var ret;
+            var underscoreBeforeModifiers = true;
             if (alteration.constr_rel) {
                 if (alteration.constr_type === "position") {
                     ret = ["MUT",alteration.constr_rel,alteration.info.amino_acid,alteration.constr_val].join("");
                 } else {
                     ret = ["MUT",alteration.constr_rel,alteration.constr_val].join("");
+                    if (!alteration.constr_val) {
+                        underscoreBeforeModifiers = false;
+                    }
                 }
             } else {
                 ret = "MUT";
             }
-            ret += alteration.modifiers.map(function(modifier) { return "_"+modifier; }).join("");
+            if (underscoreBeforeModifiers && alteration.modifiers.length > 0) {
+                ret += "_";
+            }
+            ret += alteration.modifiers.join("_");
             return ret;
         case "exp":
             return "EXP" + alteration.constr_rel + alteration.constr_val;
@@ -206,8 +216,8 @@ export function unparseOQLQueryLine(parsed_oql_query_line) {
     ret += gene;
     if (alterations.length > 0) {
         ret += ": " + alterations.map(parsedOQLAlterationToSourceOQL).join(" ");
+        ret += ";";
     }
-    ret += ";";
     return ret;
 };
 
@@ -445,7 +455,8 @@ var isDatumWantedByOQLMUTCommand = function(alt_cmd, datum, accessors) {
 
         var matches = false;
         // If no constraint relation ('=' or '!='), then every mutation matches
-        if (!alt_cmd.constr_rel) {
+        // If no constraint type, then every mutation matches
+        if (!alt_cmd.constr_rel || !alt_cmd.constr_type) {
             matches = true;
         }
         // Decide based on what type of mutation specification
@@ -543,7 +554,7 @@ var isDatumWantedByOQLEXPOrPROTCommand = function(alt_cmd, datum, accessors) {
         }
 
         if (match > 0) {
-            datum.alterationSubType = (direction && (direction > 0)) ? 'up' : 'down';
+            datum.alterationSubType = (direction && (direction > 0)) ? 'high' : 'low';
         }
 
         return match;
@@ -757,7 +768,7 @@ export function filterCBioPortalWebServiceDataByUnflattenedOQLLine(oql_query, da
 // }
 
 
-export function genes(oql_query) {
+export function uniqueGenesInOQLQuery(oql_query) {
     var parse_result = parseOQLQuery(oql_query);
     var genes = parse_result.filter(function (q_line) {
         return q_line.gene.toLowerCase() !== "datatypes";

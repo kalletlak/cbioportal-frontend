@@ -1,8 +1,9 @@
 import {
     Gene, NumericGeneMolecularData, GenePanel, GenePanelData, MolecularProfile,
-    Mutation, Patient, Sample, CancerStudy
+    Mutation, Patient, Sample, CancerStudy, ClinicalAttribute, PatientIdentifier,
+    PatientFilter
 } from "../../shared/api/generated/CBioPortalAPI";
-import {action} from "mobx";
+import {action, computed} from "mobx";
 import AccessorsForOqlFilter, {getSimplifiedMutationType} from "../../shared/lib/oql/AccessorsForOqlFilter";
 import {
     OQLLineFilterOutput,
@@ -19,26 +20,39 @@ import {
     AnnotatedMutation,
     CaseAggregatedData,
     IQueriedCaseData,
-    IQueriedMergedTrackCaseData
+    IQueriedMergedTrackCaseData, ResultsViewPageStore
 } from "./ResultsViewPageStore";
 import {IndicatorQueryResp} from "../../shared/api/generated/OncoKbAPI";
 import _ from "lodash";
 import client from "shared/api/cbioportalClientInstance";
 import { VirtualStudy } from "shared/model/VirtualStudy";
-import {
-    getVirtualStudies,
-} from "./ResultsViewPageHelpers";
+import MobxPromise, {MobxPromise_await} from "mobxpromise";
+import {AlterationEnrichment} from "../../shared/api/generated/CBioPortalAPIInternal";
+import {remoteData} from "../../shared/api/remoteData";
+import {calculateQValues} from "../../shared/lib/calculation/BenjaminiHochbergFDRCalculator";
+import {SpecialAttribute} from "../../shared/cache/ClinicalDataCache";
+import { isSampleProfiled } from "shared/lib/isSampleProfiled";
+import { AlteredStatus } from "./mutualExclusivity/MutualExclusivityUtil";
 
 type CustomDriverAnnotationReport = {
     hasBinary: boolean,
     tiers: string[];
 };
 
+type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;
+
+export type ExtendedClinicalAttribute =
+    Pick<ClinicalAttribute, "datatype"|"description"|"displayName"|"patientAttribute"> &
+    {
+        clinicalAttributeId: string|SpecialAttribute;
+        molecularProfileIds?:string[];
+    };
+
 export type CoverageInformationForCase = {
     byGene:{[hugoGeneSymbol:string]:GenePanelData[]},
-    allGenes:GenePanelData[],
+    allGenes:Omit<GenePanelData, "genePanelId">[],
     notProfiledByGene:{[hugoGeneSymbol:string]:GenePanelData[]}
-    notProfiledAllGenes:GenePanelData[];
+    notProfiledAllGenes:Omit<GenePanelData, "genePanelId">[];
 };
 
 export type CoverageInformation = {
@@ -47,6 +61,8 @@ export type CoverageInformation = {
     patients:
         {[uniquePatientKey:string]:CoverageInformationForCase};
 };
+
+export type SampleAlteredMap = {[trackOqlKey:string]:AlteredStatus[]};
 
 export function computeCustomDriverAnnotationReport(mutations:Mutation[]):CustomDriverAnnotationReport {
     let hasBinary = false;
@@ -67,17 +83,20 @@ export const initializeCustomDriverAnnotationSettings = action((
     report:CustomDriverAnnotationReport,
     mutationAnnotationSettings:any,
     enableCustomTiers:boolean,
-    enableOncoKbAndHotspotsIfNoCustomAnnotations:boolean
+    enableOncoKb:boolean,
+    enableHotspots:boolean
 )=>{
     // initialize keys with all available tiers
     for (const tier of report.tiers) {
         mutationAnnotationSettings.driverTiers.set(tier, enableCustomTiers);
     }
 
-    if (enableOncoKbAndHotspotsIfNoCustomAnnotations && !report.hasBinary && !report.tiers.length) {
-        // enable hotspots and oncokb if there are no custom annotations
-        mutationAnnotationSettings.hotspots = true;
+    if (enableOncoKb) {
         mutationAnnotationSettings.oncoKb = true;
+    }
+
+    if (enableHotspots) {
+        mutationAnnotationSettings.hotspots = true;
     }
 });
 
@@ -227,7 +246,7 @@ export function annotateMolecularDatum(
     return Object.assign({oncoKbOncogenic: oncogenic, hugoGeneSymbol}, molecularDatum);
 }
 
-export async function fetchQueriedStudies(filteredPhysicalStudies:{[id:string]:CancerStudy},queriedIds:string[]):Promise<CancerStudy[]>{
+export async function fetchQueriedStudies(filteredPhysicalStudies:{[id:string]:CancerStudy},queriedIds:string[],queriedVirtualStudies:VirtualStudy[]):Promise<CancerStudy[]>{
     const queriedStudies:CancerStudy[] = [];
     let unknownIds:{[id:string]:boolean} = {};
     for(const id of queriedIds){
@@ -250,18 +269,16 @@ export async function fetchQueriedStudies(filteredPhysicalStudies:{[id:string]:C
     
         }).catch(() => {}); //this is for private instances. it throws error when the study is not found
 
-        await getVirtualStudies(Object.keys(unknownIds)).then((virtualStudies: VirtualStudy[]) => {
-            virtualStudies.forEach(virtualStudy=>{
-                // tslint:disable-next-line:no-object-literal-type-assertion
-                const cancerStudy = {
-                    allSampleCount: _.sumBy(virtualStudy.data.studies, study=>study.samples.length),
-                    studyId: virtualStudy.id,
-                    name: virtualStudy.data.name,
-                    description: virtualStudy.data.description,
-                    cancerTypeId: "My Virtual Studies"
-                } as CancerStudy;
-                queriedStudies.push(cancerStudy);
-            });
+        queriedVirtualStudies.filter((vs:VirtualStudy) => unknownIds[vs.id]).forEach(virtualStudy=>{
+            // tslint:disable-next-line:no-object-literal-type-assertion
+            const cancerStudy = {
+                allSampleCount: _.sumBy(virtualStudy.data.studies, study=>study.samples.length),
+                studyId: virtualStudy.id,
+                name: virtualStudy.data.name,
+                description: virtualStudy.data.description,
+                cancerTypeId: "My Virtual Studies"
+            } as CancerStudy;
+            queriedStudies.push(cancerStudy);
         });
     }
 
@@ -399,23 +416,51 @@ export function doesQueryHaveCNSegmentData(
     }
 }
 
-export function getSampleAlteredMap(filteredAlterationData: IQueriedMergedTrackCaseData[], samples: Sample[], oqlQuery: string){
-    const result : {[x: string]: boolean[]} = {};  
+export function getSampleAlteredMap(filteredAlterationData: IQueriedMergedTrackCaseData[], samples: Sample[], oqlQuery: string, coverageInformation: CoverageInformation, selectedMolecularProfileIds: string[]){
+    const result : SampleAlteredMap = {};
     filteredAlterationData.forEach((element, key) => {
         //1: is not group
         if (element.mergedTrackOqlList === undefined) {
             const notGroupedOql = element.oql as OQLLineFilterOutput<AnnotatedExtendedAlteration>;                    
-            const sampleKeys = _.map(notGroupedOql.data, (data) => data.uniqueSampleKey);
+            const sampleKeysMap = _.keyBy(_.map(notGroupedOql.data, (data) => data.uniqueSampleKey));
+            const unProfiledSampleKeysMap = _.keyBy(samples.map((sample) => sample.uniqueSampleKey).filter((sampleKey) => {
+                // if not profiled in some genes molecular profile, then we think it is not profiled and will exclude this sample
+                return _.some(_.map(selectedMolecularProfileIds, (selectedMolecularProfileId) => {
+                    return isSampleProfiled(sampleKey, selectedMolecularProfileId, notGroupedOql.gene, coverageInformation);
+                }) , (profiled) => profiled === false);
+            }));
             result[getSingleGeneResultKey(key, oqlQuery, notGroupedOql)] = samples.map((sample: Sample) => {
-                return sampleKeys.includes(sample.uniqueSampleKey);
+                if (sample.uniqueSampleKey in unProfiledSampleKeysMap) {
+                    return AlteredStatus.UNPROFILED;
+                } else if (sample.uniqueSampleKey in sampleKeysMap) {
+                    return AlteredStatus.ALTERED;
+                } else {
+                    return AlteredStatus.UNALTERED;
+                }
             });
         }
         //2: is group
         else {
             const groupedOql = element.oql as MergedTrackLineFilterOutput<AnnotatedExtendedAlteration>;
-            const sampleKeys = _.map(_.flatten(_.map(groupedOql.list, (list) => list.data)), (data) => data.uniqueSampleKey);
+            const sampleKeysMap = _.keyBy(_.map(_.flatten(_.map(groupedOql.list, (list) => list.data)), (data) => data.uniqueSampleKey));
+            const groupGenes = _.map(groupedOql.list, (oql) => oql.gene);
+            const unProfiledSampleKeysMap = _.keyBy(samples.map((sample) => sample.uniqueSampleKey).filter((sampleKey) => {
+                // if not profiled in some genes molecular profile, then we think it is not profiled and will exclude this sample
+                return _.some(_.map(selectedMolecularProfileIds, (selectedMolecularProfileId) => {
+                    // if not profiled in every genes, then the sample is not profiled, or we think it is profiled
+                    return _.every(_.map(groupGenes, (gene) => {
+                        return isSampleProfiled(sampleKey, selectedMolecularProfileId, gene, coverageInformation);
+                    }), (profiled) => profiled === false);
+                }) , (notProfiled) => notProfiled === true);
+            }));
             result[getMultipleGeneResultKey(groupedOql)] = samples.map((sample: Sample) => {
-                return sampleKeys.includes(sample.uniqueSampleKey);
+                if (sample.uniqueSampleKey in unProfiledSampleKeysMap) {
+                    return AlteredStatus.UNPROFILED;
+                } else if (sample.uniqueSampleKey in sampleKeysMap) {
+                    return AlteredStatus.ALTERED;
+                } else {
+                    return AlteredStatus.UNALTERED;
+                }
             });
         }
     });
@@ -435,4 +480,66 @@ export function getSingleGeneResultKey(key: number, oqlQuery: string, notGrouped
 
 export function getMultipleGeneResultKey(groupedOql: MergedTrackLineFilterOutput<AnnotatedExtendedAlteration>){
     return groupedOql.label ? groupedOql.label : _.map(groupedOql.list, (data) => data.gene).join(' / ');
+}
+
+export function makeEnrichmentDataPromise<T extends {hugoGeneSymbol:string, pValue:number, qValue?:number}>(params:{
+    store?:ResultsViewPageStore,
+    await: MobxPromise_await,
+    getSelectedProfile:()=>MolecularProfile|undefined,
+    fetchData:()=>Promise<T[]>
+}):MobxPromise<(T & {qValue:number})[]> {
+    return remoteData({
+        await: ()=>{
+            const ret = params.await();
+            if (params.store) {
+                ret.push(params.store.selectedMolecularProfiles);
+            }
+            return ret;
+        },
+        invoke:async()=>{
+            const profile = params.getSelectedProfile();
+            if (profile) {
+                let data = await params.fetchData();
+
+                // filter out query genes, if looking at a queried profile
+                // its important that we filter out *before* calculating Q values
+                if (params.store && params.store.selectedMolecularProfiles.result!
+                        .findIndex(x=>x.molecularProfileId === profile.molecularProfileId) > -1) {
+                    const queryGenes = _.keyBy(params.store.hugoGeneSymbols, x=>x.toUpperCase());
+                    data = data.filter(d=>!(d.hugoGeneSymbol.toUpperCase() in queryGenes));
+                }
+
+                const sortedByPvalue = _.sortBy(data, c=>c.pValue);
+                const qValues = calculateQValues(sortedByPvalue.map(c=>c.pValue));
+                qValues.forEach((qValue, index)=>{
+                    sortedByPvalue[index].qValue = qValue;
+                });
+                return sortEnrichmentData(sortedByPvalue);
+            } else {
+                return [];
+            }
+        }
+    });
+}
+
+
+function sortEnrichmentData(data: any[]): any[] {
+    return _.sortBy(data, ["pValue", "hugoGeneSymbol"]);
+}
+
+export function fetchPatients(samples:Sample[]) {
+    let patientKeyToPatientIdentifier:{[uniquePatientKey:string]:PatientIdentifier} = {};
+    for (const sample of samples) {
+        patientKeyToPatientIdentifier[sample.uniquePatientKey] = {
+            patientId: sample.patientId,
+            studyId: sample.studyId
+        };
+    }
+    const patientFilter = {
+        uniquePatientKeys: _.uniq(samples.map((sample:Sample)=>sample.uniquePatientKey))
+    } as PatientFilter;
+
+    return client.fetchPatientsUsingPOST({
+        patientFilter
+    });
 }

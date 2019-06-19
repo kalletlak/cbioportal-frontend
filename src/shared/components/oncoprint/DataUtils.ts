@@ -19,10 +19,9 @@ import {isSample, isSampleList} from "../../lib/CBioPortalAPIUtils";
 import {getSimplifiedMutationType, SimplifiedMutationType} from "../../lib/oql/AccessorsForOqlFilter";
 import _ from "lodash";
 import {MutationSpectrum} from "../../api/generated/CBioPortalAPIInternal";
-import {OncoprintClinicalAttribute} from "./ResultsViewOncoprint";
-import {CoverageInformation} from "../../../pages/resultsView/ResultsViewPageStoreUtils";
+import {CoverageInformation, ExtendedClinicalAttribute} from "../../../pages/resultsView/ResultsViewPageStoreUtils";
 import { MUTATION_STATUS_GERMLINE } from "shared/constants";
-import {SpecialAttribute} from "../../cache/OncoprintClinicalDataCache";
+import {SpecialAttribute} from "../../cache/ClinicalDataCache";
 import {stringListToIndexSet} from "../../lib/StringUtils";
 import {isNotGermlineMutation} from "../../lib/MutationUtils";
 
@@ -52,12 +51,12 @@ const cnaRenderPriority = {
     'hetloss': 1
 };
 const mrnaRenderPriority = {
-    'up': 0,
-    'down': 0
+    'high': 0,
+    'low': 0
 };
 const protRenderPriority = {
-    'up': 0,
-    'down': 0
+    'high': 0,
+    'low': 0
 };
 
 export type OncoprintMutationType = "missense" | "inframe" | "fusion" | "promoter" | "trunc" | "other";
@@ -211,6 +210,7 @@ export function makeGeneticTrackData(
         for (const sample of cases) {
             const newDatum:Partial<GeneticTrackDatum> = {};
             newDatum.sample = sample.sampleId;
+            newDatum.patient = sample.patientId;
             newDatum.study_id = sample.studyId;
             newDatum.uid = sample.uniqueSampleKey;
 
@@ -220,7 +220,7 @@ export function makeGeneticTrackData(
                 hugoGeneSymbol => sampleSequencingInfo.byGene[hugoGeneSymbol] || []
             );
             newDatum.profiled_in = newDatum.profiled_in.concat(sampleSequencingInfo.allGenes).filter(p=>!!_selectedMolecularProfiles[p.molecularProfileId]); // filter out coverage information about non-selected profiles
-            if (!newDatum.profiled_in.length) {
+            if (!newDatum.profiled_in!.length) {
                 newDatum.na = true;
             }
             newDatum.not_profiled_in = _.flatMap(
@@ -253,7 +253,7 @@ export function makeGeneticTrackData(
                 hugoGeneSymbol => patientSequencingInfo.byGene[hugoGeneSymbol] || []
             );
             newDatum.profiled_in = newDatum.profiled_in.concat(patientSequencingInfo.allGenes).filter(p=>!!_selectedMolecularProfiles[p.molecularProfileId]); // filter out coverage information about non-selected profiles
-            if (!newDatum.profiled_in.length) {
+            if (!newDatum.profiled_in!.length) {
                 newDatum.na = true;
             }
             newDatum.not_profiled_in = _.flatMap(
@@ -284,7 +284,7 @@ export function fillHeatmapTrackDatum<T extends IBaseHeatmapTrackDatum, K extend
     data?: {value: number}[]
 ) {
     trackDatum[featureKey] = featureId;
-    trackDatum.study = case_.studyId;
+    trackDatum.study_id = case_.studyId;
     if (!data || !data.length) {
         trackDatum.profile_data = null;
         trackDatum.na = true;
@@ -348,7 +348,7 @@ export function makeHeatmapTrackData<T extends IBaseHeatmapTrackDatum, K extends
 
 function fillNoDataValue(
     trackDatum:Partial<ClinicalTrackDatum>,
-    attribute:OncoprintClinicalAttribute,
+    attribute:ExtendedClinicalAttribute,
 ) {
     if (attribute.clinicalAttributeId === "MUTATION_COUNT") {
         trackDatum.attr_val = 0;
@@ -358,7 +358,7 @@ function fillNoDataValue(
 }
 export function fillClinicalTrackDatum(
     trackDatum:Partial<ClinicalTrackDatum>,
-    attribute:OncoprintClinicalAttribute,
+    attribute:ExtendedClinicalAttribute,
     case_:Sample|Patient,
     data?:(ClinicalData|MutationSpectrum)[],
 ) {

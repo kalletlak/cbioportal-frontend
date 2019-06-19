@@ -4,7 +4,9 @@ import {CancerStudy} from 'shared/api/generated/CBioPortalAPI';
 import {ThreeBounce} from 'better-react-spinkit';
 import request from 'superagent';
 import LazyMobXTable from "shared/components/lazyMobXTable/LazyMobXTable";
-import {getStudyDownloadListUrl, getStudySummaryUrl} from "../../../shared/api/urls";
+import {getNCBIlink, getStudyDownloadListUrl} from "../../../shared/api/urls";
+import {StudyLink} from "../../../shared/components/StudyLink/StudyLink";
+import {StudyDataDownloadLink} from "../../../shared/components/StudyDataDownloadLink/StudyDataDownloadLink";
 
 
 interface IDataTableRow {
@@ -51,14 +53,7 @@ class CancerStudyCell extends React.Component<ICancerStudyCellProps,{}> {
 
     render() {
         return (
-            <span>
-                <a
-                    href={getStudySummaryUrl(this.props.studyId)}
-                    target='_blank'
-                >
-                    {this.props.name}
-                </a>
-            </span>
+            <StudyLink studyId={this.props.studyId}>{this.props.name}</StudyLink>
         );
 
     }
@@ -70,7 +65,7 @@ class ReferenceCell extends React.Component<IReferenceCellProps ,{}> {
     render() {
         return (
             <a target='_blank'
-               href={`https://www.ncbi.nlm.nih.gov/pubmed/${this.props.pmid}`}> {this.props.citation} </a>
+               href={getNCBIlink(`/pubmed/${this.props.pmid}`)}> {this.props.citation} </a>
         );
 
     }
@@ -81,8 +76,8 @@ export default class DataSetsPageTable extends React.Component <IDataSetsTablePr
 
     chartTarget:HTMLElement;
 
-    constructor() {
-        super();
+    constructor(props:IDataSetsTableProps) {
+        super(props);
 
         this.state = {
             downloadable: {}
@@ -150,7 +145,7 @@ export default class DataSetsPageTable extends React.Component <IDataSetsTablePr
                                     type: 'name',
                                     render:(data:IDataTableRow)=> <CancerStudyCell studyId={data.studyId} name={data.name}/>,
                                     filter:(data:any, filterString:string, filterStringUpper:string) => {
-                                        return data.name.toUpperCase().indexOf(filterStringUpper) > -1;
+                                        return data.name.toUpperCase().includes(filterStringUpper);
                                      }
 
                                 },
@@ -164,10 +159,21 @@ export default class DataSetsPageTable extends React.Component <IDataSetsTablePr
                                     );
                                 }},
                                 {
-                                    name:'Reference',
+                                    name: '', sortBy: false, togglable: false, download: false, type: 'download',
+                                    render: (data: IDataTableRow) => {
+                                        const studyIsDownloadable = this.state.downloadable[data.studyId];
+                                        if (studyIsDownloadable) {
+                                            return <StudyDataDownloadLink studyId={data.studyId}/>;
+                                        } else {
+                                            return null;
+                                        }
+                                    }
+                                },
+                                {
+                                    name: 'Reference',
                                     type: 'citation', render:(data:IDataTableRow)=><ReferenceCell pmid={data.pmid} citation={data.citation}/>,
                                      filter:(data:any, filterString:string, filterStringUpper:string) => {
-                                        return data.citation.toUpperCase().indexOf(filterStringUpper) > -1;
+                                        return data.citation.toUpperCase().includes(filterStringUpper);
                                      }
 
                                 },
@@ -201,7 +207,7 @@ export default class DataSetsPageTable extends React.Component <IDataSetsTablePr
                                     sortBy: (column.hasOwnProperty('sortBy')) ? column.sortBy : ((data:any)=>(data[column.type])),
                                     render: column.hasOwnProperty('render') ? column.render : (data:any) => {
                                         const style = {};// {textAlign: 'center', width: '100%', display: 'block'}
-                                        return <span style={{style}}>{data[column.type] || 0}</span>;
+                                        return <span style={style}>{data[column.type] || 0}</span>;
                                     },
                                     download: column.hasOwnProperty('download') ? column.download : false,
                                     filter: column.filter || undefined

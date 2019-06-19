@@ -14,7 +14,7 @@ import {
 import {
     MUT_COLOR_FUSION, MUT_COLOR_INFRAME,
     MUT_COLOR_MISSENSE, MUT_COLOR_PROMOTER, MUT_COLOR_TRUNC
-} from "../../../shared/components/oncoprint/geneticrules";
+} from "shared/lib/Colors";
 import {getJitterForCase} from "../../../shared/components/plots/PlotUtils";
 import * as React from "react";
 import {getSampleViewUrl, getStudySummaryUrl} from "../../../shared/api/urls";
@@ -126,9 +126,10 @@ export function getExpressionStyle(mutationType: string){
 
 // this function classifies molecular data by corresponding mutation type or
 // non-mutated or non-sequenced status
+
 export function getMolecularDataBuckets(studyData: NumericGeneMolecularData[],
                                  showMutations: boolean,
-                                 mutationsKeyedBySampleId: { [sampleId: string]: Mutation },
+                                 mutationsKeyedBySampleId: { [sampleId: string]: Pick<Mutation, "proteinChange" | "mutationType"> },
                                  coverageInformation:CoverageInformation,
                                         hugoGeneSymbol:string
                                         ):MolecularDataBuckets {

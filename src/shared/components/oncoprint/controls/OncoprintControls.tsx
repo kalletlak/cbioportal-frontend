@@ -4,10 +4,10 @@ import {Button, ButtonGroup} from "react-bootstrap";
 import CustomDropdown from "./CustomDropdown";
 import ReactSelect from "react-select";
 import {MobxPromise} from "mobxpromise";
-import {computed, IObservableObject, observable, ObservableMap, reaction} from "mobx";
+import {action, computed, IObservableObject, observable, ObservableMap, reaction} from "mobx";
 import _ from "lodash";
-import {OncoprintClinicalAttribute, SortMode} from "../ResultsViewOncoprint";
-import {MolecularProfile} from "shared/api/generated/CBioPortalAPI";
+import {SortMode} from "../ResultsViewOncoprint";
+import {Gene, MolecularProfile} from "shared/api/generated/CBioPortalAPI";
 import LoadingIndicator from "shared/components/loadingIndicator/LoadingIndicator";
 import DefaultTooltip from "shared/components/defaultTooltip/DefaultTooltip";
 import Slider from "react-rangeslider";
@@ -16,10 +16,15 @@ import EditableSpan from "shared/components/editableSpan/EditableSpan";
 import "./styles.scss";
 import ErrorIcon from "../../ErrorIcon";
 import classNames from "classnames";
-import {SpecialAttribute} from "../../../cache/OncoprintClinicalDataCache";
-import autobind from "autobind-decorator";
+import {SpecialAttribute} from "../../../cache/ClinicalDataCache";
 import ClinicalAttributeSelector from "../../clinicalAttributeSelector/ClinicalAttributeSelector";
 import {ResultsViewPageStore} from "../../../../pages/resultsView/ResultsViewPageStore";
+import {ExtendedClinicalAttribute} from "../../../../pages/resultsView/ResultsViewPageStoreUtils";
+import {getNCBIlink} from "../../../api/urls";
+import {GeneBoxType} from "../../GeneSelectionBox/GeneSelectionBox";
+import GeneSelectionBox from "../../GeneSelectionBox/GeneSelectionBox";
+import autobind from "autobind-decorator";
+import {SingleGeneQuery} from "../../../lib/oql/oql-parser";
 
 export interface IOncoprintControlsHandlers {
     onSelectColumnType?:(type:"sample"|"patient")=>void,
@@ -90,7 +95,7 @@ export interface IOncoprintControlsState {
     annotateCOSMICInputValue?:string,
 
     sortMode?:SortMode,
-    clinicalAttributesPromise?:MobxPromise<OncoprintClinicalAttribute[]>,
+    clinicalAttributesPromise?:MobxPromise<ExtendedClinicalAttribute[]>,
     clinicalAttributeSampleCountPromise?:MobxPromise<{[clinicalAttributeId:string]:number}>,
     selectedClinicalAttributeIds?:string[],
     heatmapProfilesPromise?:MobxPromise<MolecularProfile[]>,
@@ -135,7 +140,6 @@ const EVENT_KEY = {
     sortByData:"9",
     sortByDrivers:"10",
     sortByHeatmapClustering:"11",
-    heatmapGeneInput:"12",
     addGenesToHeatmap: "13",
     removeHeatmap: "14",
     distinguishDrivers: "15",
@@ -160,6 +164,7 @@ const EVENT_KEY = {
 @observer
 export default class OncoprintControls extends React.Component<IOncoprintControlsProps, {}> {
     @observable horzZoomSliderState:number;
+    @observable heatmapGenesReady:boolean = false;
 
     constructor(props:IOncoprintControlsProps) {
         super(props);
@@ -363,12 +368,21 @@ export default class OncoprintControls extends React.Component<IOncoprintControl
         }
     }
 
+    @autobind
+    @action
+    private onChangeHeatmapGeneInput(oql:any, genes:any, queryStr:string) {
+        this.props.handlers.onChangeHeatmapGeneInputValue &&
+        this.props.handlers.onChangeHeatmapGeneInputValue(queryStr);
+
+        const foundGenes = _.keyBy(genes.found as Gene[], gene=>gene.hugoGeneSymbol.toUpperCase());
+
+        this.heatmapGenesReady = (
+            _.every(oql.query as SingleGeneQuery[], query=>query.gene.toUpperCase() in foundGenes) // all genes valid
+        );
+    }
+
     private onType(event:React.ChangeEvent<HTMLTextAreaElement>) {
         switch ((event.target as HTMLTextAreaElement).name) {
-            case EVENT_KEY.heatmapGeneInput:
-                this.props.handlers.onChangeHeatmapGeneInputValue &&
-                this.props.handlers.onChangeHeatmapGeneInputValue(event.target.value);
-                break;
             case EVENT_KEY.annotateCBioPortalInput:
                 this.props.handlers.onChangeAnnotateCBioPortalInputValue &&
                 this.props.handlers.onChangeAnnotateCBioPortalInputValue(event.target.value);
@@ -398,12 +412,11 @@ export default class OncoprintControls extends React.Component<IOncoprintControl
         if (this.props.store && this.props.state.selectedClinicalAttributeIds &&
             this.props.handlers.onChangeSelectedClinicalTracks) {
             return (
-                <div className="clinical-track-selector">
+                <div className="clinical-track-selector" style={{position:"relative"}}>
                     <ClinicalAttributeSelector
                         store={this.props.store}
                         selectedClinicalAttributeIds={this.props.state.selectedClinicalAttributeIds}
                         onChange={this.props.handlers.onChangeSelectedClinicalTracks}
-                        multiple={true}
                     />
                 </div>
             );
@@ -432,20 +445,17 @@ export default class OncoprintControls extends React.Component<IOncoprintControl
                             options={this.heatmapProfileOptions}
                         />
                         {this.props.state.heatmapIsDynamicallyQueried && [
-                            <textarea
-                                key="heatmapGeneInputArea"
-                                placeholder="Type space- or comma-separated genes here, then click 'Add Genes to Heatmap'"
-                                name={EVENT_KEY.heatmapGeneInput}
-                                onChange={this.onType}
-                                value={this.props.state.heatmapGeneInputValue}
-                            >
-                            </textarea>,
-
+                            <GeneSelectionBox
+                                inputGeneQuery={this.props.state.heatmapGeneInputValue || ""}
+                                callback={this.onChangeHeatmapGeneInput}
+                                location={GeneBoxType.ONCOPRINT_HEATMAP}
+                            />,
                             <button
                                 key="addGenesToHeatmapButton"
                                 className="btn btn-sm btn-default"
                                 name={EVENT_KEY.addGenesToHeatmap}
                                 onClick={this.onButtonClick}
+                                disabled={!this.heatmapGenesReady}
                              >Add Genes to Heatmap</button>,
 
                             <button
@@ -471,7 +481,7 @@ export default class OncoprintControls extends React.Component<IOncoprintControl
             menu = (<span>Error loading heatmap profiles.</span>);
         }
         return (
-            <CustomDropdown bsStyle="default" title="Heatmap" id="heatmapDropdown">
+            <CustomDropdown bsStyle="default" title="Heatmap" id="heatmapDropdown" className="heatmap">
                 {menu}
             </CustomDropdown>
         );
@@ -645,7 +655,7 @@ export default class OncoprintControls extends React.Component<IOncoprintControl
                                     {this.props.state.annotateDriversHotspotsError && <ErrorIcon style={{marginRight:4}} tooltip={<span>Error loading Hotspots data. Please refresh the page or try again later.</span>}/>}
                                     Hotspots
                                     <DefaultTooltip
-                                        overlay={<div style={{maxWidth:"400px"}}>Identified as a recurrent hotspot (statistically significant) in a population-scale cohort of tumor samples of various cancer types using methodology based in part on <a href="http://www.ncbi.nlm.nih.gov/pubmed/26619011" target="_blank">Chang et al., Nat Biotechnol, 2016.</a>
+                                        overlay={<div style={{maxWidth:"400px"}}>Identified as a recurrent hotspot (statistically significant) in a population-scale cohort of tumor samples of various cancer types using methodology based in part on <a href={getNCBIlink('/pubmed/26619011')} target="_blank">Chang et al., Nat Biotechnol, 2016.</a>
                                             Explore all mutations at <a href="http://www.cancerhotspots.org" target="_blank">http://cancerhotspots.org</a></div>}
                                         placement="top"
                                     >
@@ -973,7 +983,6 @@ export default class OncoprintControls extends React.Component<IOncoprintControl
         );
     }
 
-    @autobind
     private getSortMenu() {
         if (this.props.oncoprinterMode) {
             return this.getSortMenuOncoprinter();
@@ -985,7 +994,7 @@ export default class OncoprintControls extends React.Component<IOncoprintControl
     render() {
         return (
             <div className="oncoprint__controls">
-                <div style={{width:220}}>
+                <div style={{width:250, marginRight:5, marginTop:-0.5}}>
                     <Observer>
                         {this.getClinicalTracksMenu}
                     </Observer>

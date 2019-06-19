@@ -12,7 +12,7 @@ import {stringListToSet} from "./StringUtils";
 import {
     MUT_COLOR_INFRAME, MUT_COLOR_MISSENSE, MUT_COLOR_OTHER,
     MUT_COLOR_TRUNC
-} from "../components/oncoprint/geneticrules";
+} from "shared/lib/Colors";
 import {AlterationTypeConstants, AnnotatedExtendedAlteration} from "../../pages/resultsView/ResultsViewPageStore";
 
 export interface IProteinImpactTypeColors
@@ -98,8 +98,11 @@ export function groupMutationsByProteinStartPos(mutationData: Mutation[][]): {[p
     for (const mutations of mutationData) {
         for (const mutation of mutations) {
             const codon = mutation.proteinPosStart;
-            map[codon] = map[codon] || [];
-            map[codon].push(mutation);
+
+            if (codon !== undefined && codon !== null) {
+                map[codon] = map[codon] || [];
+                map[codon].push(mutation);
+            }
         }
     }
 
@@ -249,7 +252,7 @@ export function somaticMutationRate(hugoGeneSymbol: string, mutations: Mutation[
 }
 
 export function isNotGermlineMutation(
-    m:any
+    m:{ mutationStatus?:string }
 ) {
     return !m.mutationStatus || !(GERMLINE_REGEXP.test(m.mutationStatus));
 }

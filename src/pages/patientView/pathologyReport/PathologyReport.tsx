@@ -8,6 +8,7 @@ import {observer} from "mobx-react";
 export type IPathologyReportProps = {
 
     pdfs:PathologyReportPDF[];
+    iframeHeight: number;
     iframeStyle?:{[styleProp:string]:any};
 
 }
@@ -21,7 +22,7 @@ export default class PathologyReport extends React.Component<IPathologyReportPro
 
     constructor(props: IPathologyReportProps){
 
-        super();
+        super(props);
 
         this.state = { pdfUrl: this.buildPDFUrl(props.pdfs[0].url) }
 
@@ -35,9 +36,9 @@ export default class PathologyReport extends React.Component<IPathologyReportPro
 
     }
 
-    shouldComponentUpdate(nextProps: IPathologyReportProps){
-        return nextProps === this.props;
-    }
+    // shouldComponentUpdate(nextProps: IPathologyReportProps){
+    //     return nextProps === this.props;
+    // }
 
     handleSelection(){
         this.setState({ pdfUrl:this.buildPDFUrl(this.pdfSelectList.options[this.pdfSelectList.selectedIndex].value) });
@@ -53,8 +54,7 @@ export default class PathologyReport extends React.Component<IPathologyReportPro
                 </select>
             </If>
 
-
-            <IFrameLoader height={700} url={ this.state.pdfUrl } />
+            <IFrameLoader height={this.props.iframeHeight} url={ this.state.pdfUrl } />
 
         </div>)
 

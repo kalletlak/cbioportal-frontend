@@ -9,7 +9,7 @@ import {Column} from "../../../../shared/components/lazyMobXTable/LazyMobXTable"
 import {getFrequencyStr} from "../../StudyViewUtils";
 import LoadingIndicator from "../../../../shared/components/loadingIndicator/LoadingIndicator";
 import MobxPromise from 'mobxpromise';
-import {ClinicalDataCountSet} from "../../StudyViewPageStore";
+import {ClinicalDataCountSet} from "../../StudyViewUtils";
 import FixedHeaderTable from "../../table/FixedHeaderTable";
 import autobind from 'autobind-decorator';
 import classnames from 'classnames';
@@ -31,10 +31,6 @@ const NUM_ROWS_SHOWN = 15;
 
 @observer
 export default class AddChartByType extends React.Component<IAddChartByTypeProps, {}> {
-
-    constructor(props: IAddChartByTypeProps) {
-        super(props);
-    }
 
     @computed
     get options() {
@@ -75,12 +71,12 @@ export default class AddChartByType extends React.Component<IAddChartByTypeProps
                         }}
                         onChange={() => this.onOptionChange(option)}
                     >
-                        <EllipsisTextTooltip text={option.label}/>
+                        <EllipsisTextTooltip text={option.label} shownWidth={320}/>
                     </LabeledCheckbox>
                 </div>
             )
         },
-        filter: (d: ChartOption, f: string, filterStringUpper: string) => (d.label.toUpperCase().indexOf(filterStringUpper) > -1),
+        filter: (d: ChartOption, f: string, filterStringUpper: string) => d.label.toUpperCase().includes(filterStringUpper),
         sortBy: (d: ChartOption) => d.label,
         width: 320,
         defaultSortDirection: 'asc' as 'asc'
@@ -106,8 +102,8 @@ export default class AddChartByType extends React.Component<IAddChartByTypeProps
     }
 
     @autobind
-    getCurrentSelectedRows() {
-        return _.filter(this.options, option => option.selected);
+    getCurrentSelectedRows():ChartOption[] {
+        return this.options.filter(option => option.selected);
     }
 
     @autobind

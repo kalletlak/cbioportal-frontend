@@ -1,15 +1,13 @@
 import * as React from 'react';
-import * as _ from 'lodash';
-import {inject, observer} from "mobx-react";
+import { observer} from "mobx-react";
 import {ResultsViewPageStore} from "../ResultsViewPageStore";
-import {If, Then, Else} from 'react-if';
+
 import {CancerStudy} from "../../../shared/api/generated/CBioPortalAPI";
 import classNames from 'classnames';
 import './styles.scss';
 import DefaultTooltip from "../../../shared/components/defaultTooltip/DefaultTooltip";
 import Loader, {default as LoadingIndicator} from "../../../shared/components/loadingIndicator/LoadingIndicator";
 import {action, computed, observable} from "mobx";
-import {QueryStore} from "../../../shared/components/query/QueryStore";
 import QueryAndDownloadTabs from "../../../shared/components/query/QueryAndDownloadTabs";
 import autobind from "autobind-decorator";
 import ExtendedRouterStore from "../../../shared/lib/ExtendedRouterStore";
@@ -19,28 +17,24 @@ import AppConfig from "appConfig";
 import {StudyLink} from "../../../shared/components/StudyLink/StudyLink";
 import {createQueryStore} from "../../home/HomePage";
 import getBrowserWindow from "../../../shared/lib/getBrowserWindow";
-import {remoteData} from "../../../shared/api/remoteData";
 import {getAlterationSummary, getGeneSummary, getPatientSampleSummary} from "./QuerySummaryUtils";
 import {MakeMobxView} from "../../../shared/components/MobxView";
 import {getGAInstance} from "../../../shared/lib/tracking";
+import {buildCBioPortalPageUrl} from "../../../shared/api/urls";
 
 @observer
-export default class QuerySummary extends React.Component<{ routingStore:ExtendedRouterStore, store: ResultsViewPageStore }, {}> {
-
-    @observable.ref queryStore: QueryStore | undefined;
-
-    constructor() {
-        super();
-    }
+export default class QuerySummary extends React.Component<{ routingStore:ExtendedRouterStore, store: ResultsViewPageStore, onToggleQueryFormVisiblity:(visible:boolean)=>void }, {}> {
 
     @autobind
-    private handleModifyQueryClick() {
-        // this will have no functional impact after initial invocation of this method
-        this.queryStore = (this.queryStore) ? undefined : createQueryStore(getBrowserWindow().routingStore.query);
+    private toggleQueryFormVisibility() {
+        this.props.onToggleQueryFormVisiblity(this._queryFormVisible);
+        this._queryFormVisible = !this._queryFormVisible;
     }
 
+    @observable _queryFormVisible: boolean = false;
+
     @computed get queryFormVisible(){
-        return !!this.queryStore;
+        return this._queryFormVisible || this.isQueryOrGeneInvalid;
     }
 
     readonly singleStudyUI = MakeMobxView({
@@ -72,7 +66,7 @@ export default class QuerySummary extends React.Component<{ routingStore:Extende
     @autobind
     @action
     closeQueryForm(){
-        this.queryStore = undefined;
+        this.toggleQueryFormVisibility();
         $(document).scrollTop(0);
     }
 
@@ -80,14 +74,14 @@ export default class QuerySummary extends React.Component<{ routingStore:Extende
         await:()=>[this.props.store.samples, this.props.store.patients, this.props.store.queriedStudies],
         render:()=>(
             <div>
-                <h4>
+                <h3>
                     <a
-                        href={`study?id=${this.props.store.queriedStudies.result.map(study => study.studyId).join(',')}`}
+                        href={buildCBioPortalPageUrl(`study`, { id:this.props.store.queriedStudies.result.map(study => study.studyId).join(',')})}
                         target="_blank"
                     >
                         Combined Study ({this.props.store.samples.result.length} samples)
                     </a>
-                </h4>
+                </h3>
                 <span>
                     Querying {getPatientSampleSummary(this.props.store.samples.result, this.props.store.patients.result)} in {this.props.store.queriedStudies.result.length} studies
                     &nbsp;-&nbsp;
@@ -141,6 +135,21 @@ export default class QuerySummary extends React.Component<{ routingStore:Extende
         getGAInstance()('send', 'event', 'resultsView', 'query modified');
     }
 
+    @computed get queryForm(){
+        return <div style={{margin:"10px -20px 0 -20px"}}>
+            <QueryAndDownloadTabs onSubmit={this.onSubmit}
+                                  showQuickSearchTab={false}
+                                  showDownloadTab={false}
+                                  showAlerts={true}
+                                  getQueryStore={()=>createQueryStore(getBrowserWindow().routingStore.query)}
+            />
+        </div>
+    }
+
+    @computed get isQueryOrGeneInvalid() {
+        return this.props.store.genesInvalid || this.props.store.isQueryInvalid;
+    }
+
     render() {
 
         if (!this.cohortAndGeneSummary.isError && !this.alterationSummary.isError) {
@@ -151,11 +160,15 @@ export default class QuerySummary extends React.Component<{ routingStore:Extende
                 <div>
                     <div className="query-summary">
                         <div className="query-summary__leftItems">
-                            <div>
-                                <button id="modifyQueryBtn" onClick={this.handleModifyQueryClick} className={classNames('btn btn-primary' , { disabled:!loadingComplete  })}>
-                                    {(this.queryFormVisible) ? 'Cancel Modify Query' : 'Modify Query'}
-                                </button>
-                            </div>
+                            {
+                                (!this.isQueryOrGeneInvalid) && (
+                                    <div>
+                                        <button id="modifyQueryBtn" onClick={this.toggleQueryFormVisibility} className={classNames('btn btn-primary' , { disabled:!loadingComplete  })}>
+                                            {(this.queryFormVisible) ? 'Cancel Modify Query' : 'Modify Query'}
+                                        </button>
+                                    </div>
+                                )
+                            }
 
                             <LoadingIndicator isLoading={!loadingComplete} small={true}/>
                             {
@@ -178,14 +191,12 @@ export default class QuerySummary extends React.Component<{ routingStore:Extende
                     </div>
 
                     {
-                        (this.queryFormVisible) && (
-                            <div style={{marginTop:10}}>
-                                <QueryAndDownloadTabs onSubmit={this.onSubmit} showDownloadTab={false} store={this.queryStore!} />
-                            </div>
-                        )
+                        (this.queryFormVisible) && this.queryForm
                     }
                 </div>
             )
+        } else if (this.isQueryOrGeneInvalid) {
+            return this.queryForm;
         } else {
             return null;
         }

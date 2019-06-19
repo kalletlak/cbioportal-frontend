@@ -10,6 +10,7 @@ const Clipboard = require('clipboard');
 import copyDownloadStyles from "./copyDownloadControls.module.scss";
 import {CopyDownloadButtons} from "./CopyDownloadButtons";
 import {ICopyDownloadControlsProps} from "./ICopyDownloadControls";
+import autobind from "autobind-decorator";
 
 export interface IAsyncCopyDownloadControlsProps extends ICopyDownloadControlsProps {
     downloadData?: () => Promise<ICopyDownloadData>;
@@ -46,9 +47,9 @@ export class CopyDownloadControls extends React.Component<IAsyncCopyDownloadCont
         downloadFilename: "data.tsv"
     };
 
-    constructor()
+    constructor(props:IAsyncCopyDownloadControlsProps)
     {
-        super();
+        super(props);
         this.handleDownload = this.handleDownload.bind(this);
         this.handleCopy = this.handleCopy.bind(this);
         this.handleModalClose = this.handleModalClose.bind(this);
@@ -183,11 +184,9 @@ export class CopyDownloadControls extends React.Component<IAsyncCopyDownloadCont
 
     public handleCopy()
     {
-        // async update of the copy text, if the copy text ends up to be different than the previous one,
-        // we show a modal to force a second copy action.
-        setTimeout(this.initCopyProcess(), 1);
+        this.initCopyProcess();
     }
-
+    
     public initCopyProcess()
     {
         // this makes sure that copy data and the download data are the same/consistent

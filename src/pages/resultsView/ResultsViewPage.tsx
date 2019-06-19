@@ -2,7 +2,7 @@ import * as React from "react";
 import * as _ from "lodash";
 import $ from "jquery";
 import {inject, observer} from "mobx-react";
-import {computed, reaction, runInAction} from "mobx";
+import {computed, observable, reaction, runInAction} from "mobx";
 import {ResultsViewPageStore, SamplesSpecificationElement} from "./ResultsViewPageStore";
 import CancerSummaryContainer from "pages/resultsView/cancerSummary/CancerSummaryContainer";
 import Mutations from "./mutation/Mutations";
@@ -26,10 +26,9 @@ import getBrowserWindow from "../../shared/lib/getBrowserWindow";
 import CoExpressionTab from "./coExpression/CoExpressionTab";
 import Helmet from "react-helmet";
 import {showCustomTab} from "../../shared/lib/customTabs";
-import {getTabId, parseConfigDisabledTabs, ResultsViewTab} from "./ResultsViewPageHelpers";
+import {getTabId, parseConfigDisabledTabs, parseSamplesSpecifications, ResultsViewTab} from "./ResultsViewPageHelpers";
 import {buildResultsViewPageTitle, doesQueryHaveCNSegmentData} from "./ResultsViewPageStoreUtils";
 import {AppStore} from "../../AppStore";
-import {bind} from "bind-decorator";
 import {updateResultsViewQuery} from "./ResultsViewQuery";
 import {trackQuery} from "../../shared/lib/tracking";
 import {onMobxPromise} from "../../shared/lib/onMobxPromise";
@@ -77,46 +76,7 @@ function initStore() {
 
                         const oql = decodeURIComponent(query.gene_list);
 
-                        let samplesSpecification: SamplesSpecificationElement[];
-
-                        if (query.case_ids && query.case_ids.length > 0) {
-                            const case_ids = query.case_ids.split("+");
-                            samplesSpecification = case_ids.map((item:string)=>{
-                                const split = item.split(":");
-                                return {
-                                   studyId:split[0],
-                                   sampleId:split[1]
-                                }
-                            });
-                        } else if (query.sample_list_ids) {
-                            samplesSpecification = query.sample_list_ids.split(",").map((studyListPair:string)=>{
-                                const pair = studyListPair.split(":");
-                                return {
-                                    studyId:pair[0],
-                                    sampleListId:pair[1],
-                                    sampleId: undefined
-                                }
-                            });
-                        } else if (query.case_set_id !== "all") {
-                                // by definition if there is a case_set_id, there is only one study
-                                samplesSpecification = cancerStudyIds.map((studyId:string)=>{
-                                    return {
-                                        studyId: studyId,
-                                        sampleListId: query.case_set_id,
-                                        sampleId: undefined
-                                    };
-                                });
-                        } else if (query.case_set_id === "all") { // case_set_id IS equal to all
-                            samplesSpecification = cancerStudyIds.map((studyId:string)=>{
-                                return {
-                                    studyId,
-                                    sampleListId:`${studyId}_all`,
-                                    sampleId:undefined
-                                }
-                            });
-                        } else {
-                            throw("INVALID QUERY");
-                        }
+                        let samplesSpecification = parseSamplesSpecifications(query, cancerStudyIds);
 
                         const changes = updateResultsViewQuery(resultsViewPageStore.rvQuery, query, samplesSpecification, cancerStudyIds, oql);
                         if (changes.cohortIdsList) {
@@ -125,7 +85,7 @@ function initStore() {
 
                         onMobxPromise(resultsViewPageStore.studyIds, ()=>{
                             try {
-                                trackQuery(resultsViewPageStore.studyIds.result!, oql, resultsViewPageStore.hugoGeneSymbols, resultsViewPageStore.virtualStudies.result!.length > 0);
+                                trackQuery(resultsViewPageStore.studyIds.result!, oql, resultsViewPageStore.hugoGeneSymbols, resultsViewPageStore.queriedVirtualStudies.result!.length > 0);
                             } catch {};
                         });
 
@@ -169,6 +129,8 @@ export interface IResultsViewPageProps {
 export default class ResultsViewPage extends React.Component<IResultsViewPageProps, {}> {
 
     private resultsViewPageStore: ResultsViewPageStore;
+
+    @observable showTabs = true;
 
     constructor(props: IResultsViewPageProps) {
         super(props);
@@ -228,11 +190,12 @@ export default class ResultsViewPage extends React.Component<IResultsViewPagePro
                 id:ResultsViewTab.MUTUAL_EXCLUSIVITY,
                 getTab: () => {
                     return <MSKTab key={5} id={ResultsViewTab.MUTUAL_EXCLUSIVITY} linkText="Mutual Exclusivity">
-                        <MutualExclusivityTab store={store}/>
+                        <MutualExclusivityTab store={store} isSampleAlteredMap={store.isSampleAlteredMap}/>
                     </MSKTab>
                 },
                 hide:()=>{
-                    return this.resultsViewPageStore.hugoGeneSymbols.length < 2;
+                    // we are using the size of isSampleAlteredMap as a proxy for the number of things we have to compare
+                    return !this.resultsViewPageStore.isSampleAlteredMap.isComplete || _.size(this.resultsViewPageStore.isSampleAlteredMap.result) < 2;
                 }
             },
 
@@ -331,15 +294,12 @@ export default class ResultsViewPage extends React.Component<IResultsViewPagePro
 
             {
                 id:ResultsViewTab.CN_SEGMENTS,
-                hide:()=>{
-                    if (!this.resultsViewPageStore.samples.isComplete ||
-                        !this.resultsViewPageStore.studies.isComplete) {
-                        return true;
-                    } else {
-                        const tooManyStudies = this.resultsViewPageStore.studies.result!.length > 1;
-                        const noData = !doesQueryHaveCNSegmentData(this.resultsViewPageStore.samples.result);
-                        return tooManyStudies || noData;
-                    }
+                hide:() => {
+                    return (
+                        !this.resultsViewPageStore.studies.isComplete ||
+                        !this.resultsViewPageStore.genes.isComplete ||
+                        !doesQueryHaveCNSegmentData(this.resultsViewPageStore.samples.result)
+                    );
                 },
                 getTab: () => {
                     return <MSKTab key={6} id={ResultsViewTab.CN_SEGMENTS}
@@ -418,7 +378,6 @@ export default class ResultsViewPage extends React.Component<IResultsViewPagePro
                     </MSKTab>
                 }
             }
-
         ];
 
         let filteredTabs = tabMap.filter(this.evaluateTabInclusion).map((tab)=>tab.getTab());
@@ -472,9 +431,18 @@ export default class ResultsViewPage extends React.Component<IResultsViewPagePro
     }
 
     @computed get pageContent(){
-
         // if studies are complete but we don't have a tab id in route, we need to derive default
         return (<div>
+            {
+                // if qeury invalid(we only check gene length for now), return error page
+                (this.resultsViewPageStore.isQueryInvalid) && (
+                    <div className="alert alert-danger queryInvalid" style={{marginBottom: "15px"}} role="alert">
+                        <p>
+                            Queries are limited to 100 genes. Please <a href={`mailto:${AppConfig.serverConfig.skin_email_contact}`}>let us know</a> your use case(s) if you need to query more than 100 genes.
+                        </p>
+                    </div>
+                )
+            }
             {
                 (this.resultsViewPageStore.studies.isComplete) && (
                     <Helmet>
@@ -484,21 +452,32 @@ export default class ResultsViewPage extends React.Component<IResultsViewPagePro
             }
             {(this.resultsViewPageStore.studies.isComplete) && (
                     <div>
-                        <div style={{margin:"0 20px 10px 20px"}}>
-                            <QuerySummary routingStore={this.props.routing} store={this.resultsViewPageStore}/>
+                        <div className={'headBlock'}>
+                            <QuerySummary
+                                routingStore={this.props.routing}
+                                store={this.resultsViewPageStore}
+                                onToggleQueryFormVisiblity={(visible)=>{
+                                    this.showTabs = visible;
+                                }}
+                            />
                         </div>
 
-                        <MSKTabs key={this.resultsViewPageStore.rvQuery.hash} activeTabId={this.currentTab(this.resultsViewPageStore.tabId)} unmountOnHide={false}
-                                 onTabClick={(id: string) => this.handleTabChange(id)} className="mainTabs">
-                            {
-                                this.tabs
-                            }
-                        </MSKTabs>
+                        {
+                            // we don't show the result tabs if we don't have valid query
+                            (this.showTabs && !this.resultsViewPageStore.genesInvalid && !this.resultsViewPageStore.isQueryInvalid) && (
+                                <MSKTabs key={this.resultsViewPageStore.rvQuery.hash} activeTabId={this.currentTab(this.resultsViewPageStore.tabId)} unmountOnHide={false}
+                                         onTabClick={(id: string) => this.handleTabChange(id)} className="mainTabs">
+                                    {
+                                        this.tabs
+                                    }
+                                </MSKTabs>
+                            )
+                        }
 
                     </div>
                 )
             }
-        </div>)
+        </div>);
     }
 
     public render() {
@@ -517,7 +496,6 @@ export default class ResultsViewPage extends React.Component<IResultsViewPagePro
             )
         }
     }
-
 
 }
 

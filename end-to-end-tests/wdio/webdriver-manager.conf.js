@@ -1,3 +1,6 @@
+var CustomReporter = require('./customReporter');
+
+
 var path = require('path');
 var VisualRegressionCompare = require('wdio-visual-regression-service/compare');
 var getScreenshotName = require('./getScreenshotName');
@@ -7,7 +10,7 @@ require.extensions['.txt'] = function (module, filename) {
     module.exports = fs.readFileSync(filename, 'utf8');
 };
 
-exports.config = {
+var config = {
     //
     // ==================
     // Specify Test Files
@@ -17,9 +20,13 @@ exports.config = {
     // NPM script (see https://docs.npmjs.com/cli/run-script) then the current working
     // directory is where your package.json resides, so `wdio` will be called from there.
     //
+    // specs: [
+    //     './specs/**/results.logic.spec.js'
+    // ],
     specs: [
         process.env.SPEC_FILE_PATTERN || './specs/**/*.spec.js'  // './specs/**/screenshot.spec.js'
     ],
+
     // Patterns to exclude.
     exclude: [
         // 'path/to/excluded/files'
@@ -40,7 +47,7 @@ exports.config = {
     // and 30 processes will get spawned. The property handles how many capabilities
     // from the same test should run tests.
     //
-    maxInstances: 5,
+    maxInstances: 3,
     //
     // If you have trouble getting all important capabilities together, check out the
     // Sauce Labs platform configurator - a great tool to configure your capabilities:
@@ -48,15 +55,16 @@ exports.config = {
     //
     capabilities: [{
 
-        browserName: 'chrome',
+        //browserName: 'chrome',
         chromeOptions: {
-            args: ['--disable-composited-antialiasing']
-        }
+            args: ['--disable-composited-antialiasing','--allow-insecure-localhost']
+        },
 
-        // chromeOptions: {
-        //     args: ['--headless'],
-        //     binary: '/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome'
-        // }
+        'os': 'OS X',
+        'os_version': 'High Sierra',
+        'browser': 'Chrome',
+        'browser_version': '74.0 beta',
+        'resolution': '1600x1200'
 
     }],
     //
@@ -89,7 +97,7 @@ exports.config = {
     baseUrl: 'http://localhost',
     //
     // Default timeout for all waitFor* commands.
-    waitforTimeout: 10000,
+    waitforTimeout: 20000,
     //
     // Default timeout in milliseconds for request
     // if Selenium Grid doesn't send response
@@ -120,9 +128,14 @@ exports.config = {
     // Services take over a specific job you don't want to take care of. They enhance
     // your test setup with almost no effort. Unlike plugins, they don't add new
     // commands. Instead, they hook themselves up into the test process.
+
+
+
     services: [
-        'visual-regression',
+        'visual-regression'
     ],
+
+
     visualRegression: {
         compare: new VisualRegressionCompare.LocalCompare({
             referenceName: getScreenshotName(path.join(process.cwd(), 'screenshots/reference')),
@@ -146,12 +159,18 @@ exports.config = {
     // Test reporter for stdout.
     // The only one supported by default is 'dot'
     // see also: http://webdriver.io/guide/testrunner/reporters.html
-    reporters: ['spec', 'junit'],
+    reporters: ['spec', 'junit', CustomReporter],
     reporterOptions: {
         junit: {
-            outputDir: process.env.JUNIT_REPORT_PATH,
+            outputDir: process.env.JUNIT_REPORT_PATH || "./",
             outputFileFormat: function(opts) { // optional
                 return `results-${opts.cid}.${opts.capabilities}.xml`
+            }
+        },
+        custom: {
+            outputDir: process.env.JUNIT_REPORT_PATH ||  "./",
+            outputFileFormat: function(opts) { // optional
+                return `custom-results-${opts.cid}.${opts.capabilities}.xml`
             }
         }
     },
@@ -200,6 +219,7 @@ exports.config = {
      * @param {Object} suite suite details
      */
     // beforeSuite: function (suite) {
+    //
     // },
     /**
      * Hook that gets executed _before_ a hook within the suite starts (e.g. runs before calling
@@ -239,8 +259,26 @@ exports.config = {
      * Function to be executed after a test (in Mocha/Jasmine) or a step (in Cucumber) starts.
      * @param {Object} test test details
      */
-    // afterTest: function (test) {
-    // },
+    afterTest: function (test) {
+
+        var networkLog = browser.execute(function() {
+
+            Object.keys(window.ajaxRequests).forEach((key)=>{
+                window.ajaxRequests[key].end = Date.now();
+                window.ajaxRequests[key].duration = window.ajaxRequests[key].end - window.ajaxRequests[key].started;
+            });
+
+            return JSON.stringify(window.ajaxRequests);
+
+        }).value;
+
+        process.send({
+            event: 'custom-report',
+            data: { test:test, network:JSON.parse(networkLog) }
+        });
+
+
+    },
     /**
      * Hook that gets executed after the suite has ended
      * @param {Object} suite suite details
@@ -272,3 +310,24 @@ exports.config = {
     // onComplete: function(exitCode) {
     // }
 };
+
+const doBrowserstack = false;
+
+if (doBrowserstack) {
+    config.capabilities[0]['browserstack.local'] = true;
+
+    config.services =  ['visual-regression','browserstack'];
+
+    config.browserstackLocal = true;
+
+    config.user = process.env.BROWSERSTACK_USER;
+    config.key = process.env.BROWSERSTACK_KEY;
+}
+
+// config.specs = [
+//     './specs/**/oncoprint.spec.js'
+// ];
+
+
+exports.config  = config;
+

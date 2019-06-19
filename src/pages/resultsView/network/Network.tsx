@@ -43,21 +43,8 @@ export default class Network extends React.Component<INetworkTabParams, {}> {
 
         };
 
-
-
-
-        let path = (/\/\/localhost|127\.0\.0\.1/.test(AppConfig.frontendUrl!)) ?
-            AppConfig.frontendUrl! :
-            `//${AppConfig.baseUrl!}`;
-
-
-        // cloodge to get around broken network tab on public portal due to strange MSK IT filtering
-        if (AppConfig.apiRoot!.includes("www.cbioportal.org") && (window as any).location.hostname.includes("www.cbioportal.org")) {
-            path = "//cbioportal-network-tab.herokuapp.com";
-        }
-
         const strParams = encodeURIComponent(JSON.stringify(networkParams));
-        return `${trimTrailingSlash(path)}/reactapp/network/network.htm?${AppConfig.serverConfig.app_version}&apiHost=${encodeURIComponent(AppConfig.apiRoot!.replace(/^http[s]?:\/\//,''))}#${strParams}`;
+        return `${trimTrailingSlash(AppConfig.frontendUrl!)}/reactapp/network/network.htm?${AppConfig.serverConfig.app_version}&apiHost=${encodeURIComponent(AppConfig.apiRoot!.replace(/^http[s]?:\/\//,''))}#${strParams}`;
     }
 
     render(){

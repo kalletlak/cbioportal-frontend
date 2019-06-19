@@ -9,7 +9,7 @@ import internalClient from "../../../shared/api/cbioportalInternalClientInstance
 import {
     Gistic, GisticToGene, default as CBioPortalAPIInternal, MutSig
 } from "shared/api/generated/CBioPortalAPIInternal";
-import {computed, observable, action} from "mobx";
+import {computed, observable, action, runInAction} from "mobx";
 import {remoteData} from "../../../shared/api/remoteData";
 import {IGisticData} from "shared/model/Gistic";
 import {labelMobxPromises, cached} from "mobxpromise";
@@ -23,6 +23,7 @@ import {
 import OncoKbEvidenceCache from "shared/cache/OncoKbEvidenceCache";
 import PubMedCache from "shared/cache/PubMedCache";
 import GenomeNexusCache from "shared/cache/GenomeNexusCache";
+import GenomeNexusMyVariantInfoCache from "shared/cache/GenomeNexusMyVariantInfoCache";
 import {IOncoKbData} from "shared/model/OncoKB";
 import {IHotspotIndex} from "shared/model/CancerHotspots";
 import {IMutSigData} from "shared/model/MutSig";
@@ -34,20 +35,49 @@ import CancerTypeCache from "shared/cache/CancerTypeCache";
 import MutationCountCache from "shared/cache/MutationCountCache";
 import AppConfig from "appConfig";
 import {
-    findMolecularProfileIdDiscrete, ONCOKB_DEFAULT, fetchOncoKbData,
-    fetchCnaOncoKbData, mergeMutations, fetchMyCancerGenomeData, fetchMutationalSignatureData, fetchMutationalSignatureMetaData,
-    fetchCosmicData, fetchMutationData, fetchDiscreteCNAData, generateUniqueSampleKeyToTumorTypeMap, findMutationMolecularProfileId,
-    findUncalledMutationMolecularProfileId, mergeMutationsIncludingUncalled, fetchGisticData, fetchCopyNumberData,
-    fetchMutSigData, findMrnaRankMolecularProfileId, mergeDiscreteCNAData, fetchSamplesForPatient, fetchClinicalData,
-    fetchCopyNumberSegments, fetchClinicalDataForPatient, makeStudyToCancerTypeMap,
-    fetchCivicGenes, fetchCnaCivicGenes, fetchCivicVariants, groupBySampleId, findSamplesWithoutCancerTypeClinicalData,
-    fetchStudiesForSamplesWithoutCancerTypeClinicalData, fetchOncoKbAnnotatedGenesSuppressErrors, concatMutationData
+    findMolecularProfileIdDiscrete,
+    ONCOKB_DEFAULT,
+    fetchOncoKbData,
+    fetchCnaOncoKbData,
+    mergeMutations,
+    fetchMyCancerGenomeData,
+    fetchMutationalSignatureData,
+    fetchMutationalSignatureMetaData,
+    fetchCosmicData,
+    fetchMutationData,
+    fetchDiscreteCNAData,
+    generateUniqueSampleKeyToTumorTypeMap,
+    findMutationMolecularProfileId,
+    findUncalledMutationMolecularProfileId,
+    mergeMutationsIncludingUncalled,
+    fetchGisticData,
+    fetchCopyNumberData,
+    fetchMutSigData,
+    findMrnaRankMolecularProfileId,
+    mergeDiscreteCNAData,
+    fetchSamplesForPatient,
+    fetchClinicalData,
+    fetchCopyNumberSegments,
+    fetchClinicalDataForPatient,
+    makeStudyToCancerTypeMap,
+    fetchCivicGenes,
+    fetchCnaCivicGenes,
+    fetchCivicVariants,
+    groupBySampleId,
+    findSamplesWithoutCancerTypeClinicalData,
+    fetchStudiesForSamplesWithoutCancerTypeClinicalData,
+    concatMutationData,
+    fetchOncoKbCancerGenes
 } from "shared/lib/StoreUtils";
 import {indexHotspotsData, fetchHotspotsData} from "shared/lib/CancerHotspotsUtils";
 import {stringListToSet} from "../../../shared/lib/StringUtils";
 import {MutationTableDownloadDataFetcher} from "shared/lib/MutationTableDownloadDataFetcher";
 import { VariantAnnotation } from 'shared/api/generated/GenomeNexusAPI';
 import { fetchVariantAnnotationsIndexedByGenomicLocation } from 'shared/lib/MutationAnnotator';
+import { ClinicalAttribute } from 'shared/api/generated/CBioPortalAPI';
+import getBrowserWindow from "../../../shared/lib/getBrowserWindow";
+import {getNavCaseIdsCache} from "../../../shared/lib/handleLongUrls";
+import {CancerGene} from "shared/api/generated/OncoKbAPI";
 
 type PageMode = 'patient' | 'sample';
 
@@ -70,6 +100,12 @@ export type PathologyReportPDF = {
     name: string;
     url: string;
 
+}
+
+export function parseCohortIds(concatenatedIds:string){
+    return concatenatedIds.split(',').map((entityId:string)=>{
+        return entityId.includes(':') ? entityId : this.studyId + ':' + entityId;
+    });
 }
 
 export function handlePathologyReportCheckResponse(patientId: string, resp: any): PathologyReportPDF[] {
@@ -106,9 +142,7 @@ function transformClinicalInformationToStoreShape(patientId: string, studyId: st
 export class PatientViewPageStore {
     constructor() {
         labelMobxPromises(this);
-
         this.internalClient = internalClient;
-
     }
 
     public internalClient: CBioPortalAPIInternal;
@@ -171,7 +205,22 @@ export class PatientViewPageStore {
         invoke: async() => findUncalledMutationMolecularProfileId(this.molecularProfilesInStudy, this.studyId)
     });
 
-    @observable patientIdsInCohort: string[] = [];
+    // this is a string of concatenated ids
+    @observable
+    private _patientIdsInCohort:string[] = [];
+
+    public set patientIdsInCohort(cohortIds:string[]){
+        // cannot put action on setter
+        runInAction(()=>this._patientIdsInCohort = cohortIds);
+    }
+
+    @computed
+    public get patientIdsInCohort(): string[] {
+        let concatenatedIds: string;
+        // check to see if we copied from url hash on app load
+        const memoryCachedIds = getNavCaseIdsCache();
+        return (memoryCachedIds) ? memoryCachedIds : this._patientIdsInCohort;
+    }
 
     @computed get myCancerGenomeData() {
         return fetchMyCancerGenomeData();
@@ -229,6 +278,11 @@ export class PatientViewPageStore {
     readonly studies = remoteData({
         invoke: async()=>([await client.getStudyUsingGET({studyId: this.studyId})])
     }, []);
+
+    readonly studyIdToStudy = remoteData({
+        await: ()=>[this.studies],
+        invoke:()=>Promise.resolve(_.keyBy(this.studies.result, x=>x.studyId))
+    }, {});
 
     @computed get studyToCancerType() {
         return makeStudyToCancerTypeMap(this.studies.result);
@@ -329,6 +383,25 @@ export class PatientViewPageStore {
         await: () => [this.clinicalDataForSamples],
         invoke: async() => groupBySampleId(this.sampleIds, this.clinicalDataForSamples.result)
     }, []);
+
+    readonly getWholeSlideViewerIds = remoteData({
+        await: () => [this.clinicalDataGroupedBySample],
+        invoke: () => {
+            const clinicalData = this.clinicalDataGroupedBySample.result!;
+            const clinicalAttributeId = "MSK_SLIDE_ID";
+            if (clinicalData) {
+                const ids = _.chain(clinicalData)
+                .map((data) => data.clinicalData)
+                .flatten()
+                .filter((attribute) => {return attribute.clinicalAttributeId === clinicalAttributeId})
+                .map((attribute) => attribute.value)
+                .value();
+
+                return Promise.resolve(ids);
+            }
+            return Promise.resolve([]);
+        }
+    });
 
     readonly studyMetaData = remoteData({
         invoke: async() => client.getStudyUsingGET({studyId: this.studyId})
@@ -503,8 +576,30 @@ export class PatientViewPageStore {
         }
     }, []);
 
+    readonly oncoKbCancerGenes = remoteData({
+        invoke: () => {
+            if (AppConfig.serverConfig.show_oncokb) {
+                return fetchOncoKbCancerGenes();
+            } else {
+                return Promise.resolve([]);
+            }
+        }
+    }, []);
+
     readonly oncoKbAnnotatedGenes = remoteData({
-        invoke:()=>fetchOncoKbAnnotatedGenesSuppressErrors()
+        await: () => [this.oncoKbCancerGenes],
+        invoke: () => {
+            if (AppConfig.serverConfig.show_oncokb) {
+                return Promise.resolve(_.reduce(this.oncoKbCancerGenes.result, (map: { [entrezGeneId: number]: boolean }, next: CancerGene) => {
+                    if (next.oncokbAnnotated) {
+                        map[next.entrezGeneId] = true;
+                    }
+                    return map;
+                }, {}));
+            } else {
+                return Promise.resolve({});
+            }
+        }
     }, {});
 
     readonly oncoKbData = remoteData<IOncoKbData|Error>({
@@ -673,6 +768,10 @@ export class PatientViewPageStore {
 
     @cached get genomeNexusCache() {
         return new GenomeNexusCache();
+    }
+
+    @cached get genomeNexusMyVariantInfoCache() {
+        return new GenomeNexusMyVariantInfoCache();
     }
 
     @cached get pubMedCache() {

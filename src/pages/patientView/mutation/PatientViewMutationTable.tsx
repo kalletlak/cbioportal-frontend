@@ -11,6 +11,7 @@ import AlleleFreqColumnFormatter from "./column/AlleleFreqColumnFormatter";
 import TumorColumnFormatter from "./column/TumorColumnFormatter";
 import {isUncalled} from "shared/lib/MutationUtils";
 import TumorAlleleFreqColumnFormatter from "shared/components/mutationTable/column/TumorAlleleFreqColumnFormatter";
+import ExonColumnFormatter from "shared/components/mutationTable/column/ExonColumnFormatter";
 
 export interface IPatientViewMutationTableProps extends IMutationTableProps {
     sampleManager:SampleManager | null;
@@ -52,7 +53,10 @@ export default class PatientViewMutationTable extends MutationTable<IPatientView
             MutationTableColumnType.FUNCTIONAL_IMPACT,
             MutationTableColumnType.COSMIC,
             MutationTableColumnType.TUMOR_ALLELE_FREQ,
-            MutationTableColumnType.TUMORS
+            MutationTableColumnType.TUMORS,
+            MutationTableColumnType.EXON,
+            MutationTableColumnType.HGVSC,
+            MutationTableColumnType.GNOMAD
         ]
     };
 
@@ -107,7 +111,11 @@ export default class PatientViewMutationTable extends MutationTable<IPatientView
         this._columns[MutationTableColumnType.VAR_READS].download =
             (d:Mutation[])=>AlleleCountColumnFormatter.getReads(d, "tumorAltCount");
 
-
+        // customization for columns
+        this._columns[MutationTableColumnType.EXON].sortBy = undefined;
+        this._columns[MutationTableColumnType.EXON].render = 
+            (d:Mutation[]) => (ExonColumnFormatter.renderFunction(d, this.props.genomeNexusCache, true));
+        
         // order columns
         this._columns[MutationTableColumnType.TUMORS].order = 5;
         this._columns[MutationTableColumnType.GENE].order = 20;
@@ -132,6 +140,9 @@ export default class PatientViewMutationTable extends MutationTable<IPatientView
         this._columns[MutationTableColumnType.MRNA_EXPR].order = 182;
         this._columns[MutationTableColumnType.COHORT].order = 183;
         this._columns[MutationTableColumnType.COSMIC].order = 184;
+        this._columns[MutationTableColumnType.EXON].order = 185;
+        this._columns[MutationTableColumnType.HGVSC].order = 186;
+        this._columns[MutationTableColumnType.GNOMAD].order = 187;
 
         // exclusions
         this._columns[MutationTableColumnType.MRNA_EXPR].shouldExclude = ()=>{

@@ -8,7 +8,7 @@ import {
     StudyViewPageStore,
     StudyViewPageTabDescriptions,
     StudyViewPageTabKey,
-    StudyViewPageTabKeyEnum
+    StudyViewPageTabKeyEnum, StudyViewURLQuery
 } from 'pages/studyView/StudyViewPageStore';
 import LoadingIndicator from "shared/components/loadingIndicator/LoadingIndicator";
 import {ClinicalDataTab} from "./tabs/ClinicalDataTab";
@@ -19,6 +19,7 @@ import {PageLayout} from "../../shared/components/PageLayout/PageLayout";
 import IFrameLoader from "../../shared/components/iframeLoader/IFrameLoader";
 import {StudySummaryTab} from 'pages/studyView/tabs/SummaryTab';
 import StudyPageHeader from "./studyPageHeader/StudyPageHeader";
+import CNSegments from "./tabs/CNSegments";
 import "./styles.scss";
 import styles from './styles.module.scss';
 import SelectedInfo from "./SelectedInfo/SelectedInfo";
@@ -31,66 +32,55 @@ import {remoteData} from "../../shared/api/remoteData";
 import {Else, If, Then} from 'react-if';
 import DefaultTooltip from "../../shared/components/defaultTooltip/DefaultTooltip";
 import CustomCaseSelection from "./addChartButton/customCaseSelection/CustomCaseSelection";
+import {AppStore} from "../../AppStore";
+import ActionButtons from "./studyPageHeader/ActionButtons";
+import onMobxPromise from "../../shared/lib/onMobxPromise";
+import {GACustomFieldsEnum, isWebdriver, serializeEvent, trackEvent} from "../../shared/lib/tracking";
+import ComparisonGroupManager from "../groupComparison/comparisonGroupManager/ComparisonGroupManager";
+import classNames from "classnames";
+import AppConfig from "appConfig";
+import SocialAuthButton from "../../shared/components/SocialAuthButton";
+import {ServerConfigHelpers} from "../../config/config";
+import { getStudyViewTabId } from './StudyViewUtils';
+import InfoBeacon from "shared/components/infoBeacon/InfoBeacon";
+import {WrappedTour} from "shared/components/wrappedTour/WrappedTour";
 
 export interface IStudyViewPageProps {
     routing: any;
+    appStore: AppStore;
 }
 
-export class StudyResultsSummary extends React.Component<{ store:StudyViewPageStore },{}> {
+export class StudyResultsSummary extends React.Component<{ store:StudyViewPageStore, appStore:AppStore },{}> {
 
     render(){
         return (
-            <div className={"studyFilterResult"}>
-                <SelectedInfo selectedSamplesCount={this.props.store.selectedSamples.result.length} selectedPatientsCount={this.props.store.selectedPatients.length}/>
-
-                {this.props.store.mutationProfiles.result.length > 0 && (
-                    <div data-test="with-mutation-data">
-                        <LabeledCheckbox
-                            inputProps={{className: styles.selectedInfoCheckbox}}
-                            checked={!!this.props.store.filters.withMutationData}
-                            onChange={this.props.store.toggleWithMutationDataFilter}
-                        >
-                            <LoadingIndicator
-                                isLoading={this.props.store.molecularProfileSampleCounts.isPending}/>
-                            {this.props.store.molecularProfileSampleCounts.isComplete && (
-                                `${this.props.store.molecularProfileSampleCounts.result.numberOfMutationProfiledSamples.toLocaleString()} w/ mutation data`)}
-                        </LabeledCheckbox>
-                    </div>
-                )}
-                {this.props.store.cnaProfiles.result.length > 0 && (
-                    <div data-test="with-cna-data">
-                        <LabeledCheckbox
-                            inputProps={{className: styles.selectedInfoCheckbox}}
-                            checked={!!this.props.store.filters.withCNAData}
-                            onChange={this.props.store.toggleWithCNADataFilter}
-                        >
-                            <LoadingIndicator
-                                isLoading={this.props.store.molecularProfileSampleCounts.isPending}/>
-                            {this.props.store.molecularProfileSampleCounts.isComplete && (
-                                `${this.props.store.molecularProfileSampleCounts.result.numberOfCNAProfiledSamples.toLocaleString()} w/ CNA data`)}
-                        </LabeledCheckbox>
-                    </div>
-                )}
-
+            <div className={styles.studyFilterResult}>
+                 <div className={styles.selectedInfo} data-test="selected-info">
+                     <strong>Selected:&nbsp;</strong>
+                     <strong data-test="selected-patients">{this.props.store.selectedPatients.length.toLocaleString()}</strong>&nbsp;<strong>patients</strong>&nbsp;|&nbsp;
+                     <strong data-test="selected-samples">{this.props.store.selectedSamples.result.length.toLocaleString()}</strong>&nbsp;<strong>samples</strong>
+                </div>
+                <ActionButtons store={this.props.store} appStore={this.props.appStore}/>
             </div>
         )
     }
 
 }
 
-
-
-@inject('routing')
+@inject('routing', 'appStore')
 @observer
 export default class StudyViewPage extends React.Component<IStudyViewPageProps, {}> {
     private store: StudyViewPageStore;
+    private enableCustomSelectionInTabs = [StudyViewPageTabKeyEnum.SUMMARY, StudyViewPageTabKeyEnum.CLINICAL_DATA, StudyViewPageTabKeyEnum.CN_SEGMENTS];
     private enableAddChartInTabs = [StudyViewPageTabKeyEnum.SUMMARY, StudyViewPageTabKeyEnum.CLINICAL_DATA];
     private queryReaction:IReactionDisposer;
     @observable showCustomSelectTooltip = false;
+    @observable showGroupsTooltip = false;
     private inCustomSelectTooltip = false;
+    private studyViewQueryFilter:StudyViewURLQuery;
 
     constructor(props: IStudyViewPageProps) {
-        super();
+        super(props);
         this.store = new StudyViewPageStore();
 
         this.queryReaction = reaction(
@@ -101,15 +91,35 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
                     return;
                 }
 
-                this.store.updateCurrentTab(props.routing.location.query.tab);
-                this.store.updateStoreFromURL(query);
+                this.store.updateCurrentTab(getStudyViewTabId(getBrowserWindow().globalStores.routing.location.pathname));
+                const newStudyViewFilter:StudyViewURLQuery = _.pick(props.routing.location.query, ['id', 'studyId', 'cancer_study_id', 'filters', 'filterAttributeId', 'filterValues']);
+
+                if (!_.isEqual(newStudyViewFilter, this.studyViewQueryFilter)) {
+                    this.store.updateStoreFromURL(newStudyViewFilter);
+                    this.studyViewQueryFilter = newStudyViewFilter;
+                }
             },
             {fireImmediately: true}
         );
+
+        onMobxPromise(this.store.queriedPhysicalStudyIds, (strArr:string[])=>{
+            trackEvent(
+                {   category:"studyPage", action:"studyPageLoad",
+                    label: strArr.join(",") + ",",
+                    fieldsObject:{ [GACustomFieldsEnum.VirtualStudy]: (this.store.filteredVirtualStudies.result!.length > 0).toString()  }
+                }
+            );
+        });
+
+    }
+
+    componentDidMount() {
+        // make the route as the default tab value
+        this.props.routing.updateRoute({},`study/${this.store.currentTab}`);
     }
 
     private handleTabChange(id: string) {
-        this.props.routing.updateRoute({tab: id});
+        this.props.routing.updateRoute({},`study/${id}`);
     }
 
     private chartDataPromises = remoteData({
@@ -144,14 +154,69 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
         }
     }
 
+    @computed
+    get groupsButton() {
+        return (
+            <>
+                <If condition={!isWebdriver()}>
+                    <InfoBeacon
+                        top={-15}
+                        right={45}
+                        interaction={'mouseover'}
+                        color={'green'}
+                        id={'groupComparison1'}
+                    >
+                        <WrappedTour/>
+                    </InfoBeacon>
+                </If>
+                <DefaultTooltip
+                    visible={this.showGroupsTooltip}
+                    trigger={["click"]}
+                    placement="bottomLeft"
+                    destroyTooltipOnHide={true}
+                    onPopupAlign={(tooltipEl: any)=>{
+                        const arrowEl = tooltipEl.querySelector('.rc-tooltip-arrow');
+                        arrowEl.style.right = '10px';
+                    }}
+                    onVisibleChange={visible=>{ this.showGroupsTooltip = !!visible; }}
+                    getTooltipContainer={()=>document.getElementById("comparisonGroupManagerContainer")!}
+                    overlay={
+                        <div style={{width: 350}}>
+                            {this.props.appStore.isLoggedIn ?
+                                <ComparisonGroupManager store={this.store} /> :
+                                (<span>
+                                    Please log in to use the custom groups feature to save and compare sub-cohorts.
+                                    <If condition={AppConfig.serverConfig.authenticationMethod === "social_auth"}>
+                                        <div className={"text-center"} style={{padding:20}}>
+                                            <SocialAuthButton appStore={this.props.appStore}/>
+                                        </div>
+                                    </If>
+                                </span>)
+                            }
+                        </div>
+                    }
+                >
+                    <button className={classNames('btn btn-primary btn-xs', {active:this.showGroupsTooltip})}
+                            id={"groupManagementButton"}
+                            data-test="groups-button"
+                            aria-pressed={this.showGroupsTooltip}
+                            style={{marginLeft: '10px'}}
+                            data-event={serializeEvent({action:'openGroupManagement',label:'', category:'groupComparison' })}
+                    >Groups {String.fromCharCode(9662)/*small solid down triangle*/}</button>
+                </DefaultTooltip>
+            </>
+        );
+    }
+
     content() {
 
         return (
-            <div className="studyView" onClick={this.showCustomSelectTooltip ? ()=>{
-                if(!this.inCustomSelectTooltip) {
+            <div className="studyView" onClick={()=>{
+                if(this.showCustomSelectTooltip && !this.inCustomSelectTooltip) {
                     this.showCustomSelectTooltip = false;
                 }
-            }: undefined}>
+            }}>
+                {this.store.comparisonConfirmationModal}
                 {this.store.unknownQueriedIds.isComplete &&
                 this.store.unknownQueriedIds.result.length > 0 && (
                     <Alert bsStyle="danger">
@@ -172,7 +237,7 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
                             />
 
                             <div className={styles.mainTabs}>
-                                <MSKTabs id="studyViewTabs" activeTabId={this.props.routing.location.query.tab}
+                                <MSKTabs id="studyViewTabs" activeTabId={this.store.currentTab}
                                          onTabClick={(id: string) => this.handleTabChange(id)}
                                          className="mainTabs"
                                          unmountOnHide={false}>
@@ -185,8 +250,19 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
                                     </MSKTab>
                                     <MSKTab key={2} id={StudyViewPageTabKeyEnum.HEATMAPS} linkText={StudyViewPageTabDescriptions.HEATMAPS}
                                             hide={this.store.MDACCHeatmapStudyMeta.result.length === 0}>
-                                        <IFrameLoader height={700}
-                                                      url={`//bioinformatics.mdanderson.org/TCGA/NGCHMPortal/?${this.store.MDACCHeatmapStudyMeta.result[0]}`}/>
+                                        <IFrameLoader className="mdacc-heatmap-iframe"
+                                                      url={`https://bioinformatics.mdanderson.org/TCGA/NGCHMPortal/?${this.store.MDACCHeatmapStudyMeta.result[0]}`}/>
+                                    </MSKTab>
+                                    <MSKTab
+                                        key={3}
+                                        id={StudyViewPageTabKeyEnum.CN_SEGMENTS}
+                                        linkText={StudyViewPageTabDescriptions.CN_SEGMENTS}
+                                        hide={
+                                            !this.store.initialMolecularProfileSampleCounts.result ||
+                                            !(this.store.initialMolecularProfileSampleCounts.result.numberOfCNSegmentSamples > 0)
+                                        }
+                                    >
+                                       <CNSegments store={this.store} />
                                     </MSKTab>
                                 </MSKTabs>
 
@@ -196,12 +272,11 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
                                         {
                                             () => {
                                                 return (
-                                                    <div className={styles.selectedInfo}>
                                                         <If condition={this.chartDataPromises.isComplete}>
                                                             <Then>
                                                                 <CSSTransition classNames="studyFilterResult" in={true}
                                                                                appear timeout={{enter: 200}}>
-                                                                    {() => <StudyResultsSummary store={this.store}/>
+                                                                    {() => <StudyResultsSummary store={this.store} appStore={this.props.appStore}/>
                                                                     }
                                                                 </CSSTransition>
                                                             </Then>
@@ -209,56 +284,59 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
                                                                 <LoadingIndicator isLoading={true} size={"small"} className={styles.selectedInfoLoadingIndicator}/>
                                                             </Else>
                                                         </If>
-                                                    </div>)
+                                                )
                                             }
                                         }
                                     </Observer>
-                                    {(this.enableAddChartInTabs.includes(this.store.currentTab))
-                                    && (
-                                        <div style={{display: 'flex'}}>
-                                            <DefaultTooltip
-                                                visible={this.showCustomSelectTooltip}
-                                                placement={"bottomLeft"}
-                                                onVisibleChange={()=>{
-
-                                                }}
-                                                destroyTooltipOnHide={true}
-                                                overlay={() => (
-                                                    <div style={{width: '300px'}}
-                                                         onMouseEnter={()=>this.inCustomSelectTooltip=true}
-                                                         onMouseLeave={()=>this.inCustomSelectTooltip=false}
-                                                    >
-                                                        <CustomCaseSelection
-                                                            allSamples={this.store.samples.result}
-                                                            selectedSamples={this.store.selectedSamples.result}
-                                                            submitButtonText={"Select"}
-                                                            disableGrouping={true}
-                                                            queriedStudies={this.store.queriedPhysicalStudyIds.result}
-                                                            onSubmit={(chart: NewChart) => {
-                                                                this.showCustomSelectTooltip = false;
-                                                                this.store.updateCustomSelect(chart);
+                                    <div id="comparisonGroupManagerContainer" style={{display: 'flex', position:"relative"}}>
+                                        {(this.enableCustomSelectionInTabs.includes(this.store.currentTab))
+                                        && (<>
+                                                <DefaultTooltip
+                                                    visible={this.showCustomSelectTooltip}
+                                                    placement={"bottomLeft"}
+                                                    destroyTooltipOnHide={true}
+                                                    overlay={() => (
+                                                        <div style={{width: '300px'}}
+                                                             onMouseEnter={()=>this.inCustomSelectTooltip=true}
+                                                             onMouseLeave={()=>this.inCustomSelectTooltip=false}
+                                                        >
+                                                            <CustomCaseSelection
+                                                                allSamples={this.store.samples.result}
+                                                                selectedSamples={this.store.selectedSamples.result}
+                                                                submitButtonText={"Select"}
+                                                                disableGrouping={true}
+                                                                queriedStudies={this.store.queriedPhysicalStudyIds.result}
+                                                                onSubmit={(chart: NewChart) => {
+                                                                    this.showCustomSelectTooltip = false;
+                                                                    this.store.updateCustomSelect(chart);
+                                                                }}
+                                                            />
+                                                        </div>
+                                                    )}
+                                                >
+                                                    <button className={classNames('btn btn-primary btn-sm', {"active":this.showCustomSelectTooltip})}
+                                                            data-test='custom-selection-button'
+                                                            onClick={(evt:any) => {
+                                                                evt.stopPropagation();
+                                                                this.showCustomSelectTooltip = !this.showCustomSelectTooltip;
                                                             }}
-                                                        />
-                                                    </div>
-                                                )}
-                                            >
-                                                <button className='btn btn-primary btn-xs'
-                                                        data-test='custom-selection-button'
-                                                        onClick={() => {
-                                                            this.showCustomSelectTooltip = true;
-                                                        }}
-                                                        style={{marginLeft: '10px'}}>Custom Selection
-                                                </button>
-                                            </DefaultTooltip>
-                                            <AddChartButton
-                                                buttonText={this.addChartButtonText}
-                                                store={this.store}
-                                                currentTab={this.store.currentTab}
-                                                addChartOverlayClassName='studyViewAddChartOverlay'
-                                                disableCustomTab={this.store.currentTab === StudyViewPageTabKeyEnum.CLINICAL_DATA}
-                                            />
-                                        </div>
-                                    )}
+                                                            style={{marginLeft: '10px'}}>Custom Selection
+                                                    </button>
+                                                </DefaultTooltip>
+                                            </>
+                                        )}
+                                        {(this.enableAddChartInTabs.includes(this.store.currentTab))
+                                        && (
+                                                <AddChartButton
+                                                    buttonText={this.addChartButtonText}
+                                                    store={this.store}
+                                                    currentTab={this.store.currentTab}
+                                                    addChartOverlayClassName='studyViewAddChartOverlay'
+                                                    disableCustomTab={this.store.currentTab === StudyViewPageTabKeyEnum.CLINICAL_DATA}
+                                                />
+                                        )}
+                                        {ServerConfigHelpers.sessionServiceIsEnabled() && this.groupsButton}
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -269,6 +347,7 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
 
     componentWillUnmount(): void {
         this.queryReaction();
+        this.store.destroy();
     }
 
     render() {
@@ -279,3 +358,6 @@ export default class StudyViewPage extends React.Component<IStudyViewPageProps, 
         </PageLayout>
     }
 }
+
+
+

@@ -171,9 +171,10 @@ export default class Oncoprinter extends React.Component<IOncoprinterProps, {}> 
             onClickDownload:(type:string)=>{
                 switch(type) {
                     case "pdf":
-                        if (!svgToPdfDownload("oncoprint.pdf", this.oncoprint.toSVG(true))) {
-                            alert("Oncoprint too big to download as PDF - please download as SVG.");
-                        }
+                        svgToPdfDownload("oncoprint.pdf", this.oncoprint.toSVG(false));
+                        // if (!pdfDownload("oncoprint.pdf", this.oncoprint.toSVG(true))) {
+                        //     alert("Oncoprint too big to download as PDF - please download as SVG.");
+                        // }
                         break;
                     case "png":
                         const img = this.oncoprint.toCanvas((canvas, truncated)=>{
@@ -254,8 +255,8 @@ export default class Oncoprinter extends React.Component<IOncoprinterProps, {}> 
     }
 
     @computed get alterationInfo() {
-        if (this.props.store.sampleIds.isComplete && this.props.store.alteredSampleIds.isComplete ) {
-            const numSamples = this.props.store.sampleIds.result.length;
+        if (this.props.store.alteredSampleIds.isComplete ) {
+            const numSamples = this.props.store.sampleIds.length;
             const alteredSamples = this.props.store.alteredSampleIds.result.length;
             return (
                 <span style={{marginTop:"15px", marginBottom:"15px", display: "block"}}>
@@ -316,6 +317,7 @@ export default class Oncoprinter extends React.Component<IOncoprinterProps, {}> 
                                 heatmapTracks={[]}
                                 divId={this.props.divId}
                                 width={1050}
+                                caseLinkOutInTooltips={false}
                                 suppressRendering={this.isLoading}
                                 onSuppressRendering={this.onSuppressRendering}
                                 onReleaseRendering={this.onReleaseRendering}

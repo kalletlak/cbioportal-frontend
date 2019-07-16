@@ -12,7 +12,7 @@ import BoxScatterPlot, { IBoxScatterPlotData } from "shared/components/plots/Box
 import { IBoxScatterPlotPoint, makeBoxScatterPlotData, IStringAxisData, INumberAxisData, boxPlotTooltip } from "../plots/PlotsTabUtils";
 import { scatterPlotSize } from "shared/components/plots/PlotUtils";
 import internalClient from "shared/api/cbioportalInternalClientInstance";
-const CheckedSelect = require("react-select-checked").CheckedSelect;
+import CheckedSelect from 'public-lib/components/checkedSelect/CheckedSelect';
 import { VictoryLine, VictoryLabel } from "victory";
 import jStat from 'jStat';
 import { WindowWidthBox } from "shared/components/WindowWidthBox/WindowWidthBox";
@@ -111,10 +111,9 @@ export default class TumorVsNormalsViz extends React.Component<ITumorVsNormalsVi
             </div>)
     }
 
-    @computed get onChangeMultiple() {
-        return (values: { value: string }[]) => {
-            this.selectedIds = _.uniq([...values.map(o => o.value), ...this.alwaysVisibleIds])
-        };
+    @autobind
+    @action onChange(values: { value: string }[]) {
+        this.selectedIds = _.uniq([...values.map(datum => datum.value), ...this.alwaysVisibleIds])
     }
 
     readonly options = remoteData<{ label: string, value: string, disabled?: boolean }[]>({
@@ -142,17 +141,15 @@ export default class TumorVsNormalsViz extends React.Component<ITumorVsNormalsVi
         return this.selectedIds.map(x => ({ value: x }));
     }
 
-    @computed get filters() {
+    @autobind private filters() {
         return (
             <div className="axisBlock tissue-track-selector">
                 <CheckedSelect
                     name='Add tissues'
                     placeholder='Add tissues'
-                    onChange={this.onChangeMultiple}
+                    onChange={this.onChange}
                     options={this.options.result}
                     value={this.value}
-                    labelKey="label"
-                    disabled={this.options.isPending || this.options.isError || this.options.result.length === 0}
                 />
             </div>
         )
@@ -415,7 +412,9 @@ export default class TumorVsNormalsViz extends React.Component<ITumorVsNormalsVi
                 <div className={"tvnTab"} style={{ display: "flex", flexDirection: "row" }}>
                     <div className="leftColumn">
                         {this.controls}
-                        {this.filters}
+                        <Observer>
+                            {this.filters}
+                        </Observer>
                     </div>
                     <WindowWidthBox offset={360}>
                         {this.plot}

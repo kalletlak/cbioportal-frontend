@@ -8,6 +8,7 @@ import {getStudyDownloadListUrl} from "../../../shared/api/urls";
 import {getNCBIlink} from "../../../public-lib/lib/urls";
 import {StudyLink} from "../../../shared/components/StudyLink/StudyLink";
 import {StudyDataDownloadLink} from "../../../shared/components/StudyDataDownloadLink/StudyDataDownloadLink";
+import { trackEvent } from "shared/lib/tracking";
 
 
 interface IDataTableRow {
@@ -153,23 +154,13 @@ export default class DataSetsPageTable extends React.Component <IDataSetsTablePr
                                 {name:'', sortBy:false, togglable:false, download: false, type:'download', render:(data:IDataTableRow)=> {
                                     const downloadLink = this.state.downloadable[data.studyId];
                                     return (
-                                        <a className="dataset-table-download-link" style={downloadLink !== undefined? {display:'block'} : {display:'none'}}
-                                           href={downloadLink} download>
-                                            <i className='fa fa-download'/>
+                                        <a className="dataset-table-download-link" style={downloadLink !== undefined ? { display: 'block' } : { display: 'none' }}
+                                            href={downloadLink} download onClick={() => trackEvent({ category: "download", action: "study download", label: data.studyId })}>
+                                            <i className='fa fa-download' />
                                         </a>
+                                        
                                     );
                                 }},
-                                {
-                                    name: '', sortBy: false, togglable: false, download: false, type: 'download',
-                                    render: (data: IDataTableRow) => {
-                                        const studyIsDownloadable = this.state.downloadable[data.studyId];
-                                        if (studyIsDownloadable) {
-                                            return <StudyDataDownloadLink studyId={data.studyId}/>;
-                                        } else {
-                                            return null;
-                                        }
-                                    }
-                                },
                                 {
                                     name: 'Reference',
                                     type: 'citation', render:(data:IDataTableRow)=><ReferenceCell pmid={data.pmid} citation={data.citation}/>,

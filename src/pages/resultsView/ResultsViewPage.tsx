@@ -34,9 +34,9 @@ import {trackQuery} from "../../shared/lib/tracking";
 import {onMobxPromise} from "../../shared/lib/onMobxPromise";
 import TumorVsNormalsTab from "./tumorVsNormals/TumorVsNormalsTab";
 
-function initStore() {
+function initStore(appStore:AppStore) {
 
-    const resultsViewPageStore = new ResultsViewPageStore();
+    const resultsViewPageStore = new ResultsViewPageStore(appStore, getBrowserWindow().globalStores.routing);
 
     resultsViewPageStore.tabId = getTabId(getBrowserWindow().globalStores.routing.location.pathname);
 
@@ -135,7 +135,7 @@ export default class ResultsViewPage extends React.Component<IResultsViewPagePro
     constructor(props: IResultsViewPageProps) {
         super(props);
 
-        this.resultsViewPageStore = initStore();
+        this.resultsViewPageStore = initStore(props.appStore);
 
         getBrowserWindow().resultsViewPageStore = this.resultsViewPageStore;
     }
@@ -338,11 +338,8 @@ export default class ResultsViewPage extends React.Component<IResultsViewPagePro
             {
                 id:ResultsViewTab.EXPRESSION,
                 hide:()=> {
-                    if (!this.resultsViewPageStore.studies.isComplete) {
-                        return true;
-                    } else {
-                        return this.resultsViewPageStore.studies.result!.length === 1;
-                    }
+                    return this.resultsViewPageStore.expressionProfiles.result.length === 0
+                        || this.resultsViewPageStore.studies.result.length < 2;
                 },
                 getTab: () => {
 
@@ -352,7 +349,7 @@ export default class ResultsViewPage extends React.Component<IResultsViewPagePro
                     >
                         {
                             (store.studyIdToStudy.isComplete
-                                && store.putativeDriverAnnotatedMutations.isComplete
+                                && store.filteredAndAnnotatedMutations.isComplete
                                 && store.genes.isComplete
                                 && store.coverageInformation.isComplete) &&
                             (<ExpressionWrapper store={store}
@@ -360,7 +357,7 @@ export default class ResultsViewPage extends React.Component<IResultsViewPagePro
                                 genes={store.genes.result}
                                 expressionProfiles={store.expressionProfiles}
                                 numericGeneMolecularDataCache={store.numericGeneMolecularDataCache}
-                                mutations={store.putativeDriverAnnotatedMutations.result!}
+                                mutations={store.filteredAndAnnotatedMutations.result!}
                                 RNASeqVersion={store.expressionTabSeqVersion}
                                 coverageInformation={store.coverageInformation.result}
                                 onRNASeqVersionChange={(version:number)=>store.expressionTabSeqVersion=version}

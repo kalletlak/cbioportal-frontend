@@ -17,13 +17,12 @@ import GroupSelector from "./groupSelector/GroupSelector";
 import {getTabId, GroupComparisonTab} from "./GroupComparisonUtils";
 import styles from "./styles.module.scss";
 import {StudyLink} from "shared/components/StudyLink/StudyLink";
-import {computed, IReactionDisposer, observable, reaction, action} from "mobx";
+import {action, IReactionDisposer, observable, reaction} from "mobx";
 import autobind from "autobind-decorator";
 import {AppStore} from "../../AppStore";
 import _ from "lodash";
 import ClinicalData from "./ClinicalData";
 import ReactSelect from "react-select2";
-import {joinGroupNames} from "./OverlapUtils";
 import {trackEvent} from "shared/lib/tracking";
 
 export interface IGroupComparisonPageProps {
@@ -33,6 +32,9 @@ export interface IGroupComparisonPageProps {
 
 export type GroupComparisonURLQuery = {
     sessionId: string;
+    groupOrder?:string; // json stringified array of names
+    unselectedGroups?:string; // json stringified array of names
+    overlapStrategy?:OverlapStrategy;
 };
 
 @inject('routing', 'appStore')
@@ -41,10 +43,7 @@ export default class GroupComparisonPage extends React.Component<IGroupCompariso
     @observable.ref private store:GroupComparisonStore;
     private queryReaction:IReactionDisposer;
     private pathnameReaction:IReactionDisposer;
-    private unsavedChangesReaction:IReactionDisposer;
     private lastQuery:Partial<GroupComparisonURLQuery>;
-
-    @observable unsavedChangesWarningDismissed = false;
 
     constructor(props:IGroupComparisonPageProps) {
         super(props);
@@ -53,11 +52,16 @@ export default class GroupComparisonPage extends React.Component<IGroupCompariso
             query => {
 
                 if (!props.routing.location.pathname.includes("/comparison") ||
-                    _.isEqual(query, this.lastQuery)) {
+                    _.isEqual(query, this.lastQuery) ||
+                    (this.lastQuery && (query.sessionId === this.lastQuery.sessionId))) {
                     return;
                 }
 
-                this.store = new GroupComparisonStore((query as GroupComparisonURLQuery).sessionId, this.props.appStore);
+                if (this.store) {
+                    this.store.destroy();
+                }
+
+                this.store = new GroupComparisonStore((query as GroupComparisonURLQuery).sessionId, this.props.appStore, this.props.routing);
                 this.setTabIdInStore(props.routing.location.pathname);
                 (window as any).groupComparisonStore = this.store;
 
@@ -79,14 +83,6 @@ export default class GroupComparisonPage extends React.Component<IGroupCompariso
             {fireImmediately: true}
         );
 
-        this.unsavedChangesReaction = reaction(
-            ()=>[
-                this.store.unsavedGroups,
-                JSON.stringify(this.store.dragNameOrder), // need to touch every element to react to changes bc the array changes in place
-            ],
-            ()=>{ this.unsavedChangesWarningDismissed = false; }
-        );
-
         (window as any).groupComparisonPage = this;
     }
 
@@ -105,7 +101,7 @@ export default class GroupComparisonPage extends React.Component<IGroupCompariso
     componentWillUnmount() {
         this.queryReaction && this.queryReaction();
         this.pathnameReaction && this.pathnameReaction();
-        this.unsavedChangesReaction && this.unsavedChangesReaction();
+        this.store && this.store.destroy();
     }
 
     readonly tabs = MakeMobxView({
@@ -135,28 +131,28 @@ export default class GroupComparisonPage extends React.Component<IGroupCompariso
                     anchorClassName={this.store.clinicalTabGrey ? "greyedOut" : ""}>
                     <ClinicalData store={this.store}/>
                 </MSKTab>
-                {this.store.mutationEnrichmentProfiles.result!.length > 0 && (
+                {this.store.showMutationsTab && (
                     <MSKTab id={GroupComparisonTab.MUTATIONS} linkText="Mutations"
                         anchorClassName={this.store.mutationsTabGrey ? "greyedOut" : ""}
                     >
                         <MutationEnrichments store={this.store}/>
                     </MSKTab>
                 )}
-                {this.store.copyNumberEnrichmentProfiles.result!.length > 0 && (
+                {this.store.showCopyNumberTab && (
                     <MSKTab id={GroupComparisonTab.CNA} linkText="Copy-number"
                         anchorClassName={this.store.copyNumberTabGrey ? "greyedOut" : ""}
                     >
                         <CopyNumberEnrichments store={this.store}/>
                     </MSKTab>
                 )}
-                {this.store.mRNAEnrichmentProfiles.result!.length > 0 && (
+                {this.store.showMRNATab && (
                     <MSKTab id={GroupComparisonTab.MRNA} linkText="mRNA"
                         anchorClassName={this.store.mRNATabGrey ? "greyedOut" : ""}
                     >
                         <MRNAEnrichments store={this.store}/>
                     </MSKTab>
                 )}
-                {this.store.proteinEnrichmentProfiles.result!.length > 0 && (
+                {this.store.showProteinTab && (
                     <MSKTab id={GroupComparisonTab.PROTEIN} linkText="Protein"
                         anchorClassName={this.store.proteinTabGrey ? "greyedOut" : ""}
                     >
@@ -205,7 +201,7 @@ export default class GroupComparisonPage extends React.Component<IGroupCompariso
     @action
     public onOverlapStrategySelect(option:any) {
         trackEvent({ category:'groupComparison', action:'setOverlapStrategy', label:option.value});
-        this.store.setOverlapStrategy(option.value);
+        this.store.updateOverlapStrategy(option.value as OverlapStrategy);
     }
 
     readonly overlapStrategySelector = MakeMobxView({
@@ -214,6 +210,8 @@ export default class GroupComparisonPage extends React.Component<IGroupCompariso
             if (!this.store.overlapComputations.result!.totalSampleOverlap && !this.store.overlapComputations.result!.totalPatientOverlap) {
                 return null;
             } else {
+                const includeLabel = "Include overlapping samples and patients";
+                const excludeLabel = "Exclude overlapping samples and patients";
                 return (
                     <div style={{minWidth:355, width:355, zIndex:20}}>
                         <ReactSelect
@@ -224,95 +222,18 @@ export default class GroupComparisonPage extends React.Component<IGroupCompariso
                                 }
                             }}
                             options={[
-                                { label: OverlapStrategy.INCLUDE, value: OverlapStrategy.INCLUDE},
-                                { label: OverlapStrategy.EXCLUDE, value: OverlapStrategy.EXCLUDE}
+                                { label: includeLabel, value: OverlapStrategy.INCLUDE },
+                                { label: excludeLabel, value: OverlapStrategy.EXCLUDE }
                             ]}
                             clearable={false}
                             searchable={false}
-                            value={{ label: this.store.overlapStrategy, value: this.store.overlapStrategy}}
+                            value={{ label: this.store.overlapStrategy === OverlapStrategy.EXCLUDE ? excludeLabel : includeLabel, value: this.store.overlapStrategy}}
                         />
                     </div>
                 );
             }
         }
     });
-
-    @computed get unsavedChangesWarning() {
-        if (this.unsavedChangesWarningDismissed) {
-            return null;
-        }
-
-        const warnings:any[] = [];
-
-        if (this.store.unsavedGroups.length > 0) {
-            const pluralUnsaved = this.store.unsavedGroups.length > 1;
-            warnings.push(
-                <div>
-                    <i className="fa fa-md fa-exclamation-triangle" style={{marginRight:12, marginTop:3}}/>
-                    <span>
-                        {joinGroupNames(this.store.unsavedGroups, "and")} {pluralUnsaved ? "are" : "is"} not saved. Others visiting this link will not see {pluralUnsaved ? "them" : "it"}.
-                    </span>
-                </div>
-            );
-        }
-
-        if (this.store.dragNameOrder) {
-            warnings.push(
-                <div>
-                    <i className="fa fa-md fa-exclamation-triangle" style={{marginRight:12, marginTop:3}}/>
-                    <span>
-                        Your group order is not saved.
-                    </span>
-                </div>
-            );
-        }
-
-        if (this.store.existsDeletedGroup) {
-            warnings.push(
-                <div>
-                    <i className="fa fa-md fa-exclamation-triangle" style={{marginRight:12, marginTop:3}}/>
-                    <span>
-                        Your deleted groups are not saved.
-                    </span>
-                </div>
-            );
-        }
-
-        if (warnings.length === 0) {
-            return null;
-        }
-
-        return (
-            <div className="alert alert-warning" style={{display:"flex", marginBottom:3, marginTop:7, alignItems:"center"}}>
-                <div style={{maxWidth:500, display:"inline-block", marginRight: 20}}>
-                    {warnings}
-                </div>
-                <div
-                    style={{display:"inline-block"}}
-                >
-                    <button
-                        className="btn btn-xs btn-default"
-                        onClick={this.store.saveUnsavedChangesAndGoToNewSession}
-                        style={{marginRight:5}}
-                    >
-                        Save to new comparison session
-                    </button>
-                    <button
-                        className="btn btn-xs btn-default"
-                        onClick={this.store.clearUnsavedChanges}
-                    >
-                        Clear changes
-                    </button>
-                </div>
-                <div className="btn btn-xs btn-none"
-                     onClick={action(()=>{ this.unsavedChangesWarningDismissed = true; })}
-                     style={{position:"absolute", right:25}}
-                >
-                    <i className="fa fa-md fa-times"/>
-                </div>
-            </div>
-        );
-    }
 
     render() {
         if (!this.store) {
@@ -322,15 +243,17 @@ export default class GroupComparisonPage extends React.Component<IGroupCompariso
         return (
             <PageLayout noMargin={true} hideFooter={true} className={"subhead-dark"}>
                 <div>
+                    <LoadingIndicator center={true} isLoading={this.store.newSessionPending}  size={"big"} />
                     <div className={"headBlock"}>
-                        {this.studyLink.component}
-                        {this.unsavedChangesWarning}
+                        <div style={{display:"flex", justifyContent:"space-between"}}>
+                            {this.studyLink.component}
+                            {this.overlapStrategySelector.component}
+                        </div>
                         <div>
                             <div className={styles.headerControls}>
                                 <GroupSelector
                                     store = {this.store}
                                 />
-                                {this.overlapStrategySelector.component}
                             </div>
                         </div>
                     </div>

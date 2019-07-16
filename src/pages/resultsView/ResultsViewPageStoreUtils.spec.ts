@@ -6,7 +6,7 @@ import {
 import {
     annotateMolecularDatum,
     annotateMutationPutativeDriver,
-    computeCustomDriverAnnotationReport, computeGenePanelInformation, computePutativeDriverAnnotatedMutations,
+    computeCustomDriverAnnotationReport, computeGenePanelInformation, filterAndAnnotateMutations,
     filterSubQueryData,
     getOncoKbOncogenic,
     initializeCustomDriverAnnotationSettings,
@@ -526,17 +526,18 @@ describe("ResultsViewPageStoreUtils", ()=>{
         });
     });
 
-    describe("computePutativeDriverAnnotatedMutations", ()=>{
+    describe("filterAndAnnotateMutations", ()=>{
         it("returns empty list for empty input", ()=>{
-            assert.deepEqual(computePutativeDriverAnnotatedMutations([], ()=>({}) as any, {}, false), []);
+            assert.deepEqual(filterAndAnnotateMutations([], ()=>({}) as any, {}, false, false), []);
         });
         it("annotates a single mutation", ()=>{
             assert.deepEqual(
-                computePutativeDriverAnnotatedMutations(
+                filterAndAnnotateMutations(
                     [{mutationType:"missense", entrezGeneId:1} as Mutation],
                     ()=>({oncoKb:"", hotspots:true, cbioportalCount:false, cosmicCount:true, customDriverBinary:false}),
                     {1:{ hugoGeneSymbol:"mygene"} as Gene},
-                    true
+                    true,
+                    false
                 ) as Partial<AnnotatedMutation>[],
                 [{
                     mutationType:"missense",
@@ -551,11 +552,12 @@ describe("ResultsViewPageStoreUtils", ()=>{
         });
         it("annotates a few mutations", ()=>{
             assert.deepEqual(
-                computePutativeDriverAnnotatedMutations(
+                filterAndAnnotateMutations(
                     [{mutationType:"missense", entrezGeneId:1} as Mutation, {mutationType:"in_frame_del", entrezGeneId:1} as Mutation, {mutationType:"asdf", entrezGeneId:134} as Mutation],
                     ()=>({oncoKb:"", hotspots:true, cbioportalCount:false, cosmicCount:true, customDriverBinary:false}),
                     {1:{hugoGeneSymbol:"gene1hello"} as Gene, 134:{hugoGeneSymbol:"gene3hello"} as Gene},
-                    true
+                    true,
+                    false
                 ) as Partial<AnnotatedMutation>[],
                 [{
                     mutationType:"missense",
@@ -586,24 +588,61 @@ describe("ResultsViewPageStoreUtils", ()=>{
         });
         it("excludes a single non-annotated mutation", ()=>{
             assert.deepEqual(
-                computePutativeDriverAnnotatedMutations(
+                filterAndAnnotateMutations(
                     [{mutationType:"missense", entrezGeneId:1} as Mutation],
                     ()=>({oncoKb:"", hotspots:false, cbioportalCount:false, cosmicCount:false, customDriverBinary:false}),
                     {1:{hugoGeneSymbol:"gene1hello"} as Gene, 134:{hugoGeneSymbol:"gene3hello"} as Gene},
-                    true
+                    true,
+                    false
                 ),
                 []
             );
         });
         it("excludes non-annotated mutations from a list of a few", ()=>{
             assert.deepEqual(
-                computePutativeDriverAnnotatedMutations(
+                filterAndAnnotateMutations(
                     [{mutationType:"missense", entrezGeneId:1} as Mutation, {mutationType:"in_frame_del", entrezGeneId:1} as Mutation, {mutationType:"asdf", entrezGeneId:134} as Mutation],
                     (m)=>(m.mutationType === "in_frame_del" ?
                         {oncoKb:"", hotspots:false, cbioportalCount:false, cosmicCount:false, customDriverBinary:true}:
                         {oncoKb:"", hotspots:false, cbioportalCount:false, cosmicCount:false, customDriverBinary:false}
                     ),
                     {1:{hugoGeneSymbol:"gene1hello"} as Gene, 134:{hugoGeneSymbol:"gene3hello"} as Gene},
+                    true,
+                    false
+                ) as Partial<AnnotatedMutation>[],
+                [{
+                    mutationType:"in_frame_del",
+                    hugoGeneSymbol:"gene1hello",
+                    entrezGeneId:1,
+                    simplifiedMutationType: getSimplifiedMutationType("in_frame_del"),
+                    isHotspot: false,
+                    oncoKbOncogenic: "",
+                    putativeDriver: true
+                }]
+            );
+        });
+        it("excludes a single germline mutation", ()=>{
+            assert.deepEqual(
+                filterAndAnnotateMutations(
+                    [{mutationType:"missense", entrezGeneId:1, mutationStatus:"germline"} as Mutation],
+                    ()=>({oncoKb:"", hotspots:false, cbioportalCount:false, cosmicCount:false, customDriverBinary:false}),
+                    {1:{hugoGeneSymbol:"gene1hello"} as Gene, 134:{hugoGeneSymbol:"gene3hello"} as Gene},
+                    false,
+                    true
+                ),
+                []
+            );
+        });
+        it("excludes germline mutations from a list of a few", ()=>{
+            assert.deepEqual(
+                filterAndAnnotateMutations(
+                    [{mutationType:"missense", entrezGeneId:1, mutationStatus:"germline"} as Mutation, {mutationType:"in_frame_del", entrezGeneId:1} as Mutation, {mutationType:"asdf", entrezGeneId:134, mutationStatus:"germline"} as Mutation],
+                    (m)=>(m.mutationType === "in_frame_del" ?
+                            {oncoKb:"", hotspots:false, cbioportalCount:false, cosmicCount:false, customDriverBinary:true}:
+                            {oncoKb:"", hotspots:false, cbioportalCount:false, cosmicCount:false, customDriverBinary:false}
+                    ),
+                    {1:{hugoGeneSymbol:"gene1hello"} as Gene, 134:{hugoGeneSymbol:"gene3hello"} as Gene},
+                    false,
                     true
                 ) as Partial<AnnotatedMutation>[],
                 [{
@@ -2272,10 +2311,11 @@ describe('getSampleAlteredMap', () => {
 
     const molecularProfileIds = ["chol_nus_2012_mutations"];
     const unprofiledMolecularProfileIds = ["chol_nus_2012_mutations","chol_nus_2012_cna"];
+    const studyToMolecularProfiles = {"chol_nus_2012": [{"molecularProfileId": "chol_nus_2012_mutations"} as MolecularProfile, {"molecularProfileId": "chol_nus_2012_cna"} as MolecularProfile]};
 
     it('should handle all profiled samples correctly', () => {
         
-        const ret = getSampleAlteredMap(filteredAlterationData, samples, oqlQuery, coverageInformation, molecularProfileIds);
+        const ret = getSampleAlteredMap(filteredAlterationData, samples, oqlQuery, coverageInformation, molecularProfileIds, studyToMolecularProfiles);
         const expectedResult = {
             "RAS": [
                 AlteredStatus.ALTERED,
@@ -2327,7 +2367,7 @@ describe('getSampleAlteredMap', () => {
 
     it('should set undefined for the not profiled samples', () => {
         
-        const ret = getSampleAlteredMap(filteredAlterationData, samples, oqlQuery, coverageInformationWithUnprofiledSamples, molecularProfileIds);
+        const ret = getSampleAlteredMap(filteredAlterationData, samples, oqlQuery, coverageInformationWithUnprofiledSamples, molecularProfileIds, studyToMolecularProfiles);
         const expectedResult = {
             "RAS": [
                 AlteredStatus.ALTERED,
@@ -2377,7 +2417,7 @@ describe('getSampleAlteredMap', () => {
 
     it('should search in all molecularProfile ids', () => {
         
-        const ret = getSampleAlteredMap(filteredAlterationData, samples, oqlQuery, coverageInformationWithUnprofiledSamples, unprofiledMolecularProfileIds);
+        const ret = getSampleAlteredMap(filteredAlterationData, samples, oqlQuery, coverageInformationWithUnprofiledSamples, unprofiledMolecularProfileIds, studyToMolecularProfiles);
         const expectedResult = {
             "RAS": [
                 AlteredStatus.UNPROFILED,

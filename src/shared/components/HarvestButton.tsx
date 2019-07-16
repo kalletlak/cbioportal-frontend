@@ -16,13 +16,13 @@ interface IHarvestSampleButtonProps {
 
 const addButton:IHarvestSampleButtonState = {
     icon: 'minus-circle',
-    tooltip: 'Delete',
+    tooltip: 'Delete sample from harvest cart',
     operation: 'delete'
 };
 
 const deleteButton:IHarvestSampleButtonState = {
     icon: 'plus-circle',
-    tooltip: 'Add',
+    tooltip: 'Add sample to harvest cart',
     operation: 'add'
 };
 

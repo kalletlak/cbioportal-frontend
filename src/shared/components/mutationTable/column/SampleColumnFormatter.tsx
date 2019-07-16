@@ -44,7 +44,7 @@ export default class SampleColumnFormatter
                         <a href={getSampleViewUrl(studyId, sampleId)} target='_blank'>
                             {content}
                         </a>
-                        <HarvestButton sampleId={sampleId}></HarvestButton>
+                        {/* <HarvestButton sampleId={sampleId}></HarvestButton> */}
                     </div>
                 );
             }

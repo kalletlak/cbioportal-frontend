@@ -6,18 +6,18 @@ import { Checkbox, FormControl } from 'react-bootstrap';
 import autobind from "autobind-decorator";
 import "./styles.scss";
 import { Gene, MolecularProfile } from "shared/api/generated/CBioPortalAPI";
-import { remoteData } from "shared/api/remoteData";
 import { TumorVsNormalsData, Sample, TumorVsNormalsDataFilter } from "shared/api/generated/CBioPortalAPIInternal";
 import LoadingIndicator from "shared/components/loadingIndicator/LoadingIndicator";
 import BoxScatterPlot, { IBoxScatterPlotData } from "shared/components/plots/BoxScatterPlot";
 import { IBoxScatterPlotPoint, makeBoxScatterPlotData, IStringAxisData, INumberAxisData, boxPlotTooltip } from "../plots/PlotsTabUtils";
 import { scatterPlotSize } from "shared/components/plots/PlotUtils";
-import DownloadControls from "shared/components/downloadControls/DownloadControls";
 import internalClient from "shared/api/cbioportalInternalClientInstance";
 const CheckedSelect = require("react-select-checked").CheckedSelect;
 import { VictoryLine, VictoryLabel } from "victory";
 import jStat from 'jStat';
 import { WindowWidthBox } from "shared/components/WindowWidthBox/WindowWidthBox";
+import { remoteData } from "public-lib";
+import DownloadControls from "public-lib/components/downloadControls/DownloadControls";
 
 export interface ITumorVsNormalsVizProps {
     hidden?: boolean;
@@ -400,7 +400,7 @@ export default class TumorVsNormalsViz extends React.Component<ITumorVsNormalsVi
                     getSvg={this.getSvg}
                     filename={this.downloadFilename}
                     dontFade={true}
-                    collapse={true}
+                    type='button'
                     style={{ position: "absolute", top: 0, right: 0 }}
                 />
 

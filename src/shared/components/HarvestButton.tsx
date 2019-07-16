@@ -1,7 +1,7 @@
 import * as React from 'react';
 import {localStorageUtil} from "../lib/HarvestUtils";
 import FontAwesome from "react-fontawesome";
-import DefaultTooltip from "./defaultTooltip/DefaultTooltip";
+import DefaultTooltip from "public-lib/components/defaultTooltip/DefaultTooltip";
 
 
 interface IHarvestSampleButtonState {

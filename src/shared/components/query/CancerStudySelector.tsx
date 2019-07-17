@@ -22,6 +22,7 @@ import QuickSelectButtons from "./QuickSelectButtons";
 import {StudySelectorStats} from "shared/components/query/StudySelectorStats";
 import WindowStore from "shared/components/window/WindowStore";
 import Timeout = NodeJS.Timeout;
+import ReactSelect from "react-select";
 
 const MIN_LIST_HEIGHT = 200;
 

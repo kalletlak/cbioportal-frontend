@@ -29,7 +29,7 @@ export default class CopyNumberEnrichmentsTab extends React.Component<ICopyNumbe
     readonly tabUI = MakeMobxView({
         await: () => [this.props.store.studies,  this.props.store.selectedCopyNumberEnrichmentProfileMap, this.props.store.copyNumberHomdelEnrichmentData, this.props.store.copyNumberAmpEnrichmentData],
         render: () => (
-            <div>
+            <div data-test="CopyNumberEnrichmentsTab">
                 <EnrichmentsDataSetDropdown
                     dataSets={this.props.store.copyNumberEnrichmentProfiles}
                     onChange={this.onProfileChange}

@@ -29,7 +29,6 @@ import {
     StudyViewFilter,
     DataIntervalFilterValue,
     GenomicDataIntervalFilter,
-    GenomicDataBin,
     GenomicDataBinFilter
 } from 'shared/api/generated/CBioPortalAPIInternal';
 import {
@@ -91,6 +90,8 @@ import {
     getGroupsFromBins,
     NumericalGroupComparisonType,
     getGroupsFromQuartiles,
+    convertGenomicDataBinsToClinicalDataBins,
+    getGenomicDataAsClinicalData,
 } from './StudyViewUtils';
 import MobxPromise from 'mobxpromise';
 import {SingleGeneQuery} from 'shared/lib/oql/oql-parser';
@@ -122,7 +123,6 @@ import {
     StudyViewComparisonGroup,
     splitData
 } from "../groupComparison/GroupComparisonUtils";
-import client from "../../shared/api/cbioportalClientInstance";
 import {LoadingPhase} from "../groupComparison/GroupComparisonLoading";
 import {sleepUntil} from "../../shared/lib/TimeUtils";
 import ComplexKeyMap from "../../shared/lib/complexKeyDataStructures/ComplexKeyMap";
@@ -346,7 +346,7 @@ export class StudyViewPageStore {
     getGenesInfo(entrezGeneIds: number[]) {
         const unknownEntrezGeneIds = entrezGeneIds.filter(entrezGeneId => !this.geneMapCache[entrezGeneId]).map(entrezGeneId => entrezGeneId.toString());
         if (unknownEntrezGeneIds.length > 0) {
-            client.fetchGenesUsingPOST({geneIdType: 'ENTREZ_GENE_ID', geneIds: unknownEntrezGeneIds})
+            defaultClient.fetchGenesUsingPOST({geneIdType: 'ENTREZ_GENE_ID', geneIds: unknownEntrezGeneIds})
                 .then((genes: Gene[]) => {
                     genes.forEach(gene => {
                         this.geneMapCache[gene.entrezGeneId] = gene.hugoGeneSymbol;
@@ -467,49 +467,70 @@ export class StudyViewPageStore {
     }
 
     private async createNumberAttributeComparisonSession(
-        clinicalAttribute:ClinicalAttribute,
+        chartMeta: ChartMeta,
         categorizationType: NumericalGroupComparisonType,
-        statusCallback:(phase:LoadingPhase)=>void
+        statusCallback: (phase: LoadingPhase) => void
     ) {
         statusCallback(LoadingPhase.DOWNLOADING_GROUPS);
-        return new Promise<string>((resolve)=>{
-            onMobxPromise<any>([this.selectedSamples, this.clinicalDataBinPromises[getClinicalAttributeUniqueKey(clinicalAttribute)]],
-                async (selectedSamples:Sample[], dataBins:ClinicalDataBin[])=>{
-                    // get clinical data for the given attribute
-                    const entityIdKey = (clinicalAttribute.patientAttribute ? "patientId" : "sampleId");
-                    let data = await client.fetchClinicalDataUsingPOST({
-                        clinicalDataType: clinicalAttribute.patientAttribute ? "PATIENT" : "SAMPLE",
-                        clinicalDataMultiStudyFilter: {
-                            attributeIds: [clinicalAttribute.clinicalAttributeId],
-                            identifiers: selectedSamples.map(s=>({ studyId: s.studyId, entityId: s[entityIdKey] }))
+
+        const promises: any = [this.selectedSamples]
+
+        if (this._customGenomicChartMap.has(chartMeta.uniqueKey)) {
+            promises.push(this.genomicChartPromises[chartMeta.uniqueKey])
+        } else {
+            promises.push(this.clinicalDataBinPromises[chartMeta.uniqueKey])
+        }
+
+        return new Promise<string>((resolve) => {
+            onMobxPromise<any>(promises,
+                async (selectedSamples: Sample[], dataBins: ClinicalDataBin[]) => {
+                    let data: ClinicalData[] = [];
+
+                    if (this._customGenomicChartMap.has(chartMeta.uniqueKey)) {
+
+                        const chartInfo = this._customGenomicChartMap.get(chartMeta.uniqueKey)!;
+                        data = await getGenomicDataAsClinicalData(chartInfo, this.molecularProfileMap, selectedSamples);
+                    } else {
+
+                        const clinicalAttribute = chartMeta.clinicalAttribute;
+                        if (clinicalAttribute) {
+                            // get clinical data for the given attribute
+                            const entityIdKey = (clinicalAttribute.patientAttribute ? "patientId" : "sampleId");
+                            data = await defaultClient.fetchClinicalDataUsingPOST({
+                                clinicalDataType: clinicalAttribute.patientAttribute ? "PATIENT" : "SAMPLE",
+                                clinicalDataMultiStudyFilter: {
+                                    attributeIds: [clinicalAttribute.clinicalAttributeId],
+                                    identifiers: selectedSamples.map(s => ({ studyId: s.studyId, entityId: s[entityIdKey] }))
+                                }
+                            });
                         }
-                    });
+                    }
 
                     let groups: SessionGroupData[] = [];
-                    let clinicalAttributeName = '';
+                    let clinicalAttributeName:string|undefined;
 
                     switch (categorizationType) {
                         case NumericalGroupComparisonType.BINS:
-                            groups = getGroupsFromBins(selectedSamples, clinicalAttribute.patientAttribute, data, dataBins, this.studyIds);
-                            clinicalAttributeName = `Bins of ${clinicalAttribute.displayName}`
+                            groups = getGroupsFromBins(selectedSamples, chartMeta.patientAttribute, data, dataBins, this.studyIds);
+                            clinicalAttributeName = `Bins of ${chartMeta.displayName}`
                             break;
                         case NumericalGroupComparisonType.MEDIAN:
-                            groups = getGroupsFromQuartiles(selectedSamples, clinicalAttribute.patientAttribute, splitData(data,2), this.studyIds);
-                            clinicalAttributeName = `Median of ${clinicalAttribute.displayName}`;
+                            groups = getGroupsFromQuartiles(selectedSamples, chartMeta.patientAttribute, splitData(data, 2), this.studyIds);
+                            clinicalAttributeName = `Median of ${chartMeta.displayName}`;
                             break;
                         case NumericalGroupComparisonType.QUARTILES:
                         default:
-                            groups = getGroupsFromQuartiles(selectedSamples, clinicalAttribute.patientAttribute, splitData(data,4), this.studyIds);
-                            clinicalAttributeName = `Quartiles of ${clinicalAttribute.displayName}`;
+                            groups = getGroupsFromQuartiles(selectedSamples, chartMeta.patientAttribute, splitData(data, 4), this.studyIds);
+                            clinicalAttributeName = `Quartiles of ${chartMeta.displayName}`;
                     }
 
                     statusCallback(LoadingPhase.CREATING_SESSION);
                     // create session and get id
-                    const {id} = await comparisonClient.addComparisonSession({
+                    const { id } = await comparisonClient.addComparisonSession({
                         groups,
                         clinicalAttributeName,
-                        origin:this.studyIds,
-                        groupNameOrder: groups.map(g=>g.name)
+                        origin: this.studyIds,
+                        groupNameOrder: groups.map(g => g.name)
                     });
                     return resolve(id);
                 }
@@ -560,7 +581,7 @@ export class StudyViewPageStore {
                         // get clinical data for the given attribute
                         const isPatientAttribute = (chartMeta.clinicalAttribute && chartMeta.clinicalAttribute.patientAttribute) || false;
                         const entityIdKey = (isPatientAttribute ? "patientId" : "sampleId")
-                        data = await client.fetchClinicalDataUsingPOST({
+                        data = await defaultClient.fetchClinicalDataUsingPOST({
                             clinicalDataType: isPatientAttribute ? "PATIENT" : "SAMPLE",
                             clinicalDataMultiStudyFilter: {
                                 attributeIds: [chartMeta.clinicalAttribute!.clinicalAttributeId],
@@ -673,7 +694,7 @@ export class StudyViewPageStore {
             default:
                 sessionId =
                     await this.createNumberAttributeComparisonSession(
-                        params.chartMeta.clinicalAttribute!,
+                        params.chartMeta,
                         params.categorizationType || NumericalGroupComparisonType.QUARTILES,
                         statusCallback
                     );
@@ -953,7 +974,7 @@ export class StudyViewPageStore {
     public clinicalDataBinPromises: { [id: string]: MobxPromise<ClinicalDataBin[]> } = {};
     public clinicalDataCountPromises: { [id: string]: MobxPromise<ClinicalDataCountSummary[]> } = {};
     public customChartsPromises: { [id: string]: MobxPromise<ClinicalDataCountSummary[]> } = {};
-    public genomicChartPromises: { [id: string]: MobxPromise<GenomicDataBin[]> } = {};
+    public genomicChartPromises: { [id: string]: MobxPromise<ClinicalDataBin[]> } = {};
 
     private _chartSampleIdentifiersFilterSet =  observable.map<SampleIdentifier[]>();
 
@@ -1993,13 +2014,14 @@ export class StudyViewPageStore {
 
     public getGenomicChartDataBin(chartMeta: ChartMeta) {
         if(!this.genomicChartPromises.hasOwnProperty(chartMeta.uniqueKey)) {
-            this.genomicChartPromises[chartMeta.uniqueKey] = remoteData<GenomicDataBin[]>({
+            this.genomicChartPromises[chartMeta.uniqueKey] = remoteData<ClinicalDataBin[]>({
                 await: () => [],
                 invoke: async () => {
                     const chartInfo = this._customGenomicChartMap.get(chartMeta.uniqueKey);
                     const attribute = this._genomicDataBinFilterSet.get(chartMeta.uniqueKey)!;
                     if (chartInfo) {
-                        return internalClient.fetchGenomicDataBinCountsUsingPOST({
+
+                        const genomicDataBins = await internalClient.fetchGenomicDataBinCountsUsingPOST({
                             dataBinMethod: DataBinMethodConstants.STATIC,
                             genomicDataBinCountFilter: {
                                 genomicDataBinFilters: [{
@@ -2011,6 +2033,7 @@ export class StudyViewPageStore {
                                 studyViewFilter: this.filters
                             }
                         });
+                        return convertGenomicDataBinsToClinicalDataBins(genomicDataBins);
                     }
                     return [];
                  },
@@ -3461,7 +3484,7 @@ export class StudyViewPageStore {
             if (isCustomChart) {
                 return this.getCustomChartDownloadData(chartMeta)
             } else {
-                return this.getClinicalData(chartMeta)
+                return this.getChartDownloadableData(chartMeta)
             }
         }
     }
@@ -3474,97 +3497,54 @@ export class StudyViewPageStore {
         return data.join("\n");
     }
 
-    public async getClinicalData(chartMeta: ChartMeta) {
-        if (chartMeta.clinicalAttribute && this.samples.result) {
-            const clinicalDataList = await defaultClient.fetchClinicalDataUsingPOST({
-                clinicalDataType: chartMeta.clinicalAttribute.patientAttribute ? 'PATIENT' : 'SAMPLE',
-                clinicalDataMultiStudyFilter: {
-                    attributeIds: [chartMeta.clinicalAttribute.clinicalAttributeId],
-                    identifiers: this.selectedSamples.result.map(sample => ({
-                        entityId: chartMeta.clinicalAttribute!.patientAttribute ? sample.patientId : sample.sampleId,
-                        studyId: sample.studyId
-                    }))
-                }
-            });
+    public async getChartDownloadableData(chartMeta: ChartMeta) {
 
-            const header: string[] = ["Study ID", "Patient ID"];
+        let clinicalDataList: ClinicalData[] = []
+        const chartInfo = this._customGenomicChartMap.get(chartMeta.uniqueKey);
+        if (chartInfo === undefined) {
+            if (chartMeta.clinicalAttribute && this.samples.result) {
+                clinicalDataList = await defaultClient.fetchClinicalDataUsingPOST({
+                    clinicalDataType: chartMeta.clinicalAttribute.patientAttribute ? 'PATIENT' : 'SAMPLE',
+                    clinicalDataMultiStudyFilter: {
+                        attributeIds: [chartMeta.clinicalAttribute.clinicalAttributeId],
+                        identifiers: this.selectedSamples.result.map(sample => ({
+                            entityId: chartMeta.clinicalAttribute!.patientAttribute ? sample.patientId : sample.sampleId,
+                            studyId: sample.studyId
+                        }))
+                    }
+                });
+            }
+        } else {
+            clinicalDataList = await getGenomicDataAsClinicalData(chartInfo!, this.molecularProfileMap, this.selectedSamples.result);
+        }
 
-            if (!chartMeta.clinicalAttribute!.patientAttribute) {
-                header.push("Sample ID");
+        const header: string[] = ["Study ID", "Patient ID"];
+
+        if (!chartMeta.patientAttribute) {
+            header.push("Sample ID");
+        }
+
+        header.push(chartMeta.displayName);
+
+        let data = [header.join("\t")];
+
+        data = data.concat(clinicalDataList.map(clinicalData => {
+            const row = [clinicalData.studyId || Datalabel.NA, clinicalData.patientId || Datalabel.NA];
+
+            if (!chartMeta.patientAttribute) {
+                row.push(clinicalData.sampleId || Datalabel.NA);
             }
 
-            header.push(chartMeta.clinicalAttribute.displayName);
+            row.push(clinicalData.value || Datalabel.NA);
 
-            let data = [header.join("\t")];
+            return row.join("\t");
+        }));
 
-            data = data.concat(clinicalDataList.map(clinicalData => {
-                const row = [clinicalData.studyId || Datalabel.NA, clinicalData.patientId || Datalabel.NA];
-
-                if (!chartMeta.clinicalAttribute!.patientAttribute) {
-                    row.push(clinicalData.sampleId || Datalabel.NA);
-                }
-
-                row.push(clinicalData.value || Datalabel.NA);
-
-                return row.join("\t");
-            }));
-
-            return data.join("\n");
-        }
-        else {
-            return "";
-        }
+        return data.join("\n");
     }
 
     @computed get molecularProfileMap() {
         return _.keyBy(this.molecularProfiles.result, molecularProfile => molecularProfile.molecularProfileId);
-    }
-
-    public async getGenomicData(chartMeta: ChartMeta) {
-        const chartInfo = this._customGenomicChartMap.get(chartMeta.uniqueKey);
-        if (chartInfo) {
-
-            const gene: Gene = await defaultClient.getGeneUsingGET({
-                geneId: chartInfo.hugoGeneSymbol
-            });
-            const molecularProfiles = chartInfo.molecularProfileIds.map(molecularProfileId => this.molecularProfileMap[molecularProfileId]);
-            const molecularProfileMapByStudyId = _.keyBy(molecularProfiles, molecularProfile => molecularProfile.studyId);
-
-            const sampleMolecularIdentifiers = this.selectedSamples.result.map(sample => ({
-                sampleId: sample.sampleId,
-                molecularProfileId: molecularProfileMapByStudyId[sample.studyId].molecularProfileId
-            }))
-
-            const genomicDataList = await defaultClient.fetchMolecularDataInMultipleMolecularProfilesUsingPOST(
-                {
-                    projection: 'DETAILED',
-                    molecularDataMultipleStudyFilter: {
-                        entrezGeneIds: [gene.entrezGeneId],
-                        sampleMolecularIdentifiers: sampleMolecularIdentifiers,
-                    } as MolecularDataMultipleStudyFilter,
-                }
-            );
-
-            const header: string[] = ["Study ID", "Patient ID", "Sample ID", chartMeta.displayName];
-
-            let data = [header.join("\t")];
-
-            data = data.concat(genomicDataList.map(genomicData => {
-                const row = [
-                    genomicData.studyId || Datalabel.NA,
-                    genomicData.patientId || Datalabel.NA,
-                    genomicData.sampleId || Datalabel.NA,
-                    `${genomicData.value}` || Datalabel.NA,
-                ];
-
-                return row.join("\t");
-            }));
-
-            return data.join("\n");
-        }
-        else {
-            return "";
-        }
     }
 
     public getCustomChartDownloadData(chartMeta: ChartMeta) {

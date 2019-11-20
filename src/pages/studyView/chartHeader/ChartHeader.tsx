@@ -120,7 +120,6 @@ export class ChartHeader extends React.Component<IChartHeaderProps, {}> {
                         <li>
                             <a className="dropdown-item"
                                 onClick={() => {
-                                    console.log('here')
                                     this.props.openComparisonPage(NumericalGroupComparisonType.QUARTILES)}
                                 }
                             >Quartiles</a>
@@ -128,7 +127,6 @@ export class ChartHeader extends React.Component<IChartHeaderProps, {}> {
                         <li>
                             <a className="dropdown-item"
                                 onClick={() => {
-                                    console.log('here')
                                     this.props.openComparisonPage(NumericalGroupComparisonType.MEDIAN)}
                                 }
                             >Median</a>

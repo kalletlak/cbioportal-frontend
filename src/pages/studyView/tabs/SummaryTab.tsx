@@ -119,13 +119,13 @@ export class StudySummaryTab extends React.Component<IStudySummaryTabProps, {}> 
                     props.filters = this.store.getGenomicDataIntervalFiltersByUniqueKey(props.chartMeta!.uniqueKey);
                     props.onDataBinSelection = this.store.updateGenomicDataIntervalFilters;
                     props.onResetSelection = this.store.updateGenomicDataIntervalFilters;
-                    props.getData = () => this.store.getGenomicData(chartMeta);
+                    props.getData = () => this.store.getChartDownloadableData(chartMeta);
                 } else {
                     props.promise = this.store.getClinicalDataBin(chartMeta);
                     props.filters = this.store.getClinicalDataIntervalFiltersByUniqueKey(chartMeta.uniqueKey);
                     props.onDataBinSelection = this.handlers.onDataBinSelection;
                     props.onResetSelection = this.handlers.onDataBinSelection;
-                    props.getData = () => this.store.getClinicalData(chartMeta);
+                    props.getData = () => this.store.getChartDownloadableData(chartMeta);
                 }
                 props.onToggleLogScale = this.handlers.onToggleLogScale;
                 props.showLogScaleToggle = this.store.isLogScaleToggleVisible(
@@ -147,7 +147,7 @@ export class StudySummaryTab extends React.Component<IStudySummaryTabProps, {}> 
                     props.onResetSelection = this.handlers.onValueSelection;
                 }
                 props.onChangeChartType = this.handlers.onChangeChartType;
-                props.getData = () => this.store.getClinicalData(chartMeta);
+                props.getData = () => this.store.getChartDownloadableData(chartMeta);
                 props.downloadTypes = ["Data"];
                 break;
             }

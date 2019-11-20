@@ -7,15 +7,16 @@ import {
     ClinicalDataBin,
     SampleIdentifier,
     StudyViewFilter,
-    ClinicalDataBinFilter
+    ClinicalDataBinFilter,
+    GenomicDataBin
 } from "shared/api/generated/CBioPortalAPIInternal";
-import {CancerStudy, ClinicalAttribute, Gene, PatientIdentifier, Sample, ClinicalData} from "shared/api/generated/CBioPortalAPI";
+import {CancerStudy, ClinicalAttribute, Gene, PatientIdentifier, Sample, ClinicalData, NumericGeneMolecularData, MolecularProfile, MolecularDataMultipleStudyFilter} from "shared/api/generated/CBioPortalAPI";
 import * as React from "react";
 import {buildCBioPortalPageUrl} from "../../shared/api/urls";
 import {IStudyViewScatterPlotData} from "./charts/scatterPlot/StudyViewScatterPlot";
 import {BarDatum} from "./charts/barChart/BarChart";
 import {
-    StudyViewPageTabKeyEnum, ChartUserSetting, CustomChart
+    StudyViewPageTabKeyEnum, ChartUserSetting, CustomChart, GenomicChart
 } from "./StudyViewPageStore";
 import {Layout} from 'react-grid-layout';
 import internalClient from "shared/api/cbioportalInternalClientInstance";
@@ -31,6 +32,7 @@ import styles from './styles.module.scss';
 import { getGroupParameters, getStudiesAttr } from "pages/groupComparison/comparisonGroupManager/ComparisonGroupManagerUtils";
 import { SessionGroupData } from "shared/api/ComparisonGroupClient";
 import { stringListToIndexSet } from "public-lib";
+import ComplexKeyMap from "shared/lib/complexKeyDataStructures/ComplexKeyMap";
 
 // Cannot use ClinicalDataTypeEnum here for the strong type. The model in the type is not strongly typed
 export enum ClinicalDataTypeEnum {
@@ -375,9 +377,6 @@ export function getClinicalDataType(patientAttribute: boolean): ClinicalDataType
 }
 
 export function getClinicalAttributeUniqueKey(attribute: ClinicalAttribute): string {
-    if(attribute.patientAttribute === undefined) {
-        console.log(attribute)
-    }
     const clinicalDataType = getClinicalDataType(attribute.patientAttribute);
     return getClinicalAttributeUniqueKeyByDataTypeAttrId(clinicalDataType, attribute.clinicalAttributeId);
 }
@@ -1799,4 +1798,64 @@ export function getGroupsFromQuartiles(samples: Sample[], patientAttribute: bool
 
 export function getButtonNameWithDownPointer(buttonName: string) {
     return buttonName + " " + String.fromCharCode(9662);/*small solid down triangle*/
+}
+
+export function convertGenomicDataBinsToClinicalDataBins(genomicDataBins: GenomicDataBin[]): ClinicalDataBin[] {
+    return genomicDataBins.map(genomicDataBin => {
+        const sortedMolecularProfileIds = genomicDataBin.molecularProfileIds.sort();
+        const attributeId = genomicDataBin.hugoGeneSymbol + '-' + sortedMolecularProfileIds.join('-');
+        return {
+            attributeId,
+            clinicalDataType: genomicDataBin.clinicalDataType,
+            count: genomicDataBin.count,
+            end: genomicDataBin.end,
+            specialValue: genomicDataBin.specialValue,
+            start: genomicDataBin.start,
+        }
+    });
+}
+export async function getGenomicDataAsClinicalData(
+    chartInfo: GenomicChart,
+    molecularProfileMap: { [id: string]: MolecularProfile },
+    samples: Sample[]): Promise<ClinicalData[]> {
+    const gene: Gene = await defaultClient.getGeneUsingGET({
+        geneId: chartInfo.hugoGeneSymbol
+    });
+    const molecularProfiles = chartInfo.molecularProfileIds.map(molecularProfileId => molecularProfileMap[molecularProfileId]);
+    const molecularProfileMapByStudyId = _.keyBy(molecularProfiles, molecularProfile => molecularProfile.studyId);
+    const sampleMolecularIdentifiers = samples.map(sample => ({
+        sampleId: sample.sampleId,
+        molecularProfileId: molecularProfileMapByStudyId[sample.studyId].molecularProfileId
+    }));
+    const genomicDataList = await defaultClient.fetchMolecularDataInMultipleMolecularProfilesUsingPOST({
+        projection: 'DETAILED',
+        molecularDataMultipleStudyFilter: {
+            entrezGeneIds: [gene.entrezGeneId],
+            sampleMolecularIdentifiers: sampleMolecularIdentifiers,
+        } as MolecularDataMultipleStudyFilter,
+    });
+
+    const genomicDataSet = new ComplexKeyMap<NumericGeneMolecularData>();
+    genomicDataList.forEach(datum => genomicDataSet.set({ sampleId: datum.sampleId, molecularProfileId: datum.molecularProfileId }, datum))
+
+    return samples.map(sample => {
+        const molecularProfileId = molecularProfileMapByStudyId[sample.studyId].molecularProfileId;
+        let datum = genomicDataSet.get({ sampleId: sample.sampleId, molecularProfileId: molecularProfileId });
+        const clinicalAttributeId = gene.entrezGeneId + '-' + molecularProfileId;
+        const clinicaData: ClinicalData = {
+            clinicalAttributeId,
+            patientId: sample.patientId,
+            sampleId: sample.sampleId,
+            studyId: sample.studyId,
+            uniquePatientKey: sample.uniquePatientKey,
+            uniqueSampleKey: sample.uniqueSampleKey,
+        } as any;
+
+        if (datum) {
+            clinicaData.value = `${datum.value}`;
+        } else {
+            clinicaData.value = Datalabel.NA;
+        }
+        return clinicaData;
+    });
 }

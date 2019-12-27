@@ -63,7 +63,8 @@ export interface IBoxScatterPlotProps<D extends IBaseBoxScatterPlotPoint> {
     legendLocationWidthThreshold?:number; // chart width after which we start putting the legend at the bottom of the plot
     boxCalculationFilter?:(d:D)=>boolean; // determines which points are used for calculating the box
     containerRef?:(svgContainer:SVGElement|null)=>void;
-    compressXAxis?:boolean
+    compressXAxis?:boolean;
+    boxStyle?: ((d:string)=>{[id:string]:any});
 }
 
 type BoxModel = {
@@ -73,7 +74,8 @@ type BoxModel = {
     q1:number,
     q3:number,
     x?:number,
-    y?:number
+    y?:number,
+    style: any
 };
 
 const RIGHT_GUTTER = 120; // room for legend
@@ -598,17 +600,21 @@ export default class BoxScatterPlot<D extends IBaseBoxScatterPlotPoint> extends 
             })
         }
 
-        return boxData.map(d=>calculateBoxPlotModel(d.data.reduce((data, next)=>{
-            if (!boxCalculationFilter || (boxCalculationFilter && boxCalculationFilter(next))) {
-                // filter out values in calculating boxes, if a filter is specified ^^
-                if (this.props.logScale) {
-                    data.push(this.props.logScale.fLogScale(next.value, 0));
-                } else {
-                    data.push(next.value);
+        return boxData.map(d => {
+            const boxPlotModel = calculateBoxPlotModel(d.data.reduce((data, next) => {
+                if (!boxCalculationFilter || (boxCalculationFilter && boxCalculationFilter(next))) {
+                    // filter out values in calculating boxes, if a filter is specified ^^
+                    if (this.props.logScale) {
+                        data.push(this.props.logScale.fLogScale(next.value, 0));
+                    } else {
+                        data.push(next.value);
+                    }
                 }
-            }
-            return data;
-        }, [] as number[]))).map((model, i)=>{
+                return data;
+            }, [] as number[]))
+            const style = Object.assign({}, BOX_STYLES, this.props.boxStyle ? this.props.boxStyle(d.label) : {})
+            return { ...boxPlotModel, style }
+        }).map((model, i)=>{
             // create boxes, importantly we dont filter at this step because
             //  we need the indexes to be intact and correpond to the index in the input data,
             //  in order to properly determine the x/y coordinates
@@ -618,6 +624,7 @@ export default class BoxScatterPlot<D extends IBaseBoxScatterPlotPoint> extends 
                 median: model.median,
                 q1: model.q1,
                 q3: model.q3,
+                style:model.style as any
             };
             if (this.props.horizontal) {
                 box.y = this.categoryCoord(i)
@@ -690,7 +697,42 @@ export default class BoxScatterPlot<D extends IBaseBoxScatterPlotPoint> extends 
                             {this.vertAxis}
                             <VictoryBoxPlot
                                 boxWidth={this.boxWidth}
-                                style={BOX_STYLES}
+                                style={{
+                                    min: {
+                                        stroke: (d: any) => {
+                                            return d.style.min.stroke;
+                                        }
+                                    },
+                                    max: {
+                                        stroke: (d: any) => {
+                                            return d.style.max.stroke;
+                                        }
+                                    },
+                                    q1: {
+                                        fill: (d: any) => {
+                                            return d.style.q1.fill;
+                                        },
+                                        stroke: (d: any) => {
+                                            return d.style.q1.stroke;
+                                        }
+                                    },
+                                    q3: {
+                                        fill: (d: any) => {
+                                            return d.style.q3.fill;
+                                        },
+                                        stroke: (d: any) => {
+                                            return d.style.q3.stroke;
+                                        }
+                                    },
+                                    median: {
+                                        stroke: (d: any) => {
+                                            return d.style.median.stroke;
+                                        },
+                                        strokeWidth: (d: any) => {
+                                            return d.style.median.strokeWidth;
+                                        }
+                                    }
+                                }}
                                 data={this.boxPlotData}
                                 horizontal={this.props.horizontal}
                                 events={this.boxPlotEvents}
@@ -715,6 +757,7 @@ export default class BoxScatterPlot<D extends IBaseBoxScatterPlotPoint> extends 
                                     y={this.scatterPlotY}
                                 />
                             ))}
+                            {this.props.children}
                         </VictoryChart>
                     </g>
                 </svg>

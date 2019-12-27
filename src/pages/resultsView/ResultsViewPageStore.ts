@@ -28,7 +28,7 @@ import {
     SampleMolecularIdentifier,
 } from 'shared/api/generated/CBioPortalAPI';
 import client from 'shared/api/cbioportalClientInstance';
-import { action, computed, observable, ObservableMap , reaction} from 'mobx';
+import { action, computed, observable, ObservableMap , reaction, extras} from 'mobx';
 import {
     remoteData,
     generateQueryVariantId,
@@ -411,6 +411,8 @@ export type ModifyQueryParams = {
     selectedSampleIds: string[];
     caseIdsMode: 'sample' | 'patient';
 };
+
+//extras.isolateGlobalState()
 
 /* fields and methods in the class below are ordered based on roughly
 /* chronological setup concerns, rather than on encapsulation and public API */

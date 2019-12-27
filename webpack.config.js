@@ -310,8 +310,6 @@ var config = {
                 // 3Dmol expects "this" to be the global context
                 use: "imports-loader?this=>window"
             }
-
-
         ],
 
         noParse: [/3Dmol-nojquery.js/, /jspdf/],
@@ -403,6 +401,7 @@ if (isDev) {
 if (isDev || isTest) {
 
     config.devtool = sourceMap;
+    config.node = { fs: 'empty' }
 
     // in dev we don't want to load the twitter widget b/c it can block load of site
     config.resolve.alias['react-twitter-widgets'] = join(src, 'shared/Empty.tsx');

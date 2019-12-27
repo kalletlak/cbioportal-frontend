@@ -1,4 +1,5 @@
 import React from 'react';
+import mobx from 'mobx';
 import ReactDOM from 'react-dom';
 import { Provider } from 'mobx-react';
 import { Router, useRouterHistory } from 'react-router';
@@ -51,6 +52,10 @@ if (!window.hasOwnProperty("$")) {
 
 if (!window.hasOwnProperty("jQuery")) {
     window.jQuery = $;
+}
+
+if (!window.hasOwnProperty("mobx")) {
+    window.mobx = mobx;
 }
 
 // write browser name, version to brody tag
@@ -157,6 +162,8 @@ if (__DEBUG__ && module.hot) {
 }
 
 $(document).ready(async () => {
+
+    // extras.isolateGlobalState()
 
     // we show blank page if the window.name is "blank"
     if (window.name === "blank") {

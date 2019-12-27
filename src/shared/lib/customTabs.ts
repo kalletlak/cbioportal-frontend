@@ -4,6 +4,11 @@ import {ICustomTabConfiguration} from "../model/ITabConfiguration";
 import {autorun} from "mobx";
 
 export function loadCustomTabDeps(tab:any){
+    if (tab.pathsToCSS) {
+        tab.pathsToCSS.forEach((str: string) => {
+            $('head').append(`<link rel="stylesheet" href=${str} type="text/css" />`);
+        });
+    }
     if (tab.pathsToJs) {
         const proms:Promise<any>[] = [];
         tab.pathsToJs.forEach((str:string)=>{
@@ -23,18 +28,19 @@ export function loadCustomTabDeps(tab:any){
     }
 }
 
-export function showCustomTab(div:HTMLDivElement, tab:ICustomTabConfiguration, url:string, store:any, isUnmount = false){
+export function showCustomTab(div: HTMLDivElement, tab: ICustomTabConfiguration, url: string, store: any, isUnmount = false) {
     tab.dependencyPromise = tab.dependencyPromise || loadCustomTabDeps(tab);
 
-    const runCallback = (tab:ICustomTabConfiguration)=>{
-        if (getBrowserWindow()[tab.mountCallbackName]) {
-            getBrowserWindow()[tab.mountCallbackName](div, tab, url, store, autorun, isUnmount);
+    const runCallback = (tab: ICustomTabConfiguration) => {
+        const tabBoostrapCallback = getBrowserWindow()[tab.mountCallbackName];
+        if (tabBoostrapCallback) {
+            tabBoostrapCallback(div, tab, url, store, autorun, isUnmount);
         } else {
             alert(`Callback for tab ${tab.title} not found`);
         }
     }
 
-    tab.dependencyPromise!.then(()=>{
+    tab.dependencyPromise!.then(() => {
         runCallback(tab);
     });
 }

@@ -437,9 +437,21 @@ export default class ResultsViewPage extends React.Component<
             .filter(this.evaluateTabInclusion)
             .map(tab => tab.getTab());
 
+        const customTabs = [
+            {
+                "title": "Custom Tab",
+                "location": "RESULTS_PAGE",
+                "mountCallbackName": "tumorVsNormalsCallBack",
+                "pathsToJs": ["https://gist.githack.com/kalletlak/cf4e0545a0bc0879f4614e6aa4abbbc9/raw/b1a32e21628e66699f3890193a8d2ca57384cbf0/tvn.js"],
+                "pathsToCSS": ["https://gist.githack.com/kalletlak/4837989500ef90831f3c12ade8f4230d/raw/bd3ee587b2aee17a5fb42162a939239999bb3af7/tvn.styles.css"],
+                "showWithMultipleStudies": true,
+                "unmountOnHide": false
+            }
+        ]
+
         // now add custom tabs
-        if (AppConfig.serverConfig.custom_tabs) {
-            const customResultsTabs = AppConfig.serverConfig.custom_tabs
+        if (customTabs) {
+            const customResultsTabs = customTabs
                 .filter((tab: any) => tab.location === 'RESULTS_PAGE')
                 .map((tab: any, i: number) => {
                     return (

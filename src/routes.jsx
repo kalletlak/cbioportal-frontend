@@ -65,11 +65,16 @@ function tabParamValidator(tabEnum) {
     }
 }
 
+function customTabParamValidator(location) {
+    var regex = /results\/customTab\d+/;
+    return location.pathname.match(regex) !== null;
+}
+
 // accepts bundle-loader's deferred loader function and defers execution of route's render
 // until chunk is loaded
 function lazyLoadComponent(loader, loadingCallback, validator = (_) => {return true;}) {
     return (location, cb) => {
-        if (location && !validator(location.params)) {
+        if (location && !(validator(location.params) || customTabParamValidator(location.location))) {
             loader = ErrorPage;
         }
         loader(module => {
